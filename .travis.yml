@@ -1,0 +1,100 @@
+language: cpp
+sudo: true
+cache: apt
+dist: trusty
+addons:
+  apt:
+    sources: &apt_sources
+      - ubuntu-toolchain-r-test
+      - sourceline: 'ppa:kalakris/cmake' # cmake 2.8 for precise
+      - sourceline: 'ppa:adrozdoff/cmake' # cmake 3 for trusty
+      - sourceline: 'ppa:h-rayflood/llvm'
+    packages: &default_packages
+      - cmake
+      - libgmp-dev
+      - libgoogle-perftools-dev
+      - g++-4.9
+      - clang-3.4
+
+cache:
+    directories:
+        - $HOME/lean
+
+matrix:
+  include:
+   - os: linux
+     dist: precise
+     env:
+       CMAKE_CXX_COMPILER=g++-4.9
+       CMAKE_BUILD_TYPE=Release
+       TARGET=build/lean-3.1.1-linux.tar.gz
+       UPLOAD=ON
+       STATIC=ON
+
+   - os: linux
+     env:
+       CMAKE_CXX_COMPILER=clang++-3.4
+       CMAKE_BUILD_TYPE=Release
+       TCMALLOC=ON
+
+   - os: linux
+     addons: &gcc6_addons
+       apt:
+         sources: *apt_sources
+         packages:
+           - *default_packages
+           - g++-6
+           - gcc-6
+     env:
+       CMAKE_CXX_COMPILER=g++-6
+       CMAKE_BUILD_TYPE=Release
+       TCMALLOC=ON
+
+   - os: linux
+     addons: *gcc6_addons
+     env:
+       CMAKE_CXX_COMPILER=g++-6
+       CMAKE_BUILD_TYPE=Release
+
+   - os: linux
+     addons: *gcc6_addons
+     env:
+       CMAKE_CXX_COMPILER=g++-6
+       CMAKE_BUILD_TYPE=Release
+       MULTI_THREAD=OFF
+
+   - os: osx
+     env:
+       CMAKE_CXX_COMPILER=clang++
+       CMAKE_BUILD_TYPE=Release
+       TARGET=build/lean-3.1.1-darwin.zip
+       UPLOAD=ON
+       PACKAGE=TRUE
+
+before_install:
+  - if [[ $TRAVIS_OS_NAME == osx ]]; then
+      brew update &&
+      brew install gcc &&
+      brew install gmp;
+    fi
+  - mkdir -p $HOME/lean
+  - pushd $HOME/lean
+  - git clone https://github.com/leanprover/lean.git
+  - mkdir -p build
+  - cd build
+  - if [[ $TCMALLOC != ON ]]; then TCMALLOC=OFF; fi
+  - if [[ $STATIC != ON ]]; then STATIC=OFF; fi
+  - if [[ $MULTI_THREAD != OFF ]]; then MULTI_THREAD=ON; fi
+  - cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE
+          -DCMAKE_CXX_COMPILER=$CMAKE_CXX_COMPILER
+          -DTCMALLOC=$TCMALLOC
+          -DMULTI_THREAD=$MULTI_THREAD
+          -DSTATIC=$STATIC
+          -DLEAN_EXTRA_MAKE_OPTS=$LEAN_EXTRA_MAKE_OPTS
+          ../src || exit
+  - make -j2 || exit
+  - make install || exit
+  - popd
+
+script:
+  - lean -V
