@@ -80,8 +80,8 @@ before_install:
   - mkdir -p $HOME/lean
   - pushd $HOME/lean
   - git clone https://github.com/leanprover/lean.git
-  - mkdir -p build
-  - cd build
+  - mkdir -p lean/build
+  - cd lean/build
   - if [[ $TCMALLOC != ON ]]; then TCMALLOC=OFF; fi
   - if [[ $STATIC != ON ]]; then STATIC=OFF; fi
   - if [[ $MULTI_THREAD != OFF ]]; then MULTI_THREAD=ON; fi
