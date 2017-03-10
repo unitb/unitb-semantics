@@ -100,5 +100,4 @@ before_install:
 
 script:
   - lean -v || echo "success"
-  - pwd
-  - ls
+  - lean --make
