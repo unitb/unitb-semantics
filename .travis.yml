@@ -93,7 +93,7 @@ before_install:
           -DLEAN_EXTRA_MAKE_OPTS=$LEAN_EXTRA_MAKE_OPTS
           ../src || exit
   - make -j2 || exit
-  - make install || exit
+  - export PATH=$HOME/lean/lean/bin:$PATH
   - popd
 
 script:
