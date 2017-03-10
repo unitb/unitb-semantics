@@ -1,6 +1,5 @@
 language: cpp
 sudo: true
-cache: apt
 dist: trusty
 addons:
   apt:
@@ -17,6 +16,7 @@ addons:
       - clang-3.4
 
 cache:
+    apt: true
     directories:
         - $HOME/lean
 
@@ -82,6 +82,7 @@ before_install:
   - pwd
   - (git clone https://github.com/leanprover/lean.git && cd lean) || (cd lean && git pull origin master)
   - pwd
+  - git fetch origin master
   - git checkout cf2db32cf36917fc4eabc16e1b5d9b0ef54865dc
   - mkdir -p build
   - cd build
