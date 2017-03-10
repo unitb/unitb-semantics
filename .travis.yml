@@ -79,10 +79,8 @@ before_install:
     fi
   - mkdir -p $HOME/lean
   - pushd $HOME/lean
-  - pwd
-  - (git clone https://github.com/leanprover/lean.git && cd lean) || (cd lean && git pull origin master)
-  - pwd
-  - git fetch origin master
+  - ls .git || (git init && git remote add origin https://github.com/leanprover/lean.git)
+  - git fetch origin
   - git checkout cf2db32cf36917fc4eabc16e1b5d9b0ef54865dc
   - mkdir -p build
   - cd build
@@ -97,7 +95,7 @@ before_install:
           -DLEAN_EXTRA_MAKE_OPTS=$LEAN_EXTRA_MAKE_OPTS
           ../src || exit
   - make -j2 || exit
-  - export PATH=$HOME/lean/lean/bin:$PATH
+  - export PATH=$HOME/lean/bin:$PATH
   - popd
 
 script:
