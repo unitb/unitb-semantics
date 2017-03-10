@@ -79,9 +79,10 @@ before_install:
     fi
   - mkdir -p $HOME/lean
   - pushd $HOME/lean
-  - git clone https://github.com/leanprover/lean.git
-  - mkdir -p lean/build
-  - cd lean/build
+  - (git clone https://github.com/leanprover/lean.git && cd lean) || (cd lean && git pull origin master)
+  - git checkout cf2db32cf36917fc4eabc16e1b5d9b0ef54865dc
+  - mkdir -p build
+  - cd build
   - if [[ $TCMALLOC != ON ]]; then TCMALLOC=OFF; fi
   - if [[ $STATIC != ON ]]; then STATIC=OFF; fi
   - if [[ $MULTI_THREAD != OFF ]]; then MULTI_THREAD=ON; fi
