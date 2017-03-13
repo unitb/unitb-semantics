@@ -1,21 +1,127 @@
 
-section
-
 universe variables u₀ u₁ u₂
+
+-- section order
+
+-- lemma indirect_lt_left {α : Type u₀} (x y : α)
+--   (h : (∀ z, y ≤ z → x ≤ z))
+-- : x < y
+
+-- end order
+
+namespace nat
+
+protected lemma mul_div_cancel {x : ℕ} (y : ℕ) (h : x > 0) : x * y / x = y :=
+begin
+  induction y with y,
+  { simp [div_eq_of_lt h] },
+  { rw [mul_succ,div_eq_sub_div h,nat.add_sub_cancel,ih_1],
+    apply le_add_left }
+end
+
+protected lemma mul_mod_cancel {x : ℕ} (y : ℕ) (h : x > 0)
+: x * y % x = 0 :=
+begin
+  induction y with y,
+  { simp [mod_eq_of_lt h] },
+  { rw [mul_succ,mod_eq_sub_mod h,nat.add_sub_cancel,ih_1],
+    apply le_add_left }
+end
+
+protected lemma mul_add_modulo_cancel
+  (x y k : ℕ)
+  (h : k < x)
+: (x * y + k) % x = k :=
+begin
+  assert h₀ : x > 0,
+  { apply lt_of_le_of_lt (zero_le _) h },
+  simp,
+  induction y with y,
+  { simp [mod_eq_of_lt h] },
+  { rw [mul_succ,mod_eq_sub_mod h₀],
+    { simp [nat.add_sub_cancel_left],
+      apply eq.trans _ ih_1,
+      simp },
+    { simp, apply le_add_right } }
+end
+
+lemma div_lt_of_lt_mul (x) { m n : ℕ} (h : x < m * n) : x / n < m :=
+begin
+  assert hmn : 0 < m * n,
+  { apply lt_of_le_of_lt _ h,
+    apply nat.zero_le },
+  assert hn : 0 < n,
+  { apply pos_of_mul_pos_left hmn,
+    apply nat.zero_le, },
+  clear hmn,
+  revert x,
+  induction m with m ; intros x h,
+  { simp at h, cases not_lt_zero _ h },
+  { cases (lt_or_ge x n) with h' h',
+    { rw [div_eq_of_lt h'], apply zero_lt_succ },
+    { rw [div_eq_sub_div hn h',nat.add_one_eq_succ],
+      apply succ_lt_succ,
+      apply ih_1,
+      apply @nat.lt_of_add_lt_add_left n,
+      rw [-nat.add_sub_assoc h',nat.add_sub_cancel_left],
+      simp [succ_mul] at h, simp [h],  } }
+end
+
+protected lemma mul_add_div_cancel (x y k : ℕ) (h : k < x)
+: (x * y + k) / x = y :=
+begin
+  assert h₀ : x > 0,
+  { apply lt_of_le_of_lt (zero_le _) h },
+  simp,
+  induction y with y,
+  { simp [div_eq_of_lt h] },
+  { rw [mul_succ,div_eq_sub_div h₀],
+    { simp [nat.add_sub_cancel_left,add_one_eq_succ],
+      apply congr_arg,
+      apply eq.trans _ ih_1,
+      simp },
+    { simp, apply le_add_right } }
+end
+
+protected lemma add_mul_mod {a} b {n : ℕ} (h : a < n)
+: (a + b * n) % n = a :=
+begin
+  rw [add_comm,mul_comm,nat.mul_add_modulo_cancel _ _ _ h]
+end
+protected lemma add_mul_div {a} b {n : ℕ} (h : a < n)
+: (a + b * n) / n = b :=
+begin
+  rw [add_comm,mul_comm,nat.mul_add_div_cancel _ _ _ h]
+end
+
+protected lemma mul_lt_mul {a b c d : ℕ}
+  (h₀ : a < c)
+  (h₁ : b < d)
+: a * b < c * d :=
+begin
+  revert a,
+  induction c with c ; intros a h₀,
+  { cases (nat.not_lt_zero _ h₀) },
+  cases a with a,
+  { rw [nat.succ_mul],
+    apply lt_of_lt_of_le,
+    simp, apply lt_of_le_of_lt (zero_le b), apply h₁,
+    apply le_add_left  },
+  { rw [succ_mul,succ_mul],
+    apply add_lt_add,
+    apply ih_1,
+    apply lt_of_succ_lt_succ h₀,
+    apply h₁, }
+end
+
+end nat
+
+section bijection
+
 variables {α α' : Type (u₀)}
 variables {β β' γ : Type (u₁)}
 
-protected lemma nat.mul_div_cancel (x y : ℕ) : x * y / x = y := sorry
-
-protected lemma nat.mul_mod_cancel (x y : ℕ) : x * y % x = 0 := sorry
-
-protected lemma nat.mul_add_modulo_cancel (x y k : ℕ) (h : k < x)
-: (x * y + k) % x = k := sorry
-
-protected lemma nat.mul_add_div_cancel (x y k : ℕ) (h : k < x)
-: (x * y + k) / x = y := sorry
-
-record bijection (α  : Type (u₀)) (β : Type (u₁)) : Type (max (u₀) (u₁)) :=
+structure bijection (α  : Type (u₀)) (β : Type (u₁)) : Type (max (u₀) (u₁)) :=
   mk' ::
   (f : α → β)
   (g : β → α)
@@ -33,13 +139,22 @@ def bijection.mk (f : α → β) (g : β → α)
       { subst x, rw g_inv },
     end }
 
-lemma bijection.f_inv (b : bijection α β) (x : α) : b^.g (b^.f x) = x := sorry
+lemma bijection.f_inv (b : bijection α β) (x : α) : b^.g (b^.f x) = x := begin
+  symmetry,
+  rw [-b^.inverse]
+end
 
-lemma bijection.g_inv (b : bijection α β) (x : β) : b^.f (b^.g x) = x := sorry
+lemma bijection.g_inv (b : bijection α β) (x : β) : b^.f (b^.g x) = x := begin
+  rw [b^.inverse]
+end
 
 class finite (α : Type (u₀)) : Type (u₀) :=
   (count : ℕ)
   (to_nat : bijection α (fin count))
+
+class pos_finite (α : Type (u₀)) : Type (u₀) :=
+  (pred_count : ℕ)
+  (to_nat : bijection α (fin $ nat.succ pred_count))
 
 class infinite (α : Type u₀) : Type u₀ :=
   (to_nat : bijection α ℕ)
@@ -57,14 +172,20 @@ def bij.comp (x : bijection β γ) (y : bijection α β) : bijection α γ :=
          rw [x^.inverse,y^.inverse]
        end }
 
-check @function.swap
-
 def sum.swap : α ⊕ β → β ⊕ α
   | (sum.inl x) := sum.inr x
   | (sum.inr x) := sum.inl x
 
-def bij.swap : bijection (α ⊕ β) (β ⊕ α) :=
+def bij.sum.swap : bijection (α ⊕ β) (β ⊕ α) :=
    bijection.mk sum.swap sum.swap
+   (by intro x ; cases x with x x ; unfold sum.swap ; refl)
+   (by intro x ; cases x with x x ; unfold sum.swap ; refl)
+
+def prod.swap : α × β → β × α
+  | (x,y) := (y,x)
+
+def bij.prod.swap : bijection (α × β) (β × α) :=
+   bijection.mk prod.swap prod.swap
    (by intro x ; cases x with x x ; unfold sum.swap ; refl)
    (by intro x ; cases x with x x ; unfold sum.swap ; refl)
 
@@ -81,55 +202,81 @@ def bij.rev (x : bijection α β) : bijection β α :=
 
 infixr ∘ := bij.comp
 
+end bijection
+
 section pre
 
 parameter (n : ℕ)
 
-def bij.pre.f : fin n ⊕ ℕ → ℕ
+def bij.sum.pre.f : fin n ⊕ ℕ → ℕ
   | (sum.inl ⟨x,Px⟩) := x
   | (sum.inr x) := x + n
-def bij.pre.g (i : ℕ) : fin n ⊕ ℕ :=
+def bij.sum.pre.g (i : ℕ) : fin n ⊕ ℕ :=
   if P : i < n
      then sum.inl ⟨i, P⟩
      else sum.inr (i - n)
 
-def bij.pre : bijection (fin n ⊕ ℕ) ℕ :=
-  bijection.mk bij.pre.f bij.pre.g
+def bij.sum.pre : bijection (fin n ⊕ ℕ) ℕ :=
+  bijection.mk bij.sum.pre.f bij.sum.pre.g
   begin
     intro x
     ; cases x with x x,
     { cases x with x Px,
-      unfold bij.pre.f bij.pre.g,
+      unfold bij.sum.pre.f bij.sum.pre.g,
       rw [dif_pos Px] },
     { assert h : ¬ x + n < n,
       { apply not_lt_of_ge, apply nat.le_add_left },
-      unfold bij.pre.f bij.pre.g,
+      unfold bij.sum.pre.f bij.sum.pre.g,
       rw [dif_neg h,nat.add_sub_cancel] }
   end
   begin
     intro x,
     cases decidable.em (x < n) with h h,
-    { unfold bij.pre.g,
+    { unfold bij.sum.pre.g,
       rw [dif_pos h],
-      unfold bij.pre.f, refl },
-    { unfold bij.pre.g,
+      unfold bij.sum.pre.f, refl },
+    { unfold bij.sum.pre.g,
       rw [dif_neg h],
-      unfold bij.pre.f,
+      unfold bij.sum.pre.f,
       rw [nat.sub_add_cancel],
       apply le_of_not_gt h }
   end
 
+def bij.prod.pre.f : fin n × ℕ → ℕ
+  | (⟨x,Px⟩,y) := x + y * n
+def bij.prod.pre.g (P : n > 0) (i : ℕ) : fin n × ℕ :=
+  (⟨i % n, nat.mod_lt _ P⟩, i / n)
+
 end pre
+def bij.prod.pre (n) : bijection (fin (nat.succ n) × ℕ) ℕ :=
+  bijection.mk (bij.prod.pre.f _) (bij.prod.pre.g _ (nat.zero_lt_succ _))
+begin
+  intros x,
+  cases x with x₀ x₁,
+  cases x₀ with x₀ Px,
+  unfold bij.prod.pre.g bij.prod.pre.f,
+  apply congr, apply congr_arg,
+  apply fin.eq_of_veq, unfold fin.val,
+  rw [nat.add_mul_mod _ Px],
+  rw [nat.add_mul_div _ Px],
+end
+begin
+  intros x,
+  unfold bij.prod.pre.g bij.prod.pre.f,
+  simp [nat.mod_add_div]
+end
 
 section append
 
+open nat
+
 parameters (m n : ℕ)
 
-def bij.append.f : fin m ⊕ fin n → fin (n+m)
+def bij.sum.append.f : fin m ⊕ fin n → fin (n+m)
   | (sum.inl ⟨x,Px⟩) := ⟨x,lt_of_lt_of_le Px (nat.le_add_left _ _)⟩
   | (sum.inr ⟨x,Px⟩) := ⟨x + m,add_lt_add_right Px _⟩
 
-def bij.append.g : fin (n+m) → fin m ⊕ fin n
+def bij.sum.append.g : fin (n+m) → fin m ⊕ fin n
   | ⟨x,Px⟩ :=
   if P : x < m
      then sum.inl ⟨x, P⟩
@@ -140,18 +287,18 @@ def bij.append.g : fin (n+m) → fin m ⊕ fin n
           apply Px, apply le_of_not_gt P
         end⟩
 
-def bij.append : bijection (fin m ⊕ fin n) (fin (n+m)) :=
-  bijection.mk bij.append.f bij.append.g
+def bij.sum.append : bijection (fin m ⊕ fin n) (fin (n+m)) :=
+  bijection.mk bij.sum.append.f bij.sum.append.g
   begin
     intro x
     ; cases x with x x,
     { cases x with x Px,
-      unfold bij.append.f bij.append.g,
+      unfold bij.sum.append.f bij.sum.append.g,
       rw [dif_pos Px] },
     { cases x with x Px,
       assert h : ¬ x + m < m,
       { apply not_lt_of_ge, apply nat.le_add_left },
-      unfold bij.append.f bij.append.g,
+      unfold bij.sum.append.f bij.sum.append.g,
       rw [dif_neg h], apply congr_arg,
       apply fin.eq_of_veq, unfold fin.val,
       apply nat.add_sub_cancel }
@@ -160,15 +307,93 @@ def bij.append : bijection (fin m ⊕ fin n) (fin (n+m)) :=
     intro x,
     cases x with x Px,
     cases decidable.em (x < m) with h h,
-    { unfold bij.append.g,
+    { unfold bij.sum.append.g,
       rw [dif_pos h],
-      unfold bij.append.f, refl },
-    { unfold bij.append.g,
+      unfold bij.sum.append.f, refl },
+    { unfold bij.sum.append.g,
       rw [dif_neg h],
-      unfold bij.append.f,
+      unfold bij.sum.append.f,
       apply fin.eq_of_veq, unfold fin.val,
       rw [nat.sub_add_cancel],
       apply le_of_not_gt h }
+  end
+
+-- set_option pp.implicit true
+-- set_option pp.notation false
+
+def bij.prod.append.f : fin m × fin n → fin (m*n)
+  | (⟨x,Px⟩,⟨y,Py⟩) :=
+       have h : n*x + y < m * n,
+         begin
+           apply lt_of_lt_of_le,
+           { apply add_lt_add_left Py },
+           { note h := eq.symm (nat.succ_mul x n),
+             transitivity, rw [mul_comm, h],
+             apply nat.mul_le_mul_right _ Px  }
+         end,
+    ⟨n*x + y,h⟩
+
+def bij.prod.append.g : fin (m*n) → fin m × fin n
+  | ⟨x,Px⟩ :=
+         have hn : 0 < n,
+           begin
+             assert h : 0 < m * n,
+             { apply lt_of_le_of_lt _ Px,
+               apply nat.zero_le },
+             apply pos_of_mul_pos_left h,
+             apply nat.zero_le,
+           end,
+         have hx : x / n < m,
+           from div_lt_of_lt_mul _ Px,
+         have hy : x % n < n, from nat.mod_lt _ hn,
+      (⟨x / n, hx⟩, ⟨x % n, hy⟩)
+
+def to_pair : fin m × fin n → ℕ × ℕ
+  | (⟨x,_⟩, ⟨y,_⟩) := (x,y)
+
+lemma pair.eq : ∀ (p q : fin m × fin n),
+  (to_pair p = to_pair q) → p = q :=
+begin
+  intros p q h,
+  cases p with p₀ p₁, cases q with q₀ q₁,
+  cases p₀ with p₀ Hp₀, cases p₁ with p₁ Hp₁,
+  cases q₀ with q₀ Hq₀, cases q₁ with q₁ Hq₁,
+  unfold to_pair at h,
+  injection h,
+  subst q₀, subst q₁
+end
+
+lemma to_pair_prod_g (x : ℕ) (P : x < m * n)
+: to_pair (bij.prod.append.g ⟨x,P⟩) = (x / n, x % n) :=
+begin
+  unfold bij.prod.append.g to_pair, refl
+end
+
+lemma val_prod_f (x₀ x₁ : ℕ) (P₀ : x₀ < m) (P₁ : x₁ < n)
+: fin.val (bij.prod.append.f (⟨x₀,P₀⟩,⟨x₁,P₁⟩)) = n*x₀ + x₁ :=
+begin
+  unfold bij.prod.append.f fin.val, refl
+end
+
+def bij.prod.append : bijection (fin m × fin n) (fin (m*n)) :=
+  bijection.mk bij.prod.append.f bij.prod.append.g
+  begin
+    intro x,
+    cases x with x₀ x₁,
+    cases x₀ with x₀ Px₀,
+    cases x₁ with x₁ Px₁,
+    apply pair.eq,
+    unfold to_pair bij.prod.append.f,
+    rw [to_pair_prod_g],
+    rw [ nat.mul_add_modulo_cancel _ _ _ Px₁
+       , nat.mul_add_div_cancel _ _ _ Px₁]
+  end
+  begin
+    intro x,
+    cases x with x Px,
+    apply fin.eq_of_veq,
+    unfold fin.val bij.prod.append.g,
+    simp [val_prod_f,mod_add_div]
   end
 
 end append
@@ -206,10 +431,11 @@ def bij.even_odd : bijection (ℕ ⊕ ℕ) ℕ :=
       begin
         intro x,
         cases x with x x,
-        { assert h : ¬ 2 * x % 2 = 1,
-          { rw nat.mul_mod_cancel, contradiction },
+        { assert h' : 2 > 0, apply nat.le_succ,
+          assert h : ¬ 2 * x % 2 = 1,
+          { rw nat.mul_mod_cancel, contradiction, apply h' },
           unfold bij.even_odd.g bij.even_odd.f,
-          rw [if_neg h,nat.mul_div_cancel 2] },
+          rw [if_neg h], rw [nat.mul_div_cancel _ h'] },
         { unfold bij.even_odd.g bij.even_odd.f,
           note h' := nat.le_refl 2,
           rw [if_pos,nat.mul_add_div_cancel _ _ _ h'],
@@ -244,9 +470,6 @@ def bij.prod.succ : ℕ × ℕ → ℕ × ℕ
   | (n,0) := (0,succ n)
   | (n,succ m) := (succ n,m)
 
-check @prod.lex_wf
-check @inv_image.wf
-
 def diag : ℕ × ℕ → ℕ × ℕ → Prop
 := inv_image (prod.lex lt lt) (λ x, (x^.fst+x^.snd, x^.fst))
 --  | (x₀,x₁) (y₀,y₁) := prod.lex lt lt (x₀+y₀,x₀) (x₁+y₁,x₁)
@@ -259,8 +482,9 @@ def diag_wf : well_founded diag
 def bij.prod.f : ℕ → ℕ × ℕ
   | 0 := (0,0)
   | (nat.succ n) := bij.prod.succ (bij.prod.f n)
-def bij.prod.g (t : ℕ × ℕ) : ℕ :=
-  well_founded.recursion diag_wf t $
+
+def bij.prod.g : ℕ × ℕ → ℕ :=
+  well_founded.fix diag_wf $
    take ⟨x₀,x₁⟩,
    match (x₀,x₁) with
     | (0,0) := take _, 0
@@ -283,14 +507,67 @@ def bij.prod.g (t : ℕ × ℕ) : ℕ :=
        succ (g (n,succ m) h)
    end
 
+lemma bij.prod.f_zero : bij.prod.f 0 = (0,0) := rfl
+
+lemma bij.prod.f_succ (n : ℕ) : bij.prod.f (succ n) = bij.prod.succ (bij.prod.f n) := rfl
+
+lemma bij.prod.g_zero_zero : bij.prod.g (0,0) = 0 := rfl
+
+lemma bij.prod.g_zero_succ (n : ℕ) : bij.prod.g (0,succ n) = succ (bij.prod.g (n,0)) := rfl
+
+lemma bij.prod.g_succ (n m : ℕ) : bij.prod.g (succ n,m) = succ (bij.prod.g (n,succ m)) :=
+begin
+--  transitivity,
+  unfold bij.prod.g,
+  rw [well_founded.fix_eq],
+  unfold bij.prod.g._match_2 bij.prod.g._match_1,
+  apply congr_arg, simp
+end
+
+lemma bij.prod.g_prod_succ_eq_prod_succ_g (x : ℕ × ℕ) : bij.prod.g (bij.prod.succ x) = succ (bij.prod.g x) :=
+begin
+  apply well_founded.induction diag_wf x,
+  clear x,
+  intros x IH,
+  cases x with x₀ x₁,
+  cases x₀ with x₀,
+  { cases x₁ with x₁,
+    { unfold bij.prod.succ,
+      rw [bij.prod.g_zero_succ,bij.prod.g_zero_zero] },
+    { unfold bij.prod.succ, rw [bij.prod.g_succ] } },
+  { cases x₁ with x₁,
+    { unfold bij.prod.succ, rw [bij.prod.g_zero_succ] },
+    { unfold bij.prod.succ, rw [bij.prod.g_succ] } }
+end
+
 def bij.prod : bijection (ℕ × ℕ) ℕ :=
     bijection.mk bij.prod.g
                  bij.prod.f
 begin
+  intro x,
+  apply well_founded.induction diag_wf x,
+  clear x,
+  intros x IH,
+  cases x with x₀ x₁,
+  cases x₀ with x₀,
+  { cases x₁,
+    { simp [bij.prod.g_zero_zero,bij.prod.f_zero] },
+    { rw [bij.prod.g_zero_succ,bij.prod.f_succ,IH],
+      refl,
+      unfold diag inv_image prod.fst prod.snd,
+      apply prod.lex.left, simp [lt_succ_self] }, },
+  { rw [bij.prod.g_succ,bij.prod.f_succ,IH], refl,
+    unfold diag inv_image prod.fst prod.snd,
+    simp [succ_add,add_succ],
+    apply prod.lex.right,
+    apply lt_succ_self },
 end
 begin
+  intro x,
+  induction x with x,
+  { rw [bij.prod.f_zero,bij.prod.g_zero_zero] },
+  { rw [bij.prod.f_succ,bij.prod.g_prod_succ_eq_prod_succ_g,ih_1] },
 end
-
 
 instance : finite unit :=
   { count := 1
@@ -315,11 +592,8 @@ instance (n : ℕ) : finite (fin n) :=
 instance : infinite ℕ :=
   { to_nat := bij.id }
 
-end
-
 section bijection_add
 
-universe variables u₀ u₁
 parameters {α α' : Type (u₀)}
 parameters {β β' γ : Type (u₁)}
 parameters (b₀ : bijection α β) (b₁ : bijection α' β')
@@ -355,7 +629,6 @@ end bijection_add
 
 section bijection_mul
 
-universe variables u₀ u₁
 parameters {α α' : Type (u₀)}
 parameters {β β' γ : Type (u₁)}
 parameters (b₀ : bijection α β) (b₁ : bijection α' β')
@@ -384,39 +657,39 @@ end bijection_mul
 
 section
 
-universe variables u₀ u₁ u₂
 variables {α α' : Type (u₀)}
 variables {β β' γ : Type (u₀)}
 
 local infixr ∘ := bij.comp
 local infix + := bijection.add
+local infix * := bijection.mul
 
 instance inf_inf_inf_sum [infinite α] [infinite β] : infinite (α ⊕ β) :=
   { to_nat := bij.even_odd ∘ (infinite.to_nat α + infinite.to_nat β) }
 
 instance inf_fin_inf_sum [infinite α] [finite β] : infinite (α ⊕ β) :=
-  { to_nat := bij.pre _ ∘ bij.swap ∘ (infinite.to_nat α + finite.to_nat β) }
+  { to_nat := bij.sum.pre _ ∘ bij.sum.swap ∘ (infinite.to_nat α + finite.to_nat β) }
 
 instance fin_inf_inf_sum [finite α] [infinite β] : infinite (α ⊕ β) :=
-  { to_nat := bij.pre _ ∘ (finite.to_nat α + infinite.to_nat β) }
+  { to_nat := bij.sum.pre _ ∘ (finite.to_nat α + infinite.to_nat β) }
 
 instance [finite α] [finite β] : finite (α ⊕ β) :=
   { count := _
-  , to_nat := bij.append _ _ ∘ (finite.to_nat α + finite.to_nat β)
+  , to_nat := bij.sum.append _ _ ∘ (finite.to_nat α + finite.to_nat β)
   }
 
 instance inf_inf_inf_prod [infinite α] [infinite β] : infinite (α × β) :=
-  { to_nat := bij.even_odd ∘ (infinite.to_nat α + infinite.to_nat β) }
+  { to_nat := bij.prod ∘ (infinite.to_nat α * infinite.to_nat β) }
 
-instance inf_fin_inf_prod [infinite α] [finite β] : infinite (α × β) :=
-  { to_nat := bij.pre _ ∘ bij.swap ∘ (infinite.to_nat α + finite.to_nat β) }
+instance inf_fin_inf_prod [infinite α] [pos_finite β] : infinite (α × β) :=
+  { to_nat := bij.prod.pre _ ∘ bij.prod.swap ∘ (infinite.to_nat α * pos_finite.to_nat β) }
 
-instance fin_inf_inf_prod [finite α] [infinite β] : infinite (α × β) :=
-  { to_nat := bij.pre _ ∘ (finite.to_nat α + infinite.to_nat β) }
+instance fin_inf_inf_prod [pos_finite α] [infinite β] : infinite (α × β) :=
+  { to_nat := bij.prod.pre _ ∘ (pos_finite.to_nat α * infinite.to_nat β) }
 
 instance [finite α] [finite β] : finite (α × β) :=
-  { count := _
-  , to_nat := bij.append _ _ ∘ (finite.to_nat α + finite.to_nat β)
+  { count := nat.mul (finite.count α) (finite.count β)
+  , to_nat := bij.prod.append _ _ ∘ (finite.to_nat α * finite.to_nat β)
   }
 
 end

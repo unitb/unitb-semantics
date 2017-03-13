@@ -22,7 +22,13 @@ begin
     apply or.inr ha, }
 end
 
--- lemma not_or_of_not_and_not {p q : Prop} : ¬ (p ∨ q) → ¬ p ∧ ¬ q := sorry
+lemma not_or_of_not_and_not {p q : Prop} : ¬ (p ∨ q) → ¬ p ∧ ¬ q :=
+begin
+  intro h,
+  split ; intro h' ; apply h,
+  { left, apply h' },
+  { right, apply h' },
+end
 
 lemma not_and_of_not_or_not {p q : Prop} : ¬ (p ∧ q) → ¬ p ∨ ¬ q :=
 begin
@@ -190,15 +196,15 @@ begin
   { apply funext, intro x,
     apply classical.iff.to_eq, split,
     { intro h, cases h with j h,
-      existsi subtype.tag j h^.left, apply h^.right },
-    { intro h, cases h with j h, cases j with j h',
+      existsi subtype.mk j h^.left, apply h^.right },
+    { intro h₀, cases h₀ with j h₀, cases j with j h₁ h₂,
       existsi j,
-      split, apply h', apply h } },
+      split, apply h₁, apply h₀ } },
   rw h',
   apply leads_to.disj,
   intro i,
   apply h,
-  apply i^.has_property
+  apply i^.property
 end
 
 theorem leads_to.disj' {α} [system α] {s : α} {p q r : pred α}
@@ -329,7 +335,7 @@ begin
       apply classical.iff.to_eq,
       unfold p_or p_and, rw or_assoc, rw or_self },
     rw -H', apply H },
-  { apply leads_to.weaken_lhs (λ s, ∃i, p i s ∧ r s),
+  { apply leads_to.weaken_lhs (λ s, ∃i, p_1 i s ∧ r s),
     { intros s h, cases h with h h',
       cases h with i h, existsi i,
       exact ⟨h,h'⟩ },

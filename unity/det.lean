@@ -4,7 +4,7 @@ import ..unity.logic
 
 namespace det
 
-record prog (lbl : Type) (α : Type) : Type :=
+structure prog (lbl : Type) (α : Type) : Type :=
   (first : α)
   (step : lbl → α → α)
 
@@ -135,8 +135,12 @@ instance prog_is_system [inhabited lbl] : system (prog lbl α) :=
 open nat
 
 def ex (p : prog lbl α) (τ : stream α) : Prop
-  := τ 0 = p^.first ∧ ∀ i, ∃ e, p^.step e (τ i) = τ (i+1)
+  :=  τ 0 = p^.first
+    ∧ (∀ i, ∃ e, p^.step e (τ i) = τ (i+1))
+    ∧ (∀ i e, ∃ j, p^.step e (τ (i+j)) = τ (i+j+1))
 
+-- in simple, with transient, q becomes true immediately
+-- in this model, we need to rely on fairness
 theorem leads_to.semantics [inhabited lbl] {s : prog lbl α} {τ : stream α} {p q : pred _}
   (P : leads_to s p q)
   (Hτ : ex s τ)
@@ -153,10 +157,11 @@ begin
     { existsi 1, unfold ex,
       cases t₀ with e t₀,
       note POST := t₀ (τ i) ⟨h',h⟩,
-      note POST' := u₀ (τ i) ⟨h',h⟩,
+      note POST' := u₀ e (τ i) ⟨h',h⟩,
       apply classical.by_contradiction,
+      unfold ex at Hτ, cases Hτ with Hτ Hτ',
       intros h'', cases POST' with POST' POST',
-      { apply POST, exact ⟨POST',h''⟩ },
+      { apply POST, exact ⟨POST',_⟩ },
       { apply h'' POST' } } },
   { intros i h,
     note IH₂ := IH₀ _ h,

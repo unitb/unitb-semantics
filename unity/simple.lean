@@ -4,9 +4,7 @@ import ..unity.logic
 
 namespace simple
 
-
-
-record prog (α : Type) : Type :=
+structure prog (α : Type) : Type :=
   (first : α)
   (step : α → α)
 
