@@ -148,6 +148,20 @@ lemma bijection.g_inv (b : bijection α β) (x : β) : b^.f (b^.g x) = x := begi
   rw [b^.inverse]
 end
 
+lemma bijection.f_inv' (b : bijection α β) : b^.g ∘ b^.f = id :=
+begin
+  apply funext,
+  unfold function.comp,
+  apply bijection.f_inv
+end
+
+lemma bijection.g_inv' (b : bijection α β) : b^.f ∘ b^.g = id :=
+begin
+  apply funext,
+  unfold function.comp,
+  apply bijection.g_inv
+end
+
 class finite (α : Type (u₀)) : Type (u₀) :=
   (count : ℕ)
   (to_nat : bijection α (fin count))
@@ -242,14 +256,16 @@ def bij.sum.pre : bijection (fin n ⊕ ℕ) ℕ :=
       apply le_of_not_gt h }
   end
 
+open nat
+
 def bij.prod.pre.f : fin n × ℕ → ℕ
   | (⟨x,Px⟩,y) := x + y * n
-def bij.prod.pre.g (P : n > 0) (i : ℕ) : fin n × ℕ :=
-  (⟨i % n, nat.mod_lt _ P⟩, i / n)
+def bij.prod.pre.g (i : ℕ) : fin (succ n) × ℕ :=
+  (⟨i % succ n, nat.mod_lt _ $ zero_lt_succ _⟩, i / succ n)
 
 end pre
 def bij.prod.pre (n) : bijection (fin (nat.succ n) × ℕ) ℕ :=
-  bijection.mk (bij.prod.pre.f _) (bij.prod.pre.g _ (nat.zero_lt_succ _))
+  bijection.mk (bij.prod.pre.f _) (bij.prod.pre.g _)
 begin
   intros x,
   cases x with x₀ x₁,
@@ -524,6 +540,15 @@ begin
   apply congr_arg, simp
 end
 
+lemma bij.prod.prod_succ_le_succ (m n : ℕ) : (bij.prod.succ (m,n))^.snd ≤ succ (n+m) :=
+begin
+  cases n with n ; unfold bij.prod.succ ; simp,
+  rw [add_succ],
+  apply le_succ_of_le,
+  apply le_succ_of_le,
+  apply le_add_left,
+end
+
 lemma bij.prod.g_prod_succ_eq_prod_succ_g (x : ℕ × ℕ) : bij.prod.g (bij.prod.succ x) = succ (bij.prod.g x) :=
 begin
   apply well_founded.induction diag_wf x,
@@ -655,6 +680,231 @@ end
 
 end bijection_mul
 
+section bijection_map
+
+open nat
+
+variables {α α' : Type (u₀)}
+variables {β β' γ : Type (u₁)}
+
+def bijection.map (b : bijection α β) : bijection (list α) (list β) :=
+bijection.mk (list.map b^.f) (list.map b^.g)
+begin
+  intro x, rw [list.map_map,bijection.f_inv',list.map_id]
+end
+begin
+  intro x, rw [list.map_map,bijection.g_inv',list.map_id]
+end
+
+def prod.sum : ℕ × ℕ → ℕ
+  | (x,y) := x+y
+
+lemma prod_f_sum_le_self (n) : (bij.prod.f n)^.sum ≤ n :=
+begin
+  induction n with n,
+  { unfold bij.prod.f, refl },
+  { unfold bij.prod.f,
+    cases bij.prod.f n with x y,
+    cases y with y h ; unfold bij.prod.succ prod.sum,
+    { unfold prod.sum at ih_1, simp at ih_1,
+      simp [succ_le_succ,ih_1] },
+    { unfold prod.sum at ih_1,
+      simp [add_succ] at ih_1,
+      simp [succ_add], transitivity,
+      apply ih_1,
+      apply le_succ  } }
+end
+
+lemma prod_f_snd_le_self (n) : (bij.prod.f n)^.snd ≤ n :=
+begin
+  assert h : (bij.prod.f n)^.snd ≤ (bij.prod.f n)^.sum,
+  { cases bij.prod.f n,
+    simp [prod.sum],
+    apply le_add_left },
+  transitivity,
+  apply h,
+  apply prod_f_sum_le_self
+end
+
+
+def bijection.concat.f : list ℕ → ℕ
+  | list.nil := 0
+  | (x :: xs) := succ (bij.prod.g (x,bijection.concat.f xs))
+
+def bijection.concat.g : ℕ → list ℕ :=
+  well_founded.fix nat.lt_wf $
+    λ n,
+     match n with
+     | 0 := λ g : Π (m : ℕ), m < 0 → list ℕ, list.nil
+     | (succ n') :=
+       λ g : Π (m : ℕ), m < succ n' → list ℕ,
+         let p := bij.prod.f n' in
+         have h : p^.snd < succ n',
+           begin
+             apply lt_succ_of_le,
+             apply prod_f_snd_le_self
+           end,
+         p^.fst :: g p^.snd h
+     end
+
+-- section strong_rec
+
+-- variables {t : ℕ → Type u₀} (n : ℕ)
+-- variables (P : Π n, (Π m, m < n → t m) → t n)
+
+-- variable r : α → α → Prop
+-- variable wf : well_founded r
+
+-- lemma foo (n : ℕ) (h₀ : t 0) (hn : ∀ n, t n → t (succ n))
+-- : @nat.rec _ h₀ hn (succ n) = hn n (nat.rec h₀ hn n) :=
+-- begin
+--   simp
+-- end
+
+-- lemma nat.strong_rec_on_def
+-- : ∀ n, well_founded.fix nat.lt_wf P n = P n (λ m h, well_founded.fix nat.lt_wf P m)
+--    :=
+--    begin
+--      intro n,
+--      pose Q := λ n, Π (m : ℕ), m < n → t m,
+--      unfold nat.strong_rec_on,
+--      change (λ (n : ℕ),
+--        @nat.rec Q (λ (m : ℕ) (h₁ : m < 0), (absurd h₁ (not_lt_zero m) : t m))
+--          (λ (n : ℕ) (ih : Π (m : ℕ), m < n → t m) (m : ℕ) (h₁ : m < succ n),
+--             or.by_cases (lt_or_eq_of_le (le_of_lt_succ h₁)) (λ (a : m < n), ih m a)
+--               (λ (a : m = n), eq.rec (λ (h₁ : n < succ n), P n ih) (eq.symm a) h₁))
+--          n) (succ n) n (lt_succ_self n) = _,
+--      change @nat.rec Q (λ (m : ℕ) (h₁ : m < 0), (absurd h₁ (not_lt_zero m) : t m))
+--          (λ (n : ℕ) (ih : Π (m : ℕ), m < n → t m) (m : ℕ) (h₁ : m < succ n),
+--             or.by_cases (lt_or_eq_of_le (le_of_lt_succ h₁)) (λ (a : m < n), ih m a)
+--               (λ (a : m = n), eq.rec (λ (h₁ : n < succ n), P n ih) (eq.symm a) h₁))
+--          (succ n) n (lt_succ_self n) = _, unfold nat.rec
+--     end
+
+-- end strong_rec
+
+lemma bijection.concat.g_zero
+: bijection.concat.g 0 = [] :=
+begin
+  unfold bijection.concat.g ,
+  rw well_founded.fix_eq,
+  refl
+end
+
+lemma bijection.concat.g_succ (n : ℕ)
+: bijection.concat.g (succ n) = (bij.prod.f n)^.fst :: bijection.concat.g (bij.prod.f n)^.snd :=
+begin
+  unfold bijection.concat.g ,
+  rw well_founded.fix_eq,
+  refl
+end
+
+def bijection.concat : bijection (list ℕ) ℕ :=
+bijection.mk bijection.concat.f bijection.concat.g
+begin
+  intro x,
+  induction x,
+  { unfold bijection.concat.f, apply bijection.concat.g_zero },
+  { unfold bijection.concat.f,
+    -- bij.prod.g_succ
+    assert h : ∀ x, bij.prod.f (bij.prod.g x) = x, { apply bij.prod^.f_inv },
+    rw bijection.concat.g_succ,
+    apply congr, apply congr_arg,
+    { rw h },
+    { rw h, unfold prod.snd, apply ih_1 },  }
+end
+begin
+  intro x,
+  apply nat.strong_induction_on x,
+  clear x,
+  intros x IH,
+  cases x with x,
+  { rw bijection.concat.g_zero, unfold bijection.concat.f, refl },
+  { rw bijection.concat.g_succ, unfold bijection.concat.f,
+    rw IH,
+    assert h' : ∀ x, bij.prod.g (bij.prod.f x) = x, { apply bij.prod^.g_inv },
+    destruct bij.prod.f x,
+    intros x₀ x₁ h, simp [h],
+    unfold prod.fst prod.snd,
+    rw [-h,h'],
+    apply lt_succ_of_le,
+    apply prod_f_snd_le_self }
+end
+
+def bijection.fconcat.f (n : ℕ) : list (fin n) → ℕ
+  | [] := 0
+  | (x :: xs) := succ (bij.prod.pre.f _ (x,bijection.fconcat.f xs))
+
+def bijection.fconcat.g (n : ℕ)  : ℕ → list (fin (succ n)) :=
+  well_founded.fix lt_wf $
+      λ x,
+       match x with
+        | 0 := λ _, []
+        | (succ x') :=
+             λ g : Π (y : ℕ), y < succ x' → list (fin (succ n)),
+                  have h : (bij.prod.pre.g n x')^.snd < succ x',
+                    begin
+                      unfold bij.prod.pre.g prod.snd,
+                      apply lt_of_le_of_lt,
+                      apply nat.div_le_self,
+                      apply lt_succ_self
+                    end,
+               (bij.prod.pre.g _ x')^.fst :: g (bij.prod.pre.g n x')^.snd h
+       end
+
+section
+
+open bijection
+open bij
+
+lemma bijection.fconcat.g_zero (n : ℕ)
+: fconcat.g n 0 = [] := rfl
+
+lemma bijection.fconcat.g_succ (n x : ℕ)
+: fconcat.g _ (succ x) = (prod.pre.g _ x)^.fst :: fconcat.g n (prod.pre.g n x)^.snd :=
+begin
+  unfold fconcat.g,
+  rw well_founded.fix_eq,
+  unfold fconcat.g._match_1,
+  refl,
+end
+
+end
+
+def bijection.fconcat (n : ℕ) : bijection (list (fin (succ n))) ℕ :=
+bijection.mk (bijection.fconcat.f _) (bijection.fconcat.g n)
+begin
+  intro x,
+  induction x with x xs ih,
+  { refl },
+  { unfold bijection.fconcat.f,
+    note h := (bij.prod.pre n)^.f_inv,
+    unfold bij.prod.pre bijection.mk bijection.f bijection.g at h,
+    rw bijection.fconcat.g_succ,
+    apply congr, apply congr_arg,
+    { cases x with x Px, cases x with x,
+      rw h, rw h, },
+    { rw h, unfold prod.snd, rw ih } }
+end
+begin
+  intro x,
+  apply nat.strong_induction_on x,
+  clear x,
+  intros x ih,
+  cases x with x,
+  { rw bijection.fconcat.g_zero,
+    refl },
+  { rw bijection.fconcat.g_succ,
+    unfold bijection.fconcat.f,
+    apply congr_arg,
+    unfold bij.prod.pre.g prod.snd,
+    rw ih, unfold prod.fst bij.prod.pre.f,
+    simp [mod_add_div],
+    { apply lt_succ_of_le, apply nat.div_le_self } }
+end
+
+end bijection_map
+
 section
 
 variables {α α' : Type (u₀)}
@@ -691,5 +941,11 @@ instance [finite α] [finite β] : finite (α × β) :=
   { count := nat.mul (finite.count α) (finite.count β)
   , to_nat := bij.prod.append _ _ ∘ (finite.to_nat α * finite.to_nat β)
   }
+
+instance inf_list_of_fin [pos_finite α] : infinite (list α) :=
+ { to_nat := bijection.fconcat _ ∘ bijection.map (pos_finite.to_nat α) }
+
+instance inf_list_of_inf  [infinite α] : infinite (list α) :=
+ { to_nat := bijection.concat ∘ bijection.map (infinite.to_nat α) }
 
 end
