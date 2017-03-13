@@ -1,6 +1,6 @@
 
 import data.stream
-import .finite
+import unity.finite
 
 open nat
 open stream

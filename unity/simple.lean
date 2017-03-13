@@ -1,6 +1,6 @@
 
 import data.stream
-import ..unity.logic
+import unity.logic
 
 namespace simple
 
