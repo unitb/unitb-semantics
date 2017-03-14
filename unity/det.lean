@@ -5,6 +5,9 @@ import unity.bijection
 import unity.finite
 import unity.countable
 
+lemma stream.map_app {α β} (f : α → β) (s : stream α) (i : ℕ)
+: stream.map f s i = f (s i) := rfl
+
 namespace det
 
 structure prog (lbl : Type) (α : Type) : Type :=
@@ -206,9 +209,14 @@ end
 class sched (lbl : Type) extends inhabited lbl :=
   (sched : ∀ α (s : prog lbl α), ∃ τ, ex s τ)
 
-def foo (s : prog lbl α) (τ : stream lbl) : stream α
+def run (s : prog lbl α) (τ : stream lbl) : stream α
   | 0 := prog.first s
-  | (succ n) := prog.step s (τ n) (foo n)
+  | (succ n) := prog.step s (τ n) (run n)
+
+@[simp]
+lemma run_succ (s : prog lbl α) (τ : stream lbl) (i : ℕ)
+: run s τ (succ i) = prog.step s (τ i) (run s τ i)
+:= rfl
 
 def inf_sched [infinite lbl] : stream lbl :=
 stream.map (infinite.to_nat lbl)^.g inf_interleave
@@ -216,25 +224,40 @@ stream.map (infinite.to_nat lbl)^.g inf_interleave
 def fin_sched [pos_finite lbl] : stream lbl :=
 stream.map (pos_finite.to_nat lbl)^.g (fin_interleave _)
 
-lemma ex_fin_sched [pos_finite lbl] (s : prog lbl α) : ex s (foo s fin_sched) :=
+lemma ex_fin_sched [pos_finite lbl] (s : prog lbl α) : ex s (run s fin_sched) :=
   { init := rfl
   , safety := take i, ⟨fin_sched i,rfl⟩
   , liveness :=
     begin
       intros i e,
       cases inf_repeat_fin_inter ((pos_finite.to_nat lbl)^.f e) i with j h,
-      existsi j, unfold fin_sched foo, admit
-    end } -- ((pos_finite.to_nat lbl)^.f e) }
+      existsi j, unfold fin_sched,
+      simp [add_one_eq_succ],
+      apply congr, rw [stream.map_app,h,bijection.f_inv],
+      refl
+    end }
 
-lemma ex_inf_sched [infinite lbl] (s : prog lbl α) : ex s (foo s inf_sched) := sorry
+lemma ex_inf_sched [infinite lbl] (s : prog lbl α) : ex s (run s inf_sched) :=
+  { init := rfl
+  , safety := take i, ⟨inf_sched i,rfl⟩
+  , liveness :=
+    begin
+      intros i e,
+      cases inf_repeat_inf_inter ((infinite.to_nat lbl)^.f e) i with j h,
+      existsi j, unfold fin_sched,
+      simp [add_one_eq_succ],
+      apply congr, apply congr_arg,
+      unfold inf_sched, rw [stream.map_app,h,bijection.f_inv],
+      refl
+    end }
 
 instance fin_sched_i {lbl} [pos_finite lbl] : sched lbl :=
   { default := (pos_finite.to_nat lbl)^.g ⟨pos_finite.pred_count lbl,nat.le_refl _⟩
-  , sched := λ _ s, ⟨foo s fin_sched, ex_fin_sched s⟩ }
+  , sched := λ _ s, ⟨run s fin_sched, ex_fin_sched s⟩ }
 
 instance inf_sched_i {lbl} [infinite lbl] : sched lbl :=
   { default := (infinite.to_nat lbl)^.g 0
-  , sched := λ _ s, ⟨foo s inf_sched, ex_inf_sched s⟩ }
+  , sched := λ _ s, ⟨run s inf_sched, ex_inf_sched s⟩ }
 
 instance {α} [sched lbl] : system_sem (prog lbl α) :=
   { (_ : system (prog lbl α)) with
