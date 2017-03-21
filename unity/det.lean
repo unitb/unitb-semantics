@@ -5,9 +5,6 @@ import unity.bijection
 import unity.finite
 import unity.countable
 
-lemma stream.map_app {α β} (f : α → β) (s : stream α) (i : ℕ)
-: stream.map f s i = f (s i) := rfl
-
 namespace det
 
 structure prog (lbl : Type) (α : Type) : Type :=

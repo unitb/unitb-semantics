@@ -1,75 +1,24 @@
 
 import data.stream
 import unity.finite
+import util.data.stream
 
 open nat
 open stream
 
-def sprefix {α} : ℕ → stream α → list α
-  | 0 _ := []
-  | (succ n) x := x 0 :: sprefix n (stream.tail x)
-
-def sums (x : stream ℕ) : stream ℕ
-  | 0 := 0
-  | (succ n) := x n + sums n
-
-def range : ℕ → list ℕ
-  | 0 := []
-  | (succ n) := n :: range n
-
-def prepend {α} : list α → stream α → stream α
-  | [] xs := xs
-  | (list.cons x xs) ys := stream.cons x (prepend xs ys)
-
-def coinduct {α β} (f : α → (β × α)) (x : α) : stream β
-  := stream.corec (prod.fst ∘ f) (prod.snd ∘ f) x
-
-def rounds.f : ℕ × ℕ → ℕ × ℕ × ℕ
-  | (n, 0) := (0, succ n, succ n)
-  | (n, succ p) := (succ p, n, p)
-
 def curry {α β γ} (f : α × β → γ) (x : α) (y : β) : γ := f (x,y)
 
-def rounds'' : ℕ → ℕ → stream ℕ := curry $ coinduct rounds.f
-
-lemma stream.head_corec {α β} (f : α → α) (g : α → β) (x : α) :
-  stream.head (stream.corec g f x) = g x :=
-begin
-  refl
-end
-
--- print nat.rec
--- set_option pp.implicit true
-section s
-
-universe variables u
-
-variables {α β : Type u} (f : α → α) (g : α → β) (x : α)
-variables i : ℕ
-variables s : stream α
-
-lemma stream.nth_tail : stream.nth i (stream.tail s) = stream.nth (succ i) s := rfl
-
-lemma stream.tail_corec :
-  stream.tail (stream.corec g f x) = stream.corec g f (f x) :=
-begin
-  apply stream.ext, intro i,
-  unfold stream.corec,
-  rw [stream.map_iterate,stream.tail_map,stream.tail_iterate],
-  rw [stream.map_iterate],
-end
-
-end s
+def rounds : ℕ → ℕ → stream ℕ := curry $ coinduct rounds.f
 
 lemma rounds_zero (m  : ℕ) :
-rounds'' m 0 = 0 :: rounds'' (succ m) (succ m) :=
+rounds m 0 = 0 :: rounds (succ m) (succ m) :=
 begin
-  unfold rounds'' curry coinduct,
+  unfold rounds curry coinduct,
   apply stream.corec_eq
 end
 
 lemma rounds_succ (m n : ℕ) :
-rounds'' m (succ n) = succ n :: rounds'' m n :=
+rounds m (succ n) = succ n :: rounds m n :=
 by apply stream.corec_eq
 
 -- def rounds' : ℕ → ℕ → stream ℕ
@@ -92,7 +41,7 @@ open well_founded
 end wf
 
 def inf_interleave : stream ℕ
-:= rounds'' 0 0
+:= rounds 0 0
 
 -- theorem g (i : ℕ) : (rounds i)^.snd > 0 :=
 -- begin
@@ -197,7 +146,7 @@ end
 
 end weak_order
 
-theorem head_rounds : ∀ i j, stream.head (rounds'' i j) = j :=
+theorem head_rounds : ∀ i j, stream.head (rounds i j) = j :=
 begin
   intros i j,
   cases j with j
@@ -215,7 +164,7 @@ lemma le_zero_of_eq_zero {n : ℕ} (h : n ≤ 0) : n = 0
 
 theorem suffix_self_of_le (i j k : ℕ) :
   j ≤ k →
-  rounds'' i j ⊑ rounds'' i k :=
+  rounds i j ⊑ rounds i k :=
 begin
   intro h,
   induction k with k,
@@ -232,7 +181,7 @@ begin
     rw h', apply stream.le_refl }
 end
 
-theorem rounds_succ_succ : ∀ i k, rounds'' (succ i) (succ i) ⊑ rounds'' i k :=
+theorem rounds_succ_succ : ∀ i k, rounds (succ i) (succ i) ⊑ rounds i k :=
 begin
   intros i k,
   unfold is_suffix,
@@ -242,7 +191,7 @@ begin
   { rw ih_1, simp [rounds_succ,stream.drop_succ,stream.tail_cons] }
 end
 
-theorem is_prefix_add : ∀ (i j : ℕ), rounds'' (j+i) (j+i) ⊑ rounds'' j j
+theorem is_prefix_add : ∀ (i j : ℕ), rounds (j+i) (j+i) ⊑ rounds j j
   | 0 j  := stream.le_refl _
   | (succ i) j :=
 begin
@@ -252,7 +201,7 @@ begin
   apply is_prefix_add ,
 end
 
-theorem is_prefix_of_le (i j : ℕ) (h : j ≤ i) : rounds'' i i ⊑ rounds'' j j :=
+theorem is_prefix_of_le (i j : ℕ) (h : j ≤ i) : rounds i i ⊑ rounds j j :=
 begin
   assert h' : i = j + (i - j),
   { rw [-nat.add_sub_assoc h, nat.add_sub_cancel_left] },
@@ -279,7 +228,7 @@ variable i : ℕ
 variable s : stream α
 
 -- theorem inf_repeat_inf_inter_foo₀ (i j : ℕ) (x) -- (h : s ⊑ inf_interleave)
--- : ∃ s', i ≤ x ∧ s' ⊑ rounds'' i j ∧ head s' = x :=
+-- : ∃ s', i ≤ x ∧ s' ⊑ rounds i j ∧ head s' = x :=
 -- begin
 
 -- end
@@ -288,8 +237,8 @@ theorem rounds_suffix_rounds
   {s : stream ℕ}
   {i j : ℕ}
   (h₀ : j ≤ i)
-  (h₁ : s ⊑ rounds'' i j)
-: ∃ i' j', j' ≤ i' ∧ s = rounds'' i' j' :=
+  (h₁ : s ⊑ rounds i j)
+: ∃ i' j', j' ≤ i' ∧ s = rounds i' j' :=
 begin
   unfold is_suffix at h₁,
   cases h₁ with k h₁,
@@ -312,7 +261,7 @@ begin
 end
 
 theorem inf_interleave_to_rounds_idx (s : stream ℕ) (h : s ⊑ inf_interleave)
-: ∃ i j, j ≤ i ∧ s = rounds'' i j :=
+: ∃ i j, j ≤ i ∧ s = rounds i j :=
 begin
   apply rounds_suffix_rounds (le_refl _) h
 end
@@ -323,7 +272,7 @@ begin
   cases (inf_interleave_to_rounds_idx s h) with i h₀,
   cases h₀ with j h₀,
   cases h₀ with h₁ h₀,
-  existsi rounds'' (succ $ max i x) x,
+  existsi rounds (succ $ max i x) x,
   split,
   { rw h₀,
     apply stream.le_trans,
@@ -336,13 +285,6 @@ begin
       apply le_max_left },
     { apply rounds_succ_succ _ j } },
   { apply head_rounds }
-end
-
-theorem head_drop : head (drop i s) = nth i s :=
-begin
-  change nth 0 (drop i s) = _,
-  rw nth_drop 0 i s,
-  simp
 end
 
 theorem inf_repeat_inf_inter : ∀ x i, ∃ j, inf_interleave (i+j) = x :=
