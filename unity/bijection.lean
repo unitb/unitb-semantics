@@ -173,6 +173,10 @@ class pos_finite (α : Type (u₀)) : Type (u₀) :=
 class infinite (α : Type u₀) : Type u₀ :=
   (to_nat : bijection α ℕ)
 
+instance finite_of_pos_finite [pos_finite α] : finite α :=
+{ count := nat.succ (pos_finite.pred_count α)
+, to_nat := pos_finite.to_nat α }
+
 def bij.id : bijection α α :=
     bijection.mk id id (λ _, by simp) (λ _, by simp)
 
@@ -696,6 +700,21 @@ begin
   intro x, rw [list.map_map,bijection.g_inv',list.map_id]
 end
 
+def option.fmap (f : α → β) : option α → option β
+  | none := none
+  | (some x) := some $ f x
+
+def bijection.fmap (b : bijection α β) : bijection (option α) (option β) :=
+bijection.mk (option.fmap b^.f) (option.fmap b^.g)
+begin
+  intro x, cases x ; unfold option.fmap, refl,
+  rw b^.f_inv
+end
+begin
+  intro x, cases x ; unfold option.fmap, refl,
+  rw b^.g_inv
+end
+
 def prod.sum : ℕ × ℕ → ℕ
   | (x,y) := x+y
 
@@ -914,6 +933,61 @@ local infixr ∘ := bij.comp
 local infix + := bijection.add
 local infix * := bijection.mul
 
+def bij.option.f : option ℕ → ℕ
+  | none := 0
+  | (some n) := succ n
+def bij.option.g : ℕ → option ℕ
+  | 0 := none
+  | (succ n) := some n
+
+def bij.option : bijection (option ℕ) ℕ :=
+bijection.mk bij.option.f bij.option.g
+begin
+  intro x, cases x ; refl
+end
+begin
+  intro x, cases x ; refl
+end
+
+def fin.succ {n} : fin n → fin (succ n)
+  | ⟨m,P⟩ := ⟨succ m,succ_lt_succ P⟩
+
+def bij.option.fin.f {n : ℕ} : option (fin n) → fin (succ n)
+  | none := 0
+  | (some n) := fin.succ n
+def bij.option.fin.g {n : ℕ} : fin (succ n) → option (fin n)
+  | ⟨0,P⟩ := none
+  | ⟨succ m,P⟩ := some ⟨m,lt_of_succ_lt_succ P⟩
+
+def bij.option.fin {n : ℕ} : bijection (option (fin n)) (fin $ succ n) :=
+bijection.mk bij.option.fin.f bij.option.fin.g
+begin
+  intro x, cases x with x ; unfold bij.option.fin.f bij.option.fin.g,
+  refl, cases x, refl
+end
+begin
+  intro x, cases x with x
+  ; cases x
+  ; unfold bij.option.fin.g bij.option.fin.f fin.succ
+  ; refl
+end
+
+def bij.unit : bijection unit (fin 1) :=
+bijection.mk (λ _, 0) (λ _, ())
+begin
+  intro x, cases x, refl
+end
+begin
+  intro x, cases x,
+  note h := le_of_succ_le_succ is_lt,
+  note h' := le_antisymm (zero_le _) h,
+  subst val, refl
+end
+
+instance : pos_finite unit :=
+{ pred_count := 0
+, to_nat := bij.unit }
+
 instance inf_inf_inf_sum [infinite α] [infinite β] : infinite (α ⊕ β) :=
   { to_nat := bij.even_odd ∘ (infinite.to_nat α + infinite.to_nat β) }
 
@@ -941,6 +1015,13 @@ instance [finite α] [finite β] : finite (α × β) :=
   { count := nat.mul (finite.count α) (finite.count β)
   , to_nat := bij.prod.append _ _ ∘ (finite.to_nat α * finite.to_nat β)
   }
+
+instance [finite α] : pos_finite (option α) :=
+ { pred_count := finite.count α
+ , to_nat := bij.option.fin ∘ bijection.fmap (finite.to_nat α) }
+
+instance [infinite α] : infinite (option α) :=
+ { to_nat := bij.option ∘ bijection.fmap (infinite.to_nat α) }
 
 instance inf_list_of_fin [pos_finite α] : infinite (list α) :=
  { to_nat := bijection.fconcat _ ∘ bijection.map (pos_finite.to_nat α) }

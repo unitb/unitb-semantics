@@ -21,16 +21,20 @@ variables {lbl α : Type}
 def prog.init (s : prog lbl α) (p : pred α) : Prop
 := p (s^.first)
 
+def prog.take_step (s : prog lbl α) : option lbl → α → α
+  | none := id
+  | (some e) := s^.step e
+
 def prog.transient (s : prog lbl α) (p : pred α) : Prop
-:= ∃ ev, ∀ σ, p σ → ¬ (p (s^.step ev σ))
+:= ∃ ev, ∀ σ, p σ → ¬ (p (s^.take_step ev σ))
 
 def prog.unless (s : prog lbl α) (p q : pred α) : Prop
-:= ∀ ev σ, p σ ∧ ¬q σ → p (s^.step ev σ) ∨ q (s^.step ev σ)
+:= ∀ ev σ, p σ ∧ ¬q σ → p (s^.take_step ev σ) ∨ q (s^.take_step ev σ)
 
-lemma prog.transient_false [inhabited lbl] (s : prog lbl α) : prog.transient s False :=
+lemma prog.transient_false (s : prog lbl α) : prog.transient s False :=
 begin
   unfold prog.transient False,
-  existsi default lbl,
+  existsi @none lbl,
   intros σ h,
   cases h
 end
@@ -126,7 +130,7 @@ begin
   { apply or.inr, apply or.inr, exact ⟨H₇,H₈⟩ },
 end
 
-instance prog_is_system [inhabited lbl] : system (prog lbl α) :=
+instance prog_is_system : system (prog lbl α) :=
   { σ := α
   , init := prog.init
   , transient := prog.transient
@@ -142,10 +146,10 @@ open nat
 
 structure ex (p : prog lbl α) (τ : stream α) : Prop :=
     (init : τ 0 = p^.first)
-    (safety : ∀ i, ∃ e, p^.step e (τ i) = τ (i+1))
-    (liveness : ∀ i e, ∃ j, p^.step e (τ (i+j)) = τ (i+j+1))
+    (safety : ∀ i, ∃ e, p^.take_step e (τ i) = τ (i+1))
+    (liveness : ∀ i e, ∃ j, p^.take_step e (τ (i+j)) = τ (i+j+1))
 
-theorem unless.semantics [inhabited lbl] {s : prog lbl α} {τ : stream α} {p q : pred _}
+theorem unless.semantics {s : prog lbl α} {τ : stream α} {p q : pred _}
   (P : unless s p q)
   (Hτ : ex s τ)
 : ∀ i, p (τ i) → (∀ j, p (τ $ i+j)) ∨ (∃ j, q (τ $ i+j)) :=
@@ -169,7 +173,7 @@ end
 
 -- in simple, with transient, q becomes true immediately
 -- in this model, we need to rely on fairness
-theorem leads_to.semantics [inhabited lbl] {s : prog lbl α} {τ : stream α} {p q : pred _}
+theorem leads_to.semantics {s : prog lbl α} {τ : stream α} {p q : pred _}
   (P : leads_to s p q)
   (Hτ : ex s τ)
 : ∀ i, p (τ i) → ∃ j, q (τ $ i+j) :=
@@ -206,31 +210,31 @@ begin
     apply IH₀ _ _ h' }
 end
 
-class sched (lbl : Type) extends inhabited lbl :=
+class sched (lbl : Type) :=
   (sched : ∀ α (s : prog lbl α), ∃ τ, ex s τ)
 
-def run (s : prog lbl α) (τ : stream lbl) : stream α
+def run (s : prog lbl α) (τ : stream (option lbl)) : stream α
   | 0 := prog.first s
-  | (succ n) := prog.step s (τ n) (run n)
+  | (succ n) := prog.take_step s (τ n) (run n)
 
 @[simp]
-lemma run_succ (s : prog lbl α) (τ : stream lbl) (i : ℕ)
-: run s τ (succ i) = prog.step s (τ i) (run s τ i)
+lemma run_succ (s : prog lbl α) (τ : stream (option lbl)) (i : ℕ)
+: run s τ (succ i) = prog.take_step s (τ i) (run s τ i)
 := rfl
 
-def inf_sched [infinite lbl] : stream lbl :=
-stream.map (infinite.to_nat lbl)^.g inf_interleave
+def inf_sched [infinite lbl] : stream (option lbl) :=
+stream.map (infinite.to_nat (option lbl))^.g inf_interleave
 
-def fin_sched [pos_finite lbl] : stream lbl :=
-stream.map (pos_finite.to_nat lbl)^.g (fin_interleave _)
+def fin_sched [finite lbl] : stream (option lbl) :=
+stream.map (pos_finite.to_nat (option lbl))^.g (fin_interleave _)
 
-lemma ex_fin_sched [pos_finite lbl] (s : prog lbl α) : ex s (run s fin_sched) :=
+lemma ex_fin_sched [finite lbl] (s : prog lbl α) : ex s (run s fin_sched) :=
   { init := rfl
   , safety := take i, ⟨fin_sched i,rfl⟩
   , liveness :=
     begin
       intros i e,
-      cases inf_repeat_fin_inter ((pos_finite.to_nat lbl)^.f e) i with j h,
+      cases inf_repeat_fin_inter ((pos_finite.to_nat $ option lbl)^.f e) i with j h,
       existsi j, unfold fin_sched,
       simp [add_one_eq_succ],
       apply congr, rw [stream.map_app,h,bijection.f_inv],
@@ -243,7 +247,7 @@ lemma ex_inf_sched [infinite lbl] (s : prog lbl α) : ex s (run s inf_sched) :=
   , liveness :=
     begin
       intros i e,
-      cases inf_repeat_inf_inter ((infinite.to_nat lbl)^.f e) i with j h,
+      cases inf_repeat_inf_inter ((infinite.to_nat $ option lbl)^.f e) i with j h,
       existsi j, unfold fin_sched,
       simp [add_one_eq_succ],
       apply congr, apply congr_arg,
@@ -251,13 +255,11 @@ lemma ex_inf_sched [infinite lbl] (s : prog lbl α) : ex s (run s inf_sched) :=
       refl
     end }
 
-instance fin_sched_i {lbl} [pos_finite lbl] : sched lbl :=
-  { default := (pos_finite.to_nat lbl)^.g ⟨pos_finite.pred_count lbl,nat.le_refl _⟩
-  , sched := λ _ s, ⟨run s fin_sched, ex_fin_sched s⟩ }
+instance fin_sched_i {lbl} [finite lbl] : sched lbl :=
+  { sched := λ _ s, ⟨run s fin_sched, ex_fin_sched s⟩ }
 
 instance inf_sched_i {lbl} [infinite lbl] : sched lbl :=
-  { default := (infinite.to_nat lbl)^.g 0
-  , sched := λ _ s, ⟨run s inf_sched, ex_inf_sched s⟩ }
+  { sched := λ _ s, ⟨run s inf_sched, ex_inf_sched s⟩ }
 
 instance {α} [sched lbl] : system_sem (prog lbl α) :=
   { (_ : system (prog lbl α)) with
