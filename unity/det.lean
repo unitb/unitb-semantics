@@ -1,6 +1,9 @@
 
 import data.stream
-import ..unity.logic
+import unity.logic
+import unity.bijection
+import unity.finite
+import unity.countable
 
 namespace det
 
@@ -15,16 +18,20 @@ variables {lbl α : Type}
 def prog.init (s : prog lbl α) (p : pred α) : Prop
 := p (s^.first)
 
+def prog.take_step (s : prog lbl α) : option lbl → α → α
+  | none := id
+  | (some e) := s^.step e
+
 def prog.transient (s : prog lbl α) (p : pred α) : Prop
-:= ∃ ev, ∀ σ, p σ → ¬ (p (s^.step ev σ))
+:= ∃ ev, ∀ σ, p σ → ¬ (p (s^.take_step ev σ))
 
 def prog.unless (s : prog lbl α) (p q : pred α) : Prop
-:= ∀ ev σ, p σ ∧ ¬q σ → p (s^.step ev σ) ∨ q (s^.step ev σ)
+:= ∀ ev σ, p σ ∧ ¬q σ → p (s^.take_step ev σ) ∨ q (s^.take_step ev σ)
 
-lemma prog.transient_false [inhabited lbl] (s : prog lbl α) : prog.transient s False :=
+lemma prog.transient_false (s : prog lbl α) : prog.transient s False :=
 begin
   unfold prog.transient False,
-  existsi default lbl,
+  existsi @none lbl,
   intros σ h,
   cases h
 end
@@ -120,7 +127,7 @@ begin
   { apply or.inr, apply or.inr, exact ⟨H₇,H₈⟩ },
 end
 
-instance prog_is_system [inhabited lbl] : system (prog lbl α) :=
+instance prog_is_system : system (prog lbl α) :=
   { σ := α
   , init := prog.init
   , transient := prog.transient
@@ -134,14 +141,36 @@ instance prog_is_system [inhabited lbl] : system (prog lbl α) :=
 
 open nat
 
-def ex (p : prog lbl α) (τ : stream α) : Prop
-  :=  τ 0 = p^.first
-    ∧ (∀ i, ∃ e, p^.step e (τ i) = τ (i+1))
-    ∧ (∀ i e, ∃ j, p^.step e (τ (i+j)) = τ (i+j+1))
+structure ex (p : prog lbl α) (τ : stream α) : Prop :=
+    (init : τ 0 = p^.first)
+    (safety : ∀ i, ∃ e, p^.take_step e (τ i) = τ (i+1))
+    (liveness : ∀ i e, ∃ j, p^.take_step e (τ (i+j)) = τ (i+j+1))
+
+theorem unless.semantics {s : prog lbl α} {τ : stream α} {p q : pred _}
+  (P : unless s p q)
+  (Hτ : ex s τ)
+: ∀ i, p (τ i) → (∀ j, p (τ $ i+j)) ∨ (∃ j, q (τ $ i+j)) :=
+begin
+  intros i hp,
+  rw or_comm,
+  cases classical.em (∃ (j : ℕ), q (τ (i + j))) with h h,
+  { left, apply h },
+  { right, note h' := forall_not_of_not_exists h,
+    intro j, induction j with j,
+    { apply hp },
+    { cases Hτ^.safety (i+j) with e h₁,
+      unfold unless system.unless prog.unless at P,
+      note P' := P e _ ⟨ih_1,h' _⟩,
+      rw [add_succ,-add_one_eq_succ,-h₁],
+      cases P' with P' P',
+      apply P',
+      rw [h₁,add_assoc] at P',
+      cases h' _ (P') } }
+end
 
 -- in simple, with transient, q becomes true immediately
 -- in this model, we need to rely on fairness
-theorem leads_to.semantics [inhabited lbl] {s : prog lbl α} {τ : stream α} {p q : pred _}
+theorem leads_to.semantics {s : prog lbl α} {τ : stream α} {p q : pred _}
   (P : leads_to s p q)
   (Hτ : ex s τ)
 : ∀ i, p (τ i) → ∃ j, q (τ $ i+j) :=
@@ -152,17 +181,19 @@ begin
       t p' q' P₀ IH₀,
   { intro i,
     intros h',
-    cases (classical.em $ q' (τ i)) with h h,
-    { existsi 0, apply h },
-    { existsi 1, unfold ex,
-      cases t₀ with e t₀,
-      note POST := t₀ (τ i) ⟨h',h⟩,
-      note POST' := u₀ e (τ i) ⟨h',h⟩,
-      apply classical.by_contradiction,
-      unfold ex at Hτ, cases Hτ with Hτ Hτ',
-      intros h'', cases POST' with POST' POST',
-      { apply POST, exact ⟨POST',_⟩ },
-      { apply h'' POST' } } },
+    cases t₀ with e t₀,
+    note Hτ' := Hτ^.liveness i e,
+    cases Hτ' with j Hτ',
+    cases unless.semantics u₀ Hτ i h' with h₁ h₁,
+    cases classical.em (q' (τ $ i+j)) with h₀ h₀,
+    { existsi j, apply h₀ },
+    { existsi j + 1, rw [-add_assoc,-Hτ'],
+      note t₁ := not_and_of_not_or_not (t₀ (τ $ i + j) ⟨h₁ _,h₀⟩),
+      cases t₁ with t₁ t₁,
+      rw [Hτ',add_assoc] at t₁,
+      cases t₁ (h₁ _), apply classical.by_contradiction,
+      intro h, apply t₁ h },
+    { apply h₁ } },
   { intros i h,
     note IH₂ := IH₀ _ h,
     cases IH₂ with j IH₂,
@@ -176,11 +207,62 @@ begin
     apply IH₀ _ _ h' }
 end
 
-instance {α} : system_sem (prog α) :=
-  { (_ : system (prog α)) with
-    ex := λ p τ, τ = ex p
-  , inhabited := λ p, ⟨ex p, rfl⟩
-  , leads_to_sem := λ s p q H τ Hτ i,
-      begin subst τ, apply leads_to.semantics H end }
+class sched (lbl : Type) :=
+  (sched : ∀ α (s : prog lbl α), ∃ τ, ex s τ)
 
-end simple
+def run (s : prog lbl α) (τ : stream (option lbl)) : stream α
+  | 0 := prog.first s
+  | (succ n) := prog.take_step s (τ n) (run n)
+
+@[simp]
+lemma run_succ (s : prog lbl α) (τ : stream (option lbl)) (i : ℕ)
+: run s τ (succ i) = prog.take_step s (τ i) (run s τ i)
+:= rfl
+
+def inf_sched [infinite lbl] : stream (option lbl) :=
+stream.map (infinite.to_nat (option lbl))^.g inf_interleave
+
+def fin_sched [finite lbl] : stream (option lbl) :=
+stream.map (pos_finite.to_nat (option lbl))^.g (fin_interleave _)
+
+lemma ex_fin_sched [finite lbl] (s : prog lbl α) : ex s (run s fin_sched) :=
+  { init := rfl
+  , safety := take i, ⟨fin_sched i,rfl⟩
+  , liveness :=
+    begin
+      intros i e,
+      cases inf_repeat_fin_inter ((pos_finite.to_nat $ option lbl)^.f e) i with j h,
+      existsi j, unfold fin_sched,
+      simp [add_one_eq_succ],
+      apply congr, rw [stream.map_app,h,bijection.f_inv],
+      refl
+    end }
+
+lemma ex_inf_sched [infinite lbl] (s : prog lbl α) : ex s (run s inf_sched) :=
+  { init := rfl
+  , safety := take i, ⟨inf_sched i,rfl⟩
+  , liveness :=
+    begin
+      intros i e,
+      cases inf_repeat_inf_inter ((infinite.to_nat $ option lbl)^.f e) i with j h,
+      existsi j, unfold fin_sched,
+      simp [add_one_eq_succ],
+      apply congr, apply congr_arg,
+      unfold inf_sched, rw [stream.map_app,h,bijection.f_inv],
+      refl
+    end }
+
+instance fin_sched_i {lbl} [finite lbl] : sched lbl :=
+  { sched := λ _ s, ⟨run s fin_sched, ex_fin_sched s⟩ }
+
+instance inf_sched_i {lbl} [infinite lbl] : sched lbl :=
+  { sched := λ _ s, ⟨run s inf_sched, ex_inf_sched s⟩ }
+
+instance {α} [sched lbl] : system_sem (prog lbl α) :=
+  { (_ : system (prog lbl α)) with
+    ex := λ p τ, ex p τ
+  , inhabited := sched.sched _
+  , leads_to_sem := λ s p q H τ Hτ i,
+      by apply leads_to.semantics H Hτ  }
+
+end det
