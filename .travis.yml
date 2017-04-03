@@ -20,10 +20,10 @@ cache:
   - "$HOME/lean"
 matrix:
   include:
-  - os: linux
-    dist: precise
-    env: CMAKE_CXX_COMPILER=g++-4.9 CMAKE_BUILD_TYPE=Release TARGET=build/lean-3.1.1-linux.tar.gz
-      UPLOAD=ON STATIC=ON
+  # - os: linux
+  #   dist: precise
+  #   env: CMAKE_CXX_COMPILER=g++-4.9 CMAKE_BUILD_TYPE=Release TARGET=build/lean-3.1.1-linux.tar.gz
+  #     UPLOAD=ON STATIC=ON
   - os: linux
     env: CMAKE_CXX_COMPILER=clang++-3.4 CMAKE_BUILD_TYPE=Release TCMALLOC=ON
   - os: linux
