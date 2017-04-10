@@ -40,11 +40,12 @@ end
 
 end logic
 
-section connectors
+namespace predicate
 
 def pred' α := α → Prop
 
 def False {α} : pred' α := λ_, false
+def True {α} : pred' α := λ_, true
 
 def p_or {α} (p₀ p₁ : pred' α) : pred' α
 := λx, p₀ x ∨ p₁ x
@@ -63,6 +64,14 @@ infixl ` && ` := p_and
 infixl ` ⟶ `:60 := p_impl
 
 notation `~`:1 x := p_not x
+
+end predicate
+
+namespace unity
+
+section connectors
+
+open predicate
 
 -- variable s : Type
 -- def pred : Type := s → Prop
@@ -350,3 +359,5 @@ class system_sem (α : Type u) extends system α :=
   (leads_to_sem : ∀ {s : α} {p q : pred α} (P : leads_to s p q) (τ : stream _),
           ex s τ →
           ∀ i, p (τ i) → ∃ j, q (τ $ i+j))
+
+end unity

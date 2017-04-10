@@ -7,6 +7,8 @@ import util.data.countable
 
 namespace det
 
+open predicate
+
 structure prog (lbl : Type) (α : Type) : Type :=
   (first : α)
   (step : lbl → α → α)
@@ -127,7 +129,7 @@ begin
   { apply or.inr, apply or.inr, exact ⟨H₇,H₈⟩ },
 end
 
-instance prog_is_system : system (prog lbl α) :=
+instance prog_is_system : unity.system (prog lbl α) :=
   { σ := α
   , init := prog.init
   , transient := prog.transient
@@ -145,6 +147,8 @@ structure ex (p : prog lbl α) (τ : stream α) : Prop :=
     (init : τ 0 = p^.first)
     (safety : ∀ i, ∃ e, p^.take_step e (τ i) = τ (i+1))
     (liveness : ∀ i e, ∃ j, p^.take_step e (τ (i+j)) = τ (i+j+1))
+
+open unity
 
 theorem unless.semantics {s : prog lbl α} {τ : stream α} {p q : pred _}
   (P : unless s p q)
