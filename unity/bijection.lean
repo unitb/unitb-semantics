@@ -9,6 +9,19 @@ universe variables u₀ u₁ u₂
 
 -- end order
 
+namespace fin
+
+open nat
+
+lemma val_of_nat {m n : ℕ} (h : n < succ m)
+: (@of_nat m n).val = n :=
+begin
+  unfold of_nat fin.val,
+  rw mod_eq_of_lt h
+end
+
+end fin
+
 namespace nat
 
 protected lemma mul_div_cancel {x : ℕ} (y : ℕ) (h : x > 0) : x * y / x = y :=
@@ -531,9 +544,19 @@ lemma bij.prod.f_zero : bij.prod.f 0 = (0,0) := rfl
 
 lemma bij.prod.f_succ (n : ℕ) : bij.prod.f (succ n) = bij.prod.succ (bij.prod.f n) := rfl
 
-lemma bij.prod.g_zero_zero : bij.prod.g (0,0) = 0 := rfl
+lemma bij.prod.g_zero_zero : bij.prod.g (0,0) = 0 :=
+begin
+  unfold bij.prod.g,
+  rw well_founded.fix_eq,
+  refl
+end
 
-lemma bij.prod.g_zero_succ (n : ℕ) : bij.prod.g (0,succ n) = succ (bij.prod.g (n,0)) := rfl
+lemma bij.prod.g_zero_succ (n : ℕ) : bij.prod.g (0,succ n) = succ (bij.prod.g (n,0)) :=
+begin
+  unfold bij.prod.g,
+  rw well_founded.fix_eq,
+  refl
+end
 
 lemma bij.prod.g_succ (n m : ℕ) : bij.prod.g (succ n,m) = succ (bij.prod.g (n,succ m)) :=
 begin
@@ -871,31 +894,38 @@ def bijection.fconcat.g (n : ℕ)  : ℕ → list (fin (succ n)) :=
                (bij.prod.pre.g _ x')^.fst :: g (bij.prod.pre.g n x')^.snd h
        end
 
-section
+section sect
 
 open bijection
 open bij
 
 lemma bijection.fconcat.g_zero (n : ℕ)
-: fconcat.g n 0 = [] := rfl
+: fconcat.g n 0 = [] :=
+begin
+  unfold fconcat.g,
+  rw well_founded.fix_eq,
+  refl
+end
 
 lemma bijection.fconcat.g_succ (n x : ℕ)
 : fconcat.g _ (succ x) = (prod.pre.g _ x)^.fst :: fconcat.g n (prod.pre.g n x)^.snd :=
 begin
   unfold fconcat.g,
   rw well_founded.fix_eq,
-  unfold fconcat.g._match_1,
   refl,
 end
 
-end
+end sect
 
 def bijection.fconcat (n : ℕ) : bijection (list (fin (succ n))) ℕ :=
 bijection.mk (bijection.fconcat.f _) (bijection.fconcat.g n)
-begin
+(begin
   intro x,
   induction x with x xs ih,
-  { refl },
+  { rw [ bijection.fconcat.f.equations._eqn_1
+       , bijection.fconcat.g.equations._eqn_1
+       , well_founded.fix_eq ],
+    refl },
   { unfold bijection.fconcat.f,
     note h := (bij.prod.pre n)^.f_inv,
     unfold bij.prod.pre bijection.mk bijection.f bijection.g at h,
@@ -903,9 +933,9 @@ begin
     apply congr, apply congr_arg,
     { cases x with x Px, cases x with x,
       rw h, rw h, },
-    { rw h, unfold prod.snd, rw ih } }
-end
-begin
+    { rw h, unfold prod.snd, rw ih, } }
+end)
+(begin
   intro x,
   apply nat.strong_induction_on x,
   clear x,
@@ -920,7 +950,7 @@ begin
     rw ih, unfold prod.fst bij.prod.pre.f,
     simp [mod_add_div],
     { apply lt_succ_of_le, apply nat.div_le_self } }
-end
+end)
 
 end bijection_map
 
@@ -959,18 +989,42 @@ def bij.option.fin.g {n : ℕ} : fin (succ n) → option (fin n)
   | ⟨0,P⟩ := none
   | ⟨succ m,P⟩ := some ⟨m,lt_of_succ_lt_succ P⟩
 
+lemma bij.option.fin.g_zero (n : ℕ)
+: bij.option.fin.g (0 : fin $ succ n) = none :=
+begin
+  unfold zero has_zero.zero fin.of_nat,
+  generalize (@of_nat._proof_1 n 0) X,
+  note Y := @zero_mod (succ n),
+  revert Y,
+  generalize (0 % succ n) k,
+  intros k H,
+  subst k,
+  intro,
+  refl,
+end
+
+lemma bij.option.fin.g_succ {n : ℕ} (m : fin n)
+: bij.option.fin.g (fin.succ m : fin $ succ n) = some m :=
+begin
+  cases m with m Pm,
+  refl
+end
+
 def bij.option.fin {n : ℕ} : bijection (option (fin n)) (fin $ succ n) :=
 bijection.mk bij.option.fin.f bij.option.fin.g
-begin
-  intro x, cases x with x ; unfold bij.option.fin.f bij.option.fin.g,
-  refl, cases x, refl
-end
-begin
+(begin
+  intro x, cases x with x ; unfold bij.option.fin.f,
+  { simp [bij.option.fin.g_zero] },
+  { simp [bij.option.fin.g_succ] }
+end)
+(begin
   intro x, cases x with x
   ; cases x
   ; unfold bij.option.fin.g bij.option.fin.f fin.succ
-  ; refl
-end
+  ; apply fin.eq_of_veq,
+  { apply fin.val_of_nat is_lt, },
+  { refl },
+end)
 
 def bij.unit : bijection unit (fin 1) :=
 bijection.mk (λ _, 0) (λ _, ())
@@ -981,7 +1035,10 @@ begin
   intro x, cases x,
   note h := le_of_succ_le_succ is_lt,
   note h' := le_antisymm (zero_le _) h,
-  subst val, refl
+  apply fin.eq_of_veq,
+  unfold zero has_zero.zero,
+  rw fin.val_of_nat, apply h',
+  apply zero_lt_succ
 end
 
 instance : pos_finite unit :=
