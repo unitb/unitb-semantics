@@ -1,8 +1,14 @@
 
 import data.stream
+
 import unity.logic
 
+import util.logic
+
 namespace simple
+
+open unity
+open predicate
 
 structure prog (α : Type) : Type :=
   (first : α)
