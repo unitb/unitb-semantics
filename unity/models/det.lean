@@ -1,9 +1,9 @@
 
 import data.stream
 import unity.logic
-import unity.bijection
-import unity.finite
-import unity.countable
+import util.data.bijection
+import util.data.finite
+import util.data.countable
 
 namespace det
 
