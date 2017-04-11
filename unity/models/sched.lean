@@ -1,5 +1,6 @@
 
 import unity.logic
+import unity.temporal
 
 import util.logic
 
@@ -45,73 +46,18 @@ match classical.decidable_inhabited p with
   | (inhabited.mk (is_false h)) := f h
 end
 
-def cpred (β : Type) := stream β → Prop
-
-def action {β} (a : β → β → Prop) : cpred β
-  | τ := a (τ 0) (τ 1)
-
-def eventually {β} (p : cpred β) : cpred β
-  | τ := ∃ i, p (τ.drop i)
-def henceforth {β} (p : cpred β) : cpred β
-  | τ := ∀ i, p (τ.drop i)
-def init  {β} (p : pred' β) : cpred β
-  | τ := p (τ 0)
-
-prefix `<>`:5 := eventually
-prefix `[]`:5 := henceforth
-prefix `•`:5 := init
-notation `[[` act `]]`:5 := action act
-
-section coincidence
-
-parameter {τ : stream α}
-parameters {p q : cpred α}
-
-theorem coincidence
-  (hp : (<>[] p) τ)
-  (hq : ([]<> q) τ)
-: ([]<> (p && q)) τ :=
-begin
-  -- unfold
-  intro i,
-  cases hp with j hp,
-  note hq' := hq (i+j),
-  cases hq' with k hq',
-  note hp' := hp (i+k),
-  unfold eventually p_and,
-  existsi (j+k),
-  simp [stream.drop_drop],
-  simp [stream.drop_drop] at hq',
-  simp [stream.drop_drop] at hp',
-  split ; assumption
-end
-
-end coincidence
-
-noncomputable def when {p q : cpred α} {τ}
-   (hp : (<>[] p) τ)
-   (hq : ([]<> q) τ)
-   (h : ∀ τ (h : (p && q) τ), Prop)
-: Prop := ∀ i : ℕ,
-show Prop,
-begin
-  note h' := coincidence _ hp hq,
-  note h'' := h' i,
-  unfold eventually at h'',
-  cases (classical.indefinite_description _ h'') with j h'',
-  apply h _ h''
-end
+open temporal
 
 structure prog.ex (s : prog lbl) (τ : stream α) : Prop :=
     (init : τ 0 = s^.first)
     (safety : ∀ i, ∃ e, dite' (prog.guard s e (τ i)) (λ H, s^.take_step _ e (τ i) H) (λ H, τ i) = τ (i+1))
-    (liveness : ∀ e, ∀ hc : (<>[] •(s^.event _ e)^.coarse_sch) τ,
-                     ∀ hf : ([]<> •(s^.event _ e)^.fine_sch) τ,
-                       when hc hf (λ τ h, τ 1 = (s^.take_step α e (τ 0) h)))
+    (liveness : ∀ e, (<>[] •(s^.event _ e)^.coarse_sch) τ →
+                     ([]<> •(s^.event _ e)^.fine_sch) τ →
+                     ([]<> (λ τ, ∃ h, τ 1 = (s^.take_step α e (τ 0) h))) τ)
 
 structure prog.falsify (s : prog lbl) (act : option lbl) (p : pred' α) : Prop :=
   (enable : ∀ σ, p σ → (s^.event _ act)^.coarse_sch σ)
-  (schedule : ∀ τ i, prog.ex s τ → p (τ i) → ∃ j, (s^.event _ act)^.fine_sch (τ $ i+j))
+  (schedule : ∀ τ, prog.ex s τ → ((<>[]•p) ⟶ ([]<>• (s^.event α act)^.fine_sch)) τ)
   (negate : ∀ σ (H : s^.guard α act σ), p σ → ¬ p (s^.take_step α act σ H))
 
 def prog.transient (s : prog lbl) (p : pred' α) : Prop :=
@@ -131,9 +77,8 @@ begin
   apply falsify.mk,
   { intros σ h, cases h },
   { intros τ i h₀ h₁,
-    existsi 0,
-    unfold prog.event event.fine_sch,
-    trivial },
+    simp at h₀,
+    cases h₀, },
   { intros σ h₀ h₁, cases h₁ }
 end
 
@@ -152,9 +97,10 @@ begin
     intro τ,
     apply forall_imp_forall _,
     intro j,
-    apply imp_imp_imp_right' _,
-    intro h₁,
-    apply imp_imp_imp_left,
+    apply p_imp_p_imp_p_imp_left _,
+    apply ex_map,
+    apply hence_map,
+    apply init_map,
     apply h },
   { apply forall_imp_forall _ h'.negate,
     intro σ,
@@ -179,9 +125,67 @@ instance prog_is_system : unity.system (prog lbl) :=
 , transient_false := prog.transient_false
 , transient_str := prog.transient_str }
 
+section soundness
+
+open prog
+
+variables {s : prog lbl} {p : pred' α}
+variables (T₀ : prog.transient s p)
+include T₀
+variables (τ : stream α)
+
+lemma transient.semantics (h : ex s τ)
+: ∀ (i : ℕ), p (τ i) → (∃ (j : ℕ), ¬p (τ (i + j))) :=
+begin
+  intros i hp,
+  cases (temporal.em' (•p) τ) with h_p ev_np,
+  { unfold prog.transient at T₀,
+    cases T₀ with ev T₀,
+    assert Hc : (<>[]•(event s ev).coarse_sch) τ,
+    { apply ex_map _ _ h_p,
+      apply hence_map _ ,
+      apply init_map _ ,
+      apply T₀.enable },
+    assert Hf : ([]<>•(event s ev).fine_sch) τ,
+    { apply T₀.schedule _ h h_p, },
+    cases h_p with k h_p,
+    note sch := h.liveness ev Hc Hf (i+k),
+    cases sch with j sch,
+    cases sch with guard sch,
+    revert guard sch,
+    pose X := (stream.drop j (stream.drop (i+k) τ)),
+    assert hX : X = (stream.drop j (stream.drop (i+k) τ)), refl,
+    revert hX,
+    generalize (stream.drop j (stream.drop (i+k) τ)) Y,
+    revert X, simp,
+    intros Y hY guard act,
+    rw stream.drop_drop at hY,
+    existsi (k+j+1),
+    note neg := T₀.negate _ guard,
+    rw [-act,-hY] at neg,
+    unfold stream.drop at neg,
+    simp at neg,
+    apply neg,
+    note h_p' := h_p (i+j),
+    unfold stream.drop temporal.init at h_p',
+    simp at h_p',
+    apply h_p' },
+  { note ev_np' := ev_np i,
+    cases ev_np' with j ev_np',
+    unfold stream.drop p_not temporal.init at ev_np',
+    simp at ev_np',
+    existsi j,
+    apply ev_np' },
+end
+
+end soundness
+
 -- instance {α} [sched lbl] : system_sem (prog lbl) :=
 instance : unity.system_sem (prog lbl) :=
-sorry
+  { (_ : unity.system (prog lbl)) with
+    ex := prog.ex
+  , inhabited := sorry
+  , transient_sem := @transient.semantics _ }
 
 end schedules
 
