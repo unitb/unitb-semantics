@@ -1,71 +1,12 @@
+
 import data.stream
 
+import unity.predicate
+import unity.safety
+
+import util.logic
+
 universe variables u
-
-section logic
-
-variables {a b c : Prop}
-
-lemma distrib_left_or : (a ∧ b) ∨ c ↔ (a ∨ c) ∧ (b ∨ c) :=
-begin
-  split,
-  { intro h,
-    cases h with ha hb,
-    { split, apply or.inl ha^.left, apply or.inl ha^.right },
-    { split, apply or.inr hb, apply or.inr hb, } },
-  { intro h,
-    cases h with hb hc,
-    cases hb with hb ha,
-    cases hc with hc ha,
-    { apply or.inl (⟨hb,hc⟩ : a ∧ b) },
-    apply or.inr ha,
-    apply or.inr ha, }
-end
-
-lemma not_or_of_not_and_not {p q : Prop} : ¬ (p ∨ q) → ¬ p ∧ ¬ q :=
-begin
-  intro h,
-  split ; intro h' ; apply h,
-  { left, apply h' },
-  { right, apply h' },
-end
-
-lemma not_and_of_not_or_not {p q : Prop} : ¬ (p ∧ q) → ¬ p ∨ ¬ q :=
-begin
-  intros h,
-  cases classical.em p with hp hnp,
-  { apply or.inr, intro hq, apply h, exact ⟨hp,hq⟩ },
-  { apply or.inl hnp, }
-end
-
-end logic
-
-namespace predicate
-
-def pred' α := α → Prop
-
-def False {α} : pred' α := λ_, false
-def True {α} : pred' α := λ_, true
-
-def p_or {α} (p₀ p₁ : pred' α) : pred' α
-:= λx, p₀ x ∨ p₁ x
-
-def p_and {α} (p₀ p₁ : pred' α) : pred' α
-:= λx, p₀ x ∧ p₁ x
-
-def p_impl {α} (p₀ p₁ : pred' α) : pred' α
-:= λx, p₀ x → p₁ x
-
-def p_not {α} (p : pred' α) : pred' α
-:= λx, ¬ p x
-
-infixl ` || ` := p_or
-infixl ` && ` := p_and
-infixl ` ⟶ `:60 := p_impl
-
-notation `~`:1 x := p_not x
-
-end predicate
 
 namespace unity
 
@@ -76,37 +17,21 @@ open predicate
 -- variable s : Type
 -- def pred : Type := s → Prop
 
-class system (α : Type u) : Type (u+1) :=
-   (σ : Type)
+class system (α : Type u) extends has_safety α : Type (u+1) :=
    (transient : α → pred' σ → Prop)
-   (unless : α → pred' σ → pred' σ → Prop)
    (init : α → pred' σ → Prop)
    (transient_false : ∀ s : α, transient s $ λ _, false)
    (transient_str : ∀ (s : α) {p q : σ → Prop},
          (∀ i, p i → q i) →
          transient s q →
          transient s p )
-   (impl_unless : ∀ (s : α) {p q : pred' σ}, (∀ i, p i → q i) → unless s p q)
-   (unless_weak_rhs : ∀ (s : α) {p q r : pred' σ},
-         (∀ i, q i → r i) →
-         unless s p q →
-         unless s p r)
-  (unless_conj_gen : ∀ (s : α) {p₀ q₀ p₁ q₁ : pred' σ},
-         unless s p₀ q₀ →
-         unless s p₁ q₁ →
-         unless s (p₀ && p₁) ((q₀ && p₁) || (p₀ && q₁) || (q₀ && q₁)))
 
 def system.state := system.σ
 
 -- def state α [system α] := system.state α
 
-def pred α [system α] := system.state α → Prop
-
 def transient {α} [system α] (s : α) (p : pred α) : Prop
 := system.transient s p
-
-def unless {α} [system α] (s : α) (p q : pred α) : Prop
-:= system.unless s p q
 
 def init {α} [system α] (s : α) (p : pred α) : Prop
 := system.init s p
@@ -148,8 +73,8 @@ theorem system.unless_conj {α} [system α] (s : α) {p₀ q₀ p₁ q₁ : pred
          unless s (p₀ && p₁) (q₀ || q₁) :=
 begin
   intros h₀ h₁,
-  note h₂ := system.unless_conj_gen _ h₀ h₁,
-  apply system.unless_weak_rhs _ _ h₂,
+  note h₂ := unless_conj_gen _ h₀ h₁,
+  apply unless_weak_rhs _ _ h₂,
   intros i,
   unfold p_and p_or, intro h,
   cases h with h h,
@@ -174,7 +99,7 @@ begin
       apply absurd (h _ hp) hq },
     rw h',
     apply system.transient_false },
-  apply system.impl_unless _ h
+  apply impl_unless _ h
 end
 
 theorem leads_to.weaken_lhs {α} [system α] {s : α} (q : pred α) {p r : pred α}
@@ -304,7 +229,7 @@ begin
     rw h', clear h',
     apply leads_to.disj_rng,
     apply IH, },
-  { assert h : (λ (v' : system.state α), ∃ (v : system.state α), p v' ∧ v = v') = p,
+  { assert h : (λ (v' : state α), ∃ (v : state α), p v' ∧ v = v') = p,
     { apply funext,
       intro x, rw -iff_eq_eq, split,
       { intro h, cases h with x h, cases h with h, apply h },
@@ -328,12 +253,12 @@ begin
       unfold p_and,
       split, assumption, assumption, },
     { assert H : unless s r (r || b),
-      { apply system.impl_unless, intro, apply or.inl },
+      { apply impl_unless, intro, apply or.inl },
       assert H' : unless s p₀ (q₀ || b),
-      { apply system.unless_weak_rhs _ _ u₀,
+      { apply unless_weak_rhs _ _ u₀,
         intro, apply or.inl },
-      note H'' := system.unless_conj_gen _ u₀ S,
-      apply system.unless_weak_rhs _ _ H'',
+      note H'' := unless_conj_gen _ u₀ S,
+      apply unless_weak_rhs _ _ H'',
       intro i, unfold p_or p_and,
       intro hh, cases hh with hh₀ hh₀, cases hh₀ with hh₀ hh₀,
       { cases hh₀ with hh₀ hh₁, exact or.inl ⟨hh₀,hh₁⟩ },

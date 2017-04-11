@@ -46,93 +46,15 @@ begin
   apply h _ h₂
 end
 
-lemma prog.impl_unless {α} (s : prog α) (p q : α → Prop)
-   (h : ∀ (i : α), p i → q i)
-   : prog.unless s p q :=
-begin
-  intros σ h',
-  cases h' with h₀ h₁,
-  note h₂ := h _ h₀,
-  apply absurd h₂ h₁
-end
-
-lemma prog.unless_weak_rhs {α} (s : prog α) (p q r : α → Prop)
-   (h : ∀ (i : α), q i → r i)
-   (P : prog.unless s p q)
-: prog.unless s p r :=
-begin
-  intros σ h',
-  apply or.imp_right (h _),
-  apply P,
-  apply and.imp id _ h',
-  cases h',
-  intros h₀ h₁,
-  apply h₀,
-  apply h _ h₁
-end
-
-lemma prog.unless_conj {α} (s : prog α) (p₀ q₀ p₁ q₁ : α → Prop)
-    (H₀ : prog.unless s p₀ q₀)
-    (H₁ : prog.unless s p₁ q₁)
-: prog.unless s (λ (i : α), p₀ i ∧ p₁ i) (λ (i : α), q₀ i ∨ q₁ i) :=
-begin
-  intros σ, simp,
-  intros h,
-  cases h with h₀ h₁,
-  cases h₁ with h₁ h₂,
-  assert h₃ : ¬ q₀ σ ∧ ¬ q₁ σ,
-  { split,
-    { intro h,
-      apply h₂, apply or.inl h },
-    { intro h,
-      apply h₂, apply or.inr h } }, -- h₂
-  cases h₃ with h₃ h₄,
-  note H₀' := H₀ σ ⟨h₀,h₃⟩,
-  note H₁' := H₁ σ ⟨h₁,h₄⟩,
-  cases H₀' with H₀' H₀',
-  cases H₁' with H₁' H₁',
-  { exact or.inr (or.inr ⟨H₀',H₁'⟩) },
-  { exact or.inr (or.inl H₁') },
-  { exact or.inl H₀' },
-end
-
-lemma prog.unless_conj_gen {α} (s : prog α) (p₀ q₀ p₁ q₁ : pred' α)
-    (H₀ : prog.unless s p₀ q₀)
-    (H₁ : prog.unless s p₁ q₁)
-: prog.unless s (p₀ && p₁) (q₀ && p₁ || p₀ && q₁ || q₀ && q₁) :=
-begin
-  unfold prog.unless, intros σ H₂,
-  cases H₂ with H₂ H₄,
-  cases H₂ with H₂ H₃,
-  cases not_or_of_not_and_not H₄ with H₄ H₅,
-  cases not_or_of_not_and_not H₄ with H₄ H₆,
-  -- cases not_and_of_not_or_not H₅ with H₅ H₅,
-  assert H₄ : ¬ q₀ σ,
-  { cases not_and_of_not_or_not H₄ with H₄ H₄,
-    apply H₄, apply absurd H₃ H₄ },
-  assert H₆ : ¬ q₁ σ,
-  { cases not_and_of_not_or_not H₆ with H₆ H₆,
-    apply absurd H₂ H₆, apply H₆ },
-  note H₇ := H₀ _ ⟨H₂,H₄⟩,
-  note H₈ := H₁ _ ⟨H₃,H₆⟩,
-  cases H₇ with H₇ H₇,
-  all_goals { cases H₈ with H₈ H₈ },
-  { apply or.inl, exact ⟨H₇,H₈⟩ },
-  { apply or.inr, apply or.inl, apply or.inr, exact ⟨H₇,H₈⟩ },
-  { apply or.inr, apply or.inl, apply or.inl, exact ⟨H₇,H₈⟩ },
-  { apply or.inr, apply or.inr, exact ⟨H₇,H₈⟩ },
-end
+def is_step {α} (s : prog α) (σ σ' : α) : Prop := σ' = s.step σ
 
 instance prog_is_system {α} : system (prog α) :=
   { σ := α
+  , step := is_step
   , init := prog.init
   , transient := prog.transient
-  , unless := prog.unless
   , transient_false := prog.transient_false
   , transient_str := prog.transient_str
-  , impl_unless := prog.impl_unless
-  , unless_weak_rhs := prog.unless_weak_rhs
-  , unless_conj_gen := prog.unless_conj_gen
   }
 
 open nat
@@ -155,7 +77,9 @@ begin
     { existsi 0, apply h },
     { existsi 1, unfold ex,
       note POST := t₀ (ex s i) ⟨h',h⟩,
-      note POST' := u₀ (ex s i) ⟨h',h⟩,
+      assert STEP : has_safety.step s (ex s i) (s.step (ex s i)),
+      { apply rfl },
+      note POST' := u₀ (ex s i) _ STEP ⟨h',h⟩,
       apply classical.by_contradiction,
       intros h'', cases POST' with POST' POST',
       { apply POST, exact ⟨POST',h''⟩ },

@@ -117,18 +117,12 @@ structure prog.falsify (s : prog lbl) (act : option lbl) (p : pred' α) : Prop :
 def prog.transient (s : prog lbl) (p : pred' α) : Prop :=
 ∃ (act : option lbl), prog.falsify s act p
 
-def prog.unless (s : prog lbl) (p : pred' α) (q : pred' α) : Prop :=
-∀ ev σ, p σ ∧ ¬q σ →
-∀ guard, p (s^.take_step _ ev σ guard) ∨ q (s^.take_step _ ev σ guard)
-
 section theorems
 
 variable (s : prog lbl)
 
 open prog
 open event
-
-set_option pp.implicit true
 
 theorem prog.transient_false : transient s False :=
 begin
@@ -172,70 +166,18 @@ begin
       apply hnq (h _ hp) } }
 end
 
-def prog.impl_unless (s : prog lbl) {p q : pred' α} (h : ∀ (i : α), p i → q i)
-: prog.unless s p q :=
-begin
-  intros ev σ h',
-  cases h' with h₀ h₁,
-  note h₂ := h _ h₀,
-  apply absurd h₂ h₁
-end
-
-def prog.unless_weak_rhs (s : prog lbl) {p q r : pred' α}
-  (h : ∀ (i : α), q i → r i)
-  (P : prog.unless s p q)
-: prog.unless s p r :=
-begin
-  intros ev σ h' guard,
-  apply or.imp_right (h _),
-  apply P,
-  apply and.imp id _ h',
-  cases h',
-  intros h₀ h₁,
-  apply h₀,
-  apply h _ h₁
-end
-
-def prog.unless_conj_gen (s : prog lbl) {p₀ q₀ p₁ q₁ : pred' α}
-    (H₀ : prog.unless s p₀ q₀)
-    (H₁ : prog.unless s p₁ q₁)
-: prog.unless s (p₀ && p₁) (q₀ && p₁ || p₀ && q₁ || q₀ && q₁) :=
-begin
-  unfold prog.unless,
-  intros ev σ H₂ guard,
-  cases H₂ with H₂ H₄,
-  cases H₂ with H₂ H₃,
-  cases not_or_of_not_and_not H₄ with H₄ H₅,
-  cases not_or_of_not_and_not H₄ with H₄ H₆,
-  -- cases not_and_of_not_or_not H₅ with H₅ H₅,
-  assert H₄ : ¬ q₀ σ,
-  { cases not_and_of_not_or_not H₄ with H₄ H₄,
-    apply H₄, apply absurd H₃ H₄ },
-  assert H₆ : ¬ q₁ σ,
-  { cases not_and_of_not_or_not H₆ with H₆ H₆,
-    apply absurd H₂ H₆, apply H₆ },
-  note H₇ := H₀ ev _ ⟨H₂,H₄⟩ guard,
-  note H₈ := H₁ ev _ ⟨H₃,H₆⟩ guard,
-  cases H₇ with H₇ H₇
-  ; cases H₈ with H₈ H₈ ,
-  { apply or.inl, exact ⟨H₇,H₈⟩ },
-  { apply or.inr, apply or.inl, apply or.inr, exact ⟨H₇,H₈⟩ },
-  { apply or.inr, apply or.inl, apply or.inl, exact ⟨H₇,H₈⟩ },
-  { apply or.inr, apply or.inr, exact ⟨H₇,H₈⟩ },
-end
-
 end theorems
+
+def is_step (s : prog lbl) (σ σ' : α) : Prop :=
+∃ ev guard, σ' = s^.take_step _ ev σ guard
 
 instance prog_is_system : unity.system (prog lbl) :=
 { σ := α
 , transient := @prog.transient lbl
-, unless := prog.unless
+, step := is_step
 , init   := prog.init
 , transient_false := prog.transient_false
-, transient_str := prog.transient_str
-, impl_unless := prog.impl_unless
-, unless_weak_rhs := prog.unless_weak_rhs
-, unless_conj_gen := prog.unless_conj_gen }
+, transient_str := prog.transient_str }
 
 -- instance {α} [sched lbl] : system_sem (prog lbl) :=
 instance : unity.system_sem (prog lbl) :=

@@ -27,9 +27,6 @@ def prog.take_step (s : prog lbl α) : option lbl → α → α
 def prog.transient (s : prog lbl α) (p : pred α) : Prop
 := ∃ ev, ∀ σ, p σ → ¬ (p (s^.take_step ev σ))
 
-def prog.unless (s : prog lbl α) (p q : pred α) : Prop
-:= ∀ ev σ, p σ ∧ ¬q σ → p (s^.take_step ev σ) ∨ q (s^.take_step ev σ)
-
 lemma prog.transient_false (s : prog lbl α) : prog.transient s False :=
 begin
   unfold prog.transient False,
@@ -52,93 +49,16 @@ begin
   apply h _ h₂
 end
 
-lemma prog.impl_unless (s : prog lbl α) (p q : α → Prop)
-   (h : ∀ (i : α), p i → q i)
-   : prog.unless s p q :=
-begin
-  intros ev σ h',
-  cases h' with h₀ h₁,
-  note h₂ := h _ h₀,
-  apply absurd h₂ h₁
-end
-
-lemma prog.unless_weak_rhs (s : prog lbl α) (p q r : α → Prop)
-   (h : ∀ (i : α), q i → r i)
-   (P : prog.unless s p q)
-: prog.unless s p r :=
-begin
-  intros ev σ h',
-  apply or.imp_right (h _),
-  apply P,
-  apply and.imp id _ h',
-  cases h',
-  intros h₀ h₁,
-  apply h₀,
-  apply h _ h₁
-end
-
-lemma prog.unless_conj (s : prog lbl α) (p₀ q₀ p₁ q₁ : α → Prop)
-    (H₀ : prog.unless s p₀ q₀)
-    (H₁ : prog.unless s p₁ q₁)
-: prog.unless s (λ (i : α), p₀ i ∧ p₁ i) (λ (i : α), q₀ i ∨ q₁ i) :=
-begin
-  intros ev σ, simp,
-  intros h,
-  cases h with h₀ h₁,
-  cases h₁ with h₁ h₂,
-  assert h₃ : ¬ q₀ σ ∧ ¬ q₁ σ,
-  { split,
-    { intro h,
-      apply h₂, apply or.inl h },
-    { intro h,
-      apply h₂, apply or.inr h } }, -- h₂
-  cases h₃ with h₃ h₄,
-  note H₀' := H₀ ev σ ⟨h₀,h₃⟩,
-  note H₁' := H₁ ev σ ⟨h₁,h₄⟩,
-  cases H₀' with H₀' H₀',
-  cases H₁' with H₁' H₁',
-  { exact or.inr (or.inr ⟨H₀',H₁'⟩) },
-  { exact or.inr (or.inl H₁') },
-  { exact or.inl H₀' },
-end
-
-lemma prog.unless_conj_gen (s : prog lbl α) (p₀ q₀ p₁ q₁ : pred' α)
-    (H₀ : prog.unless s p₀ q₀)
-    (H₁ : prog.unless s p₁ q₁)
-: prog.unless s (p₀ && p₁) (q₀ && p₁ || p₀ && q₁ || q₀ && q₁) :=
-begin
-  unfold prog.unless, intros ev σ H₂,
-  cases H₂ with H₂ H₄,
-  cases H₂ with H₂ H₃,
-  cases not_or_of_not_and_not H₄ with H₄ H₅,
-  cases not_or_of_not_and_not H₄ with H₄ H₆,
-  -- cases not_and_of_not_or_not H₅ with H₅ H₅,
-  assert H₄ : ¬ q₀ σ,
-  { cases not_and_of_not_or_not H₄ with H₄ H₄,
-    apply H₄, apply absurd H₃ H₄ },
-  assert H₆ : ¬ q₁ σ,
-  { cases not_and_of_not_or_not H₆ with H₆ H₆,
-    apply absurd H₂ H₆, apply H₆ },
-  note H₇ := H₀ ev _ ⟨H₂,H₄⟩,
-  note H₈ := H₁ ev _ ⟨H₃,H₆⟩,
-  cases H₇ with H₇ H₇,
-  all_goals { cases H₈ with H₈ H₈ },
-  { apply or.inl, exact ⟨H₇,H₈⟩ },
-  { apply or.inr, apply or.inl, apply or.inr, exact ⟨H₇,H₈⟩ },
-  { apply or.inr, apply or.inl, apply or.inl, exact ⟨H₇,H₈⟩ },
-  { apply or.inr, apply or.inr, exact ⟨H₇,H₈⟩ },
-end
+def is_step (s : prog lbl α) (σ σ' : α) : Prop :=
+∃ e, s^.take_step e σ = σ'
 
 instance prog_is_system : unity.system (prog lbl α) :=
   { σ := α
   , init := prog.init
+  , step := is_step
   , transient := prog.transient
-  , unless := prog.unless
   , transient_false := prog.transient_false
   , transient_str := prog.transient_str
-  , impl_unless := prog.impl_unless
-  , unless_weak_rhs := prog.unless_weak_rhs
-  , unless_conj_gen := prog.unless_conj_gen
   }
 
 open nat
@@ -163,12 +83,16 @@ begin
     intro j, induction j with j,
     { apply hp },
     { cases Hτ^.safety (i+j) with e h₁,
-      unfold unless system.unless prog.unless at P,
-      note P' := P e _ ⟨ih_1,h' _⟩,
-      rw [add_succ,-add_one_eq_succ,-h₁],
+      unfold unless at P,
+      assert h₁' : has_safety.step s (τ (i + j)) (τ $ i+j+1),
+      { unfold has_safety.step system.step is_step,
+        existsi e,
+        apply h₁ },
+      note P' := P _ _ h₁' ⟨ih_1,h' _⟩,
+      rw [add_succ,-add_one_eq_succ],
       cases P' with P' P',
       apply P',
-      rw [h₁,add_assoc] at P',
+      rw [add_assoc] at P',
       cases h' _ (P') } }
 end
 
