@@ -18,6 +18,7 @@ def p_and {α} (p₀ p₁ : pred' α) : pred' α
 def p_impl {α} (p₀ p₁ : pred' α) : pred' α
 := λx, p₀ x → p₁ x
 
+@[reducible]
 def p_not {α} (p : pred' α) : pred' α
 := λx, ¬ p x
 

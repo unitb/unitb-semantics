@@ -1,4 +1,6 @@
 
+import data.stream
+
 import unity.predicate
 
 import util.logic
@@ -13,10 +15,16 @@ class has_safety (α : Type u) : Type (u+1) :=
 
 def state := has_safety.σ
 
+def step {α} [has_safety α] : α → state α → state α → Prop :=
+has_safety.step
+
 def pred α [has_safety α] := state α → Prop
 
 def unless {α} [has_safety α] (s : α) (p q : pred α) : Prop
 := ∀ σ σ', has_safety.step s σ σ' → p σ ∧ ¬ q σ → p σ' ∨ q σ'
+
+def saf_ex {α} [has_safety α] (s : α) (τ : stream (state α)) : Prop :=
+∀ i, step s (τ i) (τ $ i+1)
 
 section properties
 
@@ -83,6 +91,26 @@ begin
     exact ⟨P₀,P₁⟩ },
   { apply or.inr (or.inr _),
     exact ⟨P₀,P₁⟩ },
+end
+
+open nat
+
+lemma unless_sem {τ : stream σ} {p q : pred' σ}
+    (sem : saf_ex s τ)
+    (H : unless s p q)
+: ∀ i, p (τ i) → (∀ j, p (τ (i+j))) ∨ (∃ j, q (τ (i+j))) :=
+begin
+  intros i P,
+  cases classical.em (∃ (j : ℕ), q (τ (i + j))) with H' H',
+  { right, assumption },
+  { left, note H' := forall_not_of_not_exists H',
+    intro j,
+    induction j with j ih,
+    { apply P },
+    { note ih := H (τ (i+j)) (τ (succ $ i+j)) (sem (i+j)) ⟨ih,H' _⟩,
+      cases ih with ih ih,
+      apply ih,
+      cases H' (succ j) ih } }
 end
 
 end properties

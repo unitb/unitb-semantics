@@ -97,11 +97,34 @@ begin
     apply IH₀ _ _ h' }
 end
 
+section semantics
+
+universe variable u
+
+parameter {α : Type}
+variable {s : prog α}
+variable {p : pred α}
+variable T₀ : transient s p
+include T₀
+variable τ : stream α
+
+lemma transient.semantics (H : τ = ex s) :
+∀ (i : ℕ), p (τ i) → (∃ (j : ℕ), ¬p (τ (i + j))) :=
+begin
+  intros i hp,
+  unfold transient system.transient prog.transient at T₀,
+  existsi 1,
+  subst τ,
+  unfold ex,
+  apply T₀ _ hp,
+end
+
+end semantics
+
 instance {α} : system_sem (prog α) :=
   { (_ : system (prog α)) with
     ex := λ p τ, τ = ex p
   , inhabited := λ p, ⟨ex p, rfl⟩
-  , leads_to_sem := λ s p q H τ Hτ i,
-      begin subst τ, apply leads_to.semantics H end }
+  , transient_sem := @transient.semantics _ }
 
 end simple

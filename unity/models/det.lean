@@ -186,11 +186,35 @@ instance fin_sched_i {lbl} [finite lbl] : sched lbl :=
 instance inf_sched_i {lbl} [infinite lbl] : sched lbl :=
   { sched := λ _ s, ⟨run s inf_sched, ex_inf_sched s⟩ }
 
+section soundness
+
+variables {s : prog lbl α} {p : pred' α}
+variables (T₀ : prog.transient s p)
+include T₀
+variables (τ : stream α)
+
+lemma transient.semantics (h : ex s τ)
+: ∀ (i : ℕ), p (τ i) → (∃ (j : ℕ), ¬p (τ (i + j))) :=
+begin
+  intros i hp,
+  unfold prog.transient at T₀,
+  cases T₀ with ev T₀,
+  note sch := h.liveness i ev,
+  cases sch with j sch,
+  cases classical.em (p (τ (i + j))) with h h,
+  { existsi j + 1,
+    rw [-add_assoc,-sch],
+    apply T₀ _ h, },
+  { existsi j,
+    apply h }
+end
+
+end soundness
+
 instance {α} [sched lbl] : system_sem (prog lbl α) :=
   { (_ : system (prog lbl α)) with
     ex := λ p τ, ex p τ
   , inhabited := sched.sched _
-  , leads_to_sem := λ s p q H τ Hτ i,
-      by apply leads_to.semantics H Hτ  }
+  , transient_sem := @transient.semantics _ _ }
 
 end det

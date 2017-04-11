@@ -278,11 +278,58 @@ begin
     apply ih_1 i, },
 end
 
+open predicate
+
 class system_sem (α : Type u) extends system α :=
   (ex : α → stream _ → Prop)
   (inhabited : ∀s, ∃τ, ex s τ)
-  (leads_to_sem : ∀ {s : α} {p q : pred α} (P : leads_to s p q) (τ : stream _),
-          ex s τ →
-          ∀ i, p (τ i) → ∃ j, q (τ $ i+j))
+  (transient_sem : ∀ {s : α} {p : pred' _} (H : transient s p) (τ : stream _),
+         ex s τ →
+         ∀ i, p (τ i) → ∃ j, ¬ p (τ $ i+j))
+
+namespace system_sem
+
+variables {α : Type u}
+variable [system_sem α]
+
+lemma leads_to_sem {s : α} {p q : pred α} (P : leads_to s p q)
+    (τ : stream _)
+    (sem : ex s τ)
+    (saf : saf_ex s τ)
+: ∀ i, p (τ i) → ∃ j, q (τ $ i+j) :=
+begin
+  induction P with p' q' T S
+        p q r P₀ P₁ H₀ H₁
+        X p q P₀ H₀ x y z,
+    -- transient and unless
+  { intros i hp,
+    note saf' := unless_sem _ saf S i hp,
+    cases saf' with saf' saf',
+    { cases classical.em (q' (τ i)) with hq hnq,
+      { existsi 0, simp, apply hq },
+      { note T' := transient_sem T τ sem,
+        note T'' := T' i ⟨hp,hnq⟩,
+        cases T'' with j T'',
+        simp [not_and_iff_not_or_not,not_not_iff_self] at T'',
+        cases T'' with T'' T'',
+        { existsi j, apply T'' },
+        { cases T'' (saf' _) } } },
+    { apply saf' } },
+    -- transitivity
+  { intros i hp,
+    note hq := H₀ i hp,
+    cases hq with j hq,
+    note hr := H₁ _ hq,
+    cases hr with k hr,
+    simp at hr,
+    existsi (j+k),
+    apply hr },
+    -- disjunction
+  { intros i hp,
+    cases hp with x hp,
+    apply H₀ x i hp,  }
+end
+
+end system_sem
 
 end unity
