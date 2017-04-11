@@ -70,74 +70,6 @@ structure ex (p : prog lbl α) (τ : stream α) : Prop :=
 
 open unity
 
-theorem unless.semantics {s : prog lbl α} {τ : stream α} {p q : pred _}
-  (P : unless s p q)
-  (Hτ : ex s τ)
-: ∀ i, p (τ i) → (∀ j, p (τ $ i+j)) ∨ (∃ j, q (τ $ i+j)) :=
-begin
-  intros i hp,
-  rw or_comm,
-  cases classical.em (∃ (j : ℕ), q (τ (i + j))) with h h,
-  { left, apply h },
-  { right, note h' := forall_not_of_not_exists h,
-    intro j, induction j with j,
-    { apply hp },
-    { cases Hτ^.safety (i+j) with e h₁,
-      unfold unless at P,
-      assert h₁' : has_safety.step s (τ (i + j)) (τ $ i+j+1),
-      { unfold has_safety.step system.step is_step,
-        existsi e,
-        apply h₁ },
-      note P' := P _ _ h₁' ⟨ih_1,h' _⟩,
-      rw [add_succ,-add_one_eq_succ],
-      cases P' with P' P',
-      apply P',
-      rw [add_assoc] at P',
-      cases h' _ (P') } }
-end
-
--- in simple, with transient, q becomes true immediately
--- in this model, we need to rely on fairness
-theorem leads_to.semantics {s : prog lbl α} {τ : stream α} {p q : pred _}
-  (P : leads_to s p q)
-  (Hτ : ex s τ)
-: ∀ i, p (τ i) → ∃ j, q (τ $ i+j) :=
-begin
-  induction P with
-      p' q' t₀ u₀
-      p' q' r' P₀ P₁ IH₀ IH₁
-      t p' q' P₀ IH₀,
-  { intro i,
-    intros h',
-    cases t₀ with e t₀,
-    note Hτ' := Hτ^.liveness i e,
-    cases Hτ' with j Hτ',
-    cases unless.semantics u₀ Hτ i h' with h₁ h₁,
-    cases classical.em (q' (τ $ i+j)) with h₀ h₀,
-    { existsi j, apply h₀ },
-    { existsi j + 1, rw [-add_assoc,-Hτ'],
-      note t₁ := not_and_of_not_or_not (t₀ (τ $ i + j) ⟨h₁ _,h₀⟩),
-      cases t₁ with t₁ t₁,
-      rw [Hτ',add_assoc] at t₁,
-      cases t₁ (h₁ _), apply classical.by_contradiction,
-      intro h, apply t₁ h },
-    { apply h₁ } },
-  { intros i h,
-    note IH₂ := IH₀ _ h,
-    cases IH₂ with j IH₂,
-    note IH₃ := IH₁ _ IH₂,
-    cases IH₃ with j' IH₃,
-    existsi (j + j'),
-    rw -add_assoc, apply IH₃ },
-  { intro i,
-    intros h',
-    cases h' with k h',
-    apply IH₀ _ _ h' }
-end
-
-class sched (lbl : Type) :=
-  (sched : ∀ α (s : prog lbl α), ∃ τ, ex s τ)
-
 def run (s : prog lbl α) (τ : stream (option lbl)) : stream α
   | 0 := prog.first s
   | (succ n) := prog.take_step s (τ n) (run n)
@@ -146,6 +78,9 @@ def run (s : prog lbl α) (τ : stream (option lbl)) : stream α
 lemma run_succ (s : prog lbl α) (τ : stream (option lbl)) (i : ℕ)
 : run s τ (succ i) = prog.take_step s (τ i) (run s τ i)
 := rfl
+
+class sched (lbl : Type) :=
+  (sched : ∀ α (s : prog lbl α), ∃ τ, ex s τ)
 
 def inf_sched [infinite lbl] : stream (option lbl) :=
 stream.map (infinite.to_nat (option lbl))^.g inf_interleave
