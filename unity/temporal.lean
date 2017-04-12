@@ -133,6 +133,13 @@ begin
   apply f,
 end
 
+lemma hence_map' {p q : cpred β} {τ} (f : ([] (p ⟶ q)) τ) : (([]p) ⟶ ([]q)) τ :=
+begin
+  apply forall_imp_forall,
+  intro i,
+  apply f,
+end
+
 lemma init_map {p q : pred' β} (f : p ⟹ q) : (•p) ⟹ (•q) :=
 begin
   intro τ,
@@ -148,7 +155,7 @@ end
 --   apply eventually_weaken _ H₀,
 -- end
 
-lemma leads_to_of_eventually {p q : pred' β} {τ} (i : ℕ)
+lemma eventually_of_leads_to {p q : pred' β} {τ} (i : ℕ)
   (h : (p ~> q) τ)
 : (<>•p ⟶ <>•q) (τ.drop i)  :=
 begin
@@ -158,13 +165,21 @@ begin
   apply @henceforth_drop _ _ τ i h,
 end
 
+lemma inf_often_of_leads_to {p q : pred' β} {τ}
+  (h : (p ~> q) τ)
+: ([]<>•p ⟶ []<>•q) τ :=
+begin
+  intros P i,
+  apply eventually_of_leads_to _ h (P _)
+end
+
 lemma leads_to_trans {p q r : pred' β} (τ)
   (Hp : (p ~> q) τ)
   (Hq : (q ~> r) τ)
 : (p ~> r) τ :=
 begin
   intros i hp,
-  apply leads_to_of_eventually _ Hq,
+  apply eventually_of_leads_to _ Hq,
   apply Hp _ hp,
 end
 
@@ -212,7 +227,7 @@ end
 theorem em' {β} (p : cpred β) (τ) : (<>[]p) τ ∨ ([]<>(~ p)) τ :=
 by apply em
 
-lemma stable_imp_inf {p : cpred β} : (<>[]p) ⟹ ([]<>p) :=
+lemma inf_often_of_stable {p : cpred β} : (<>[]p) ⟹ ([]<>p) :=
 begin
   intros τ h i,
   cases h with j h,

@@ -62,7 +62,7 @@ def prog.step_of (s : prog lbl) (act : option lbl) : α → α → Prop :=
 
 structure prog.ex (s : prog lbl) (τ : stream α) : Prop :=
     (init : τ 0 = s^.first)
-    (safety : ∀ i, ∃ e, dite' (prog.guard s e (τ i)) (λ H, s^.take_step _ e (τ i) H) (λ H, τ i) = τ (i+1))
+    (safety : ∀ i, ⟦ is_step s ⟧ (τ.drop i))
     (liveness : ∀ e, (<>[]• s^.coarse_sch_of _ e) τ →
                      ([]<>• s^.fine_sch_of _ e) τ →
                      ([]<> ⟦ s.step_of _ e ⟧) τ)
@@ -188,8 +188,40 @@ end soundness
 instance : unity.system_sem (prog lbl) :=
   { (_ : unity.system (prog lbl)) with
     ex := prog.ex
+  , safety := @prog.ex.safety _ _
   , inhabited := sorry
   , transient_sem := @transient.semantics _ }
+
+open unity
+
+theorem transient_rule {s : prog lbl} {p : pred' α} (ev : option lbl)
+   (EN : p ⟹ s.coarse_sch_of _ ev)
+   (FLW : leads_to s (p && s.coarse_sch_of _ ev) (s.fine_sch_of _ ev))
+   (NEG : ∀ σ σ', p σ → s.guard _ ev σ → s.step_of _ ev σ σ' → ¬p σ')
+: s.transient _ p :=
+begin
+  unfold prog.transient,
+  existsi ev,
+  apply falsify.mk,
+    -- enablement
+  { apply EN },
+    -- follow
+  { intros τ sem H,
+    apply inf_often_of_leads_to (system_sem.leads_to_sem FLW _ sem),
+    note H' := inf_often_of_stable _ H,
+    apply hence_map _ _ H',
+    apply ex_map _ ,
+    apply init_map _ ,
+    intros σ Hp,
+    apply and.intro Hp,
+    apply EN _ Hp },
+    -- negation
+  { intros σ Hguard Hp,
+    apply NEG _ _ Hp Hguard,
+    unfold prog.step_of,
+    existsi Hguard,
+    refl }
+end
 
 end schedules
 

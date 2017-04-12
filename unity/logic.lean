@@ -283,6 +283,7 @@ open predicate
 
 class system_sem (α : Type u) extends system α :=
   (ex : α → stream _ → Prop)
+  (safety : ∀ s, ex s ⟹ saf_ex s)
   (inhabited : ∀s, ∃τ, ex s τ)
   (transient_sem : ∀ {s : α} {p : pred' _} (H : transient s p) (τ : stream _),
          ex s τ →
@@ -298,9 +299,9 @@ open temporal
 lemma leads_to_sem {s : α} {p q : pred α} (P : leads_to s p q)
     (τ : stream _)
     (sem : ex s τ)
-    (saf : saf_ex s τ)
 : (p ~> q) τ :=
 begin
+  assertv saf : saf_ex s τ := system_sem.safety s _ sem,
   induction P with p' q' T S
         p q r P₀ P₁ H₀ H₁
         X p q P₀ H₀ x y z,

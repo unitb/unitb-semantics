@@ -99,7 +99,7 @@ open temporal
 
 structure ex (p : prog lbl α) (τ : stream α) : Prop :=
     (init : τ 0 = p^.first)
-    (safety : ∀ i, ∃ e, p^.take_step e (τ i) = τ (i+1))
+    (safety : unity.saf_ex p τ)
     (liveness : ∀ e, ([] <> ⟦ p.action_of e ⟧) τ)
 
 open unity
@@ -123,9 +123,21 @@ stream.map (infinite.to_nat (option lbl))^.g inf_interleave
 def fin_sched [finite lbl] : stream (option lbl) :=
 stream.map (pos_finite.to_nat (option lbl))^.g (fin_interleave _)
 
+lemma saf_ex_run_fin_sched [finite lbl] (s : prog lbl α)
+: saf_ex s (run s fin_sched) :=
+begin
+  unfold saf_ex,
+  intros i,
+  unfold action step has_safety.step system.step is_step,
+  existsi (@fin_sched _ _inst_1 i),
+  unfold stream.drop,
+  simp [add_one_eq_succ],
+  apply rfl,
+end
+
 lemma ex_fin_sched [finite lbl] (s : prog lbl α) : ex s (run s fin_sched) :=
   { init := rfl
-  , safety := take i, ⟨fin_sched i,rfl⟩
+  , safety := saf_ex_run_fin_sched _
   , liveness :=
     begin
       intros e i,
@@ -140,9 +152,21 @@ lemma ex_fin_sched [finite lbl] (s : prog lbl α) : ex s (run s fin_sched) :=
       refl
     end }
 
+lemma saf_ex_run_inf_sched [infinite lbl] (s : prog lbl α)
+: saf_ex s (run s inf_sched) :=
+begin
+  unfold saf_ex,
+  intros i,
+  unfold action step has_safety.step system.step is_step,
+  existsi (@inf_sched _ _inst_1 i),
+  unfold stream.drop,
+  simp [add_one_eq_succ],
+  apply rfl,
+end
+
 lemma ex_inf_sched [infinite lbl] (s : prog lbl α) : ex s (run s inf_sched) :=
   { init := rfl
-  , safety := take i, ⟨inf_sched i,rfl⟩
+  , safety := saf_ex_run_inf_sched _
   , liveness :=
     begin
       intros e i,
@@ -190,6 +214,7 @@ end soundness
 instance {α} [sched lbl] : system_sem (prog lbl α) :=
   { (_ : system (prog lbl α)) with
     ex := λ p τ, ex p τ
+  , safety := @ex.safety _ _
   , inhabited := sched.sched _
   , transient_sem := @transient.semantics _ _ }
 

@@ -63,38 +63,15 @@ def ex {α} (s : prog α) : stream α
   | 0 := s^.first
   | (succ n) := s^.step $ ex n
 
-theorem leads_to.semantics {α} {s : prog α} {p q : pred _}
-  (P : leads_to s p q)
-: ∀ i, p (ex s i) → ∃ j, q (ex s $ i+j) :=
+lemma ex.safety {α} {s : prog α} (τ : stream α)
+  (h : τ = ex s)
+: ∀ i, ⟦ is_step s ⟧ (τ.drop i) :=
 begin
-  induction P with
-      p' q' t₀ u₀
-      p' q' r' P₀ P₁ IH₀ IH₁
-      t p' q' P₀ IH₀,
-  { intro i,
-    intros h',
-    cases (classical.em $ q' (ex s i)) with h h,
-    { existsi 0, apply h },
-    { existsi 1, unfold ex,
-      note POST := t₀ (ex s i) ⟨h',h⟩,
-      assert STEP : has_safety.step s (ex s i) (s.step (ex s i)),
-      { apply rfl },
-      note POST' := u₀ (ex s i) _ STEP ⟨h',h⟩,
-      apply classical.by_contradiction,
-      intros h'', cases POST' with POST' POST',
-      { apply POST, exact ⟨POST',h''⟩ },
-      { apply h'' POST' } } },
-  { intros i h,
-    note IH₂ := IH₀ _ h,
-    cases IH₂ with j IH₂,
-    note IH₃ := IH₁ _ IH₂,
-    cases IH₃ with j' IH₃,
-    existsi (j + j'),
-    rw -add_assoc, apply IH₃ },
-  { intro i,
-    intros h',
-    cases h' with k h',
-    apply IH₀ _ _ h' }
+  intro i,
+  subst τ,
+  unfold temporal.action is_step stream.drop,
+  simp [add_one_eq_succ],
+  refl
 end
 
 section semantics
@@ -129,6 +106,7 @@ end semantics
 instance {α} : system_sem (prog α) :=
   { (_ : system (prog α)) with
     ex := λ p τ, τ = ex p
+  , safety := @ex.safety _
   , inhabited := λ p, ⟨ex p, rfl⟩
   , transient_sem := @transient.semantics _ }
 
