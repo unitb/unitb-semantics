@@ -134,7 +134,11 @@ begin
       { apply sem } },
     unfold action at GOAL,
     cases GOAL with hp hq,
-    { unfold action, try { simp }, apply hp }, -- simp [hp] },
+    { unfold action,
+        -- The order of i,j,k changes slightly between
+        -- invokations of lean. The next line aims to fix that
+      try { simp }, try { simp at hp },
+      apply hp },
     { note hnq' := henceforth_str' (k+j+1) H',
       unfold action,
       simp [drop_drop,not_init] at hnq',
