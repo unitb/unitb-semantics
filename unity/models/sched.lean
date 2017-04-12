@@ -34,50 +34,44 @@ def prog.init (s : prog lbl) (p : pred) : Prop
 := p (s^.first)
 
 def prog.guard  (s : prog lbl) (e : option lbl) : α → Prop :=
-(s^.event α e)^.coarse_sch && (s^.event α e)^.fine_sch
+(s^.event e)^.coarse_sch && (s^.event e)^.fine_sch
 
-def prog.take_step (s : prog lbl) : ∀ (e : option lbl) (σ : α), s^.guard _ e σ → α
+def prog.take_step (s : prog lbl) : ∀ (e : option lbl) (σ : α), s^.guard e σ → α
   | none σ _ := σ
-  | (some e) σ p := (s^.event _ e)^.step σ p.left p.right
-
-noncomputable def dite' {β : Type u} (p : Prop) (t : p → β) (f : ¬ p → β) : β :=
-match classical.decidable_inhabited p with
-  | (inhabited.mk (is_true h))  := t h
-  | (inhabited.mk (is_false h)) := f h
-end
+  | (some e) σ p := (s^.event e)^.step σ p.left p.right
 
 open temporal
 
 def is_step (s : prog lbl) (σ σ' : α) : Prop :=
-∃ ev guard, σ' = s^.take_step _ ev σ guard
+∃ ev guard, σ' = s^.take_step ev σ guard
 
 def prog.coarse_sch_of (s : prog lbl) (act : option lbl) : α → Prop :=
-(s.event _ act).coarse_sch
+(s.event act).coarse_sch
 
 def prog.fine_sch_of (s : prog lbl) (act : option lbl) : α → Prop :=
-(s.event _ act).fine_sch
+(s.event act).fine_sch
 
 def prog.step_of (s : prog lbl) (act : option lbl) : α → α → Prop :=
-λ σ σ', ∃ guard, s.take_step _ act σ guard = σ'
+λ σ σ', ∃ guard, s.take_step act σ guard = σ'
 
 structure prog.ex (s : prog lbl) (τ : stream α) : Prop :=
     (init : τ 0 = s^.first)
     (safety : ∀ i, ⟦ is_step s ⟧ (τ.drop i))
-    (liveness : ∀ e, (<>[]• s^.coarse_sch_of _ e) τ →
-                     ([]<>• s^.fine_sch_of _ e) τ →
-                     ([]<> ⟦ s.step_of _ e ⟧) τ)
+    (liveness : ∀ e, (<>[]• s^.coarse_sch_of e) τ →
+                     ([]<>• s^.fine_sch_of e) τ →
+                     ([]<> ⟦ s.step_of e ⟧) τ)
 
 structure prog.falsify (s : prog lbl) (act : option lbl) (p : pred' α) : Prop :=
-  (enable : ∀ σ, p σ → s^.coarse_sch_of _ act σ)
-  (schedule : ∀ τ, prog.ex s τ → (<>[]•p ⟶ []<>• s^.fine_sch_of _ act) τ)
-  (negate' : ∀ σ (H : s^.guard α act σ), p σ → ¬ p (s^.take_step α act σ H))
+  (enable : ∀ σ, p σ → s^.coarse_sch_of act σ)
+  (schedule : ∀ τ, prog.ex s τ → (<>[]•p ⟶ []<>• s^.fine_sch_of act) τ)
+  (negate' : ∀ σ (H : s^.guard act σ), p σ → ¬ p (s^.take_step act σ H))
 
 open temporal
 
 lemma prog.falsify.negate
    {s : prog lbl} {act : option lbl} {p : pred' α}
 :  prog.falsify s act p
-→  •p && ⟦ s^.step_of _ act ⟧ ⟹ <>~•p :=
+→  •p && ⟦ s^.step_of act ⟧ ⟹ <>~•p :=
 begin
   intros h₀ τ h₁,
   unfold eventually p_not init,
@@ -167,18 +161,18 @@ begin
   cases (temporal.em' (•p) τ) with h_p ev_np,
   { unfold prog.transient at T₀,
     cases T₀ with ev T₀,
-    assert Hc : (<>[]•s.coarse_sch_of _ ev) τ,
+    assert Hc : (<>[]•s.coarse_sch_of ev) τ,
     { apply ex_map _ _ h_p,
       apply hence_map _ ,
       apply init_map _ ,
       apply T₀.enable },
-    assert Hf : ([]<>•s.fine_sch_of _ ev) τ,
+    assert Hf : ([]<>•s.fine_sch_of ev) τ,
     { apply T₀.schedule _ h h_p, },
     note act := coincidence h_p (h.liveness ev Hc Hf),
     rw [-eventually_eventually],
     apply hence_map _ _ act,
     apply ex_map _ ,
-    apply T₀.negate _ },
+    apply T₀.negate },
   { apply ev_np },
 end
 
@@ -195,10 +189,10 @@ instance : unity.system_sem (prog lbl) :=
 open unity
 
 theorem transient_rule {s : prog lbl} {p : pred' α} (ev : option lbl)
-   (EN : p ⟹ s.coarse_sch_of _ ev)
-   (FLW : leads_to s (p && s.coarse_sch_of _ ev) (s.fine_sch_of _ ev))
-   (NEG : ∀ σ σ', p σ → s.guard _ ev σ → s.step_of _ ev σ σ' → ¬p σ')
-: s.transient _ p :=
+   (EN : p ⟹ s.coarse_sch_of ev)
+   (FLW : leads_to s (p && s.coarse_sch_of ev) (s.fine_sch_of ev))
+   (NEG : ∀ σ σ', p σ → s.guard ev σ → s.step_of ev σ σ' → ¬p σ')
+: s.transient p :=
 begin
   unfold prog.transient,
   existsi ev,
