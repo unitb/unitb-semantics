@@ -2,6 +2,7 @@
 import data.stream
 
 import unity.predicate
+import unity.temporal
 
 import util.logic
 
@@ -21,10 +22,10 @@ has_safety.step
 def pred α [has_safety α] := state α → Prop
 
 def unless {α} [has_safety α] (s : α) (p q : pred α) : Prop
-:= ∀ σ σ', has_safety.step s σ σ' → p σ ∧ ¬ q σ → p σ' ∨ q σ'
+:= ∀ σ σ', step s σ σ' → p σ ∧ ¬ q σ → p σ' ∨ q σ'
 
 def saf_ex {α} [has_safety α] (s : α) (τ : stream (state α)) : Prop :=
-∀ i, step s (τ i) (τ $ i+1)
+∀ i, ⟦ step s ⟧ (τ.drop i)
 
 section properties
 
@@ -34,6 +35,16 @@ parameter {α : Type u}
 variable [has_safety α]
 variable s : α
 def σ := state α
+
+lemma unless_action {α} [has_safety α] {s : α} {p q : pred α}
+  (h : unless s p q)
+: ⟦ λ σ σ', (p σ ∧ ¬ q σ) ⟧ ⟹ ( ⟦ step s ⟧ ⟶  ⟦ λ _, p || q ⟧ ) :=
+begin
+  intros τ,
+  unfold temporal.action,
+  intros hpnq act,
+  apply h _ _ act hpnq
+end
 
 lemma impl_unless {p q : pred' σ} (h : ∀ i, p i → q i) : unless s p q :=
 begin
@@ -95,23 +106,48 @@ end
 
 open nat
 
+open temporal
+open stream
+
+lemma unless_sem' {τ : stream σ} {p q : pred' σ} {i : ℕ}
+    (sem : saf_ex s τ)
+    (H : unless s p q)
+: (<>•p) (τ.drop i) → (<>[]•p) (τ.drop i) ∨ (<>•q) (τ.drop i) :=
+begin
+  intros h,
+  cases classical.em ((<> •q) (τ.drop i)) with H' H',
+  { right, assumption },
+  { left,  rw [p_not_eq_not,not_eventually] at H' ,
+    apply ex_map' _ h,
+    intros j,
+    apply induct,
+    intros k hp,
+    simp [stream.drop_drop],
+    simp [stream.drop_drop] at hp,
+    assert GOAL : ⟦λ (_x : σ), p || q⟧ (drop (i + (j + k)) τ),
+    { apply unless_action H,
+      { unfold action, split,
+        unfold init at hp, simp [hp],
+        note hnq := henceforth_str' (k+j) H',
+        simp [not_init,drop_drop] at hnq, unfold init p_not at hnq,
+        simp [hnq], },
+      { apply sem } },
+    unfold action at GOAL,
+    cases GOAL with hp hq,
+    { unfold action, try { simp }, apply hp }, -- simp [hp] },
+    { note hnq' := henceforth_str' (k+j+1) H',
+      unfold action,
+      simp [drop_drop,not_init] at hnq',
+      unfold drop init at hq hnq',
+      simp at hnq' hq,
+      cases hnq' hq } }
+end
+
 lemma unless_sem {τ : stream σ} {p q : pred' σ}
     (sem : saf_ex s τ)
     (H : unless s p q)
-: ∀ i, p (τ i) → (∀ j, p (τ (i+j))) ∨ (∃ j, q (τ (i+j))) :=
-begin
-  intros i P,
-  cases classical.em (∃ (j : ℕ), q (τ (i + j))) with H' H',
-  { right, assumption },
-  { left, note H' := forall_not_of_not_exists H',
-    intro j,
-    induction j with j ih,
-    { apply P },
-    { note ih := H (τ (i+j)) (τ (succ $ i+j)) (sem (i+j)) ⟨ih,H' _⟩,
-      cases ih with ih ih,
-      apply ih,
-      cases H' (succ j) ih } }
-end
+: (<>•p) τ → (<>[]•p) τ ∨ (<>•q) τ :=
+by apply @unless_sem' _ _ _ _ _ _ 0 sem H
 
 end properties
 

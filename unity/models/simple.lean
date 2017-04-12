@@ -109,14 +109,19 @@ include T₀
 variable τ : stream α
 
 lemma transient.semantics (H : τ = ex s) :
-∀ (i : ℕ), p (τ i) → (∃ (j : ℕ), ¬p (τ (i + j))) :=
+([]<>~•p) τ :=
 begin
-  intros i hp,
-  unfold transient system.transient prog.transient at T₀,
-  existsi 1,
-  subst τ,
-  unfold ex,
-  apply T₀ _ hp,
+  intros i,
+  cases classical.em ((•p) (stream.drop i τ)) with hp hnp,
+  { unfold transient system.transient prog.transient at T₀,
+    unfold temporal.eventually, existsi 1,
+    subst τ,
+    simp [temporal.not_init,stream.drop_drop],
+    unfold ex p_not temporal.init,
+    apply T₀ _ hp, },
+  { unfold temporal.eventually p_not, existsi 0,
+    simp [stream.drop_drop],
+    apply hnp },
 end
 
 end semantics

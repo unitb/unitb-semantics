@@ -48,17 +48,47 @@ end
 
 open temporal
 
+def is_step (s : prog lbl) (σ σ' : α) : Prop :=
+∃ ev guard, σ' = s^.take_step _ ev σ guard
+
+def prog.coarse_sch_of (s : prog lbl) (act : option lbl) : α → Prop :=
+(s.event _ act).coarse_sch
+
+def prog.fine_sch_of (s : prog lbl) (act : option lbl) : α → Prop :=
+(s.event _ act).fine_sch
+
+def prog.step_of (s : prog lbl) (act : option lbl) : α → α → Prop :=
+λ σ σ', ∃ guard, s.take_step _ act σ guard = σ'
+
 structure prog.ex (s : prog lbl) (τ : stream α) : Prop :=
     (init : τ 0 = s^.first)
     (safety : ∀ i, ∃ e, dite' (prog.guard s e (τ i)) (λ H, s^.take_step _ e (τ i) H) (λ H, τ i) = τ (i+1))
-    (liveness : ∀ e, (<>[] •(s^.event _ e)^.coarse_sch) τ →
-                     ([]<> •(s^.event _ e)^.fine_sch) τ →
-                     ([]<> (λ τ, ∃ h, τ 1 = (s^.take_step α e (τ 0) h))) τ)
+    (liveness : ∀ e, (<>[]• s^.coarse_sch_of _ e) τ →
+                     ([]<>• s^.fine_sch_of _ e) τ →
+                     ([]<> ⟦ s.step_of _ e ⟧) τ)
 
 structure prog.falsify (s : prog lbl) (act : option lbl) (p : pred' α) : Prop :=
-  (enable : ∀ σ, p σ → (s^.event _ act)^.coarse_sch σ)
-  (schedule : ∀ τ, prog.ex s τ → ((<>[]•p) ⟶ ([]<>• (s^.event α act)^.fine_sch)) τ)
-  (negate : ∀ σ (H : s^.guard α act σ), p σ → ¬ p (s^.take_step α act σ H))
+  (enable : ∀ σ, p σ → s^.coarse_sch_of _ act σ)
+  (schedule : ∀ τ, prog.ex s τ → (<>[]•p ⟶ []<>• s^.fine_sch_of _ act) τ)
+  (negate' : ∀ σ (H : s^.guard α act σ), p σ → ¬ p (s^.take_step α act σ H))
+
+open temporal
+
+lemma prog.falsify.negate
+   {s : prog lbl} {act : option lbl} {p : pred' α}
+:  prog.falsify s act p
+→  •p && ⟦ s^.step_of _ act ⟧ ⟹ <>~•p :=
+begin
+  intros h₀ τ h₁,
+  unfold eventually p_not init,
+  existsi 1,
+  unfold p_and action prog.step_of init at h₁,
+  cases h₁ with h₁ h₂,
+  cases h₂ with guard h₂,
+  unfold stream.drop,
+  simp, rw [-h₂],
+  apply falsify.negate' h₀ _ _ h₁,
+end
 
 def prog.transient (s : prog lbl) (p : pred' α) : Prop :=
 ∃ (act : option lbl), prog.falsify s act p
@@ -102,7 +132,7 @@ begin
     apply hence_map,
     apply init_map,
     apply h },
-  { apply forall_imp_forall _ h'.negate,
+  { apply forall_imp_forall _ h'.negate',
     intro σ,
     apply forall_imp_forall _,
     intro H,
@@ -113,9 +143,6 @@ begin
 end
 
 end theorems
-
-def is_step (s : prog lbl) (σ σ' : α) : Prop :=
-∃ ev guard, σ' = s^.take_step _ ev σ guard
 
 instance prog_is_system : unity.system (prog lbl) :=
 { σ := α
@@ -135,47 +162,24 @@ include T₀
 variables (τ : stream α)
 
 lemma transient.semantics (h : ex s τ)
-: ∀ (i : ℕ), p (τ i) → (∃ (j : ℕ), ¬p (τ (i + j))) :=
+: ([]<>~•p) τ :=
 begin
-  intros i hp,
   cases (temporal.em' (•p) τ) with h_p ev_np,
   { unfold prog.transient at T₀,
     cases T₀ with ev T₀,
-    assert Hc : (<>[]•(event s ev).coarse_sch) τ,
+    assert Hc : (<>[]•s.coarse_sch_of _ ev) τ,
     { apply ex_map _ _ h_p,
       apply hence_map _ ,
       apply init_map _ ,
       apply T₀.enable },
-    assert Hf : ([]<>•(event s ev).fine_sch) τ,
+    assert Hf : ([]<>•s.fine_sch_of _ ev) τ,
     { apply T₀.schedule _ h h_p, },
-    cases h_p with k h_p,
-    note sch := h.liveness ev Hc Hf (i+k),
-    cases sch with j sch,
-    cases sch with guard sch,
-    revert guard sch,
-    pose X := (stream.drop j (stream.drop (i+k) τ)),
-    assert hX : X = (stream.drop j (stream.drop (i+k) τ)), refl,
-    revert hX,
-    generalize (stream.drop j (stream.drop (i+k) τ)) Y,
-    revert X, simp,
-    intros Y hY guard act,
-    rw stream.drop_drop at hY,
-    existsi (k+j+1),
-    note neg := T₀.negate _ guard,
-    rw [-act,-hY] at neg,
-    unfold stream.drop at neg,
-    simp at neg,
-    apply neg,
-    note h_p' := h_p (i+j),
-    unfold stream.drop temporal.init at h_p',
-    simp at h_p',
-    apply h_p' },
-  { note ev_np' := ev_np i,
-    cases ev_np' with j ev_np',
-    unfold stream.drop p_not temporal.init at ev_np',
-    simp at ev_np',
-    existsi j,
-    apply ev_np' },
+    note act := coincidence h_p (h.liveness ev Hc Hf),
+    rw [-eventually_eventually],
+    apply hence_map _ _ act,
+    apply ex_map _ ,
+    apply T₀.negate _ },
+  { apply ev_np },
 end
 
 end soundness

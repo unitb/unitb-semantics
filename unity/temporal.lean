@@ -14,56 +14,112 @@ variables {β : Type u}
 
 def cpred (β : Type u) := stream β → Prop
 
-def action {β} (a : β → β → Prop) : cpred β
+def action (a : β → β → Prop) : cpred β
   | τ := a (τ 0) (τ 1)
 
-def eventually {β} (p : cpred β) : cpred β
+def eventually (p : cpred β) : cpred β
   | τ := ∃ i, p (τ.drop i)
-def henceforth {β} (p : cpred β) : cpred β
+def henceforth (p : cpred β) : cpred β
   | τ := Π i, p (τ.drop i)
-def init  {β} (p : β → Prop) : cpred β
+def init (p : β → Prop) : cpred β
   | τ := p (τ 0)
-
-def ew {β} (p : β → Prop) : Prop :=
-∀ x, p x
 
 prefix `<>`:85 := eventually
 prefix `[]`:85 := henceforth
-prefix `•`:5 := init
-notation `[[` act `]]`:95 := action act
+prefix `•`:75 := init
+notation `⟦`:max act `⟧` := action act
 -- notation `⦃` act `⦄`:95 := ew act
 
-lemma not_henceforth {β} (p : cpred β) : (~[]p) = (<>~p) :=
-begin
-  apply funext,
-  intro x,
-  rw -iff_eq_eq,
-  apply not_forall_iff_exists_not,
-end
+def tl_leads_to (p q : pred' β) : cpred β :=
+[] (•p ⟶ <>•q)
 
-lemma not_eventually {β} (p : cpred β) : (~<>p) = ([]~p) :=
-begin
-  apply funext,
-  intro x,
-  rw -iff_eq_eq,
-  apply not_exists_iff_forall_not,
-end
+infix ` ~> `:85 := tl_leads_to
 
-theorem em {β} (p : cpred β) : ew (<>[]p || []<>(~ p)) :=
+lemma eventually_weaken {p : cpred β} :
+  (p ⟹ <> p) :=
 begin
-  intro τ,
-  assert h : (<>[]p || ~<>[]p) τ,
-  { apply classical.em (<>[]p $ τ) },
-  simp [not_eventually,not_henceforth] at h,
+  intros τ h,
+  unfold eventually,
+  existsi 0,
   apply h
 end
 
-theorem em' {β} (p : cpred β) (τ) : (<>[]p) τ ∨ ([]<>(~ p)) τ :=
-by apply em
+lemma eventually_weaken' {p : cpred β} {τ} (i) :
+  p (stream.drop i τ) → (<> p) τ :=
+begin
+  intros h,
+  unfold eventually,
+  existsi i,
+  apply h
+end
+
+lemma henceforth_str {p : cpred β} :
+  ([]p ⟹ p) :=
+begin
+  intros τ h, apply h 0
+end
+
+lemma henceforth_str' {p : cpred β} {τ} (i) :
+  ([]p) τ → p (stream.drop i τ) :=
+begin
+  intros h, apply h i
+end
+
+@[simp]
+lemma eventually_eventually (p : cpred β) : <><> p = <> p :=
+begin
+  apply funext,
+  intro x,
+  rw -iff_eq_eq,
+  split
+  ; unfold eventually
+  ; intro h
+  ; cases h with i h,
+  { cases h with j h,
+    existsi (j+i),
+    rw stream.drop_drop at h,
+    apply h },
+  { existsi (0 : ℕ),
+    existsi i,
+    apply h }
+end
+
+@[simp]
+lemma henceforth_henceforth (p : cpred β) : [][] p = [] p :=
+begin
+  apply funext,
+  intro x,
+  rw -iff_eq_eq,
+  split
+  ; unfold eventually
+  ; intro h,
+  { intro i,
+    note h' := h i 0,
+    simp [stream.drop_drop] at h',
+    apply h' },
+  { intros i j,
+    simp [stream.drop_drop],
+    apply h }
+end
+
+lemma henceforth_drop {p : cpred β} {τ} (i : ℕ) :
+([]p) τ → ([]p) (τ.drop i) :=
+begin
+  intro h,
+  rw -henceforth_henceforth at h,
+  apply h,
+end
 
 lemma ex_map {p q : cpred β} (f : p ⟹ q) : (<>p) ⟹ (<>q) :=
 begin
   intro τ,
+  apply exists_imp_exists,
+  intro i,
+  apply f,
+end
+
+lemma ex_map' {p q : cpred β} {τ} (f : ([] (p ⟶ q)) τ) : ((<>p) ⟶ (<>q)) τ :=
+begin
   apply exists_imp_exists,
   intro i,
   apply f,
@@ -82,6 +138,79 @@ begin
   intro τ,
   apply f,
 end
+
+-- lemma leads_to_of_eventually {p q : pred' β} (τ)
+--   (h : (<>•p ⟶ <>•q) τ )
+-- : (p ~> q) τ :=
+-- begin
+--   intros i H₀,
+--   apply h,
+--   apply eventually_weaken _ H₀,
+-- end
+
+lemma leads_to_of_eventually {p q : pred' β} {τ} (i : ℕ)
+  (h : (p ~> q) τ)
+: (<>•p ⟶ <>•q) (τ.drop i)  :=
+begin
+  intro hp,
+  rw -eventually_eventually,
+  apply ex_map' _ hp,
+  apply @henceforth_drop _ _ τ i h,
+end
+
+lemma leads_to_trans {p q r : pred' β} (τ)
+  (Hp : (p ~> q) τ)
+  (Hq : (q ~> r) τ)
+: (p ~> r) τ :=
+begin
+  intros i hp,
+  apply leads_to_of_eventually _ Hq,
+  apply Hp _ hp,
+end
+
+lemma not_henceforth (p : cpred β) : (~[]p) = (<>~p) :=
+begin
+  apply funext,
+  intro x,
+  rw -iff_eq_eq,
+  apply not_forall_iff_exists_not,
+end
+
+lemma not_init (p : pred' β) : (~•p) = •~p := rfl
+
+open nat
+
+lemma induct {β} (p : pred' β) {τ} (h : ([] (•p ⟶ ⟦ λ _, p ⟧)) τ)
+: (•p ⟶ []•p) τ :=
+begin
+  intros h' i,
+  induction i with i ih,
+  { apply h' },
+  { note h₁ := (h _ ih),
+    unfold action stream.drop at h₁,
+    unfold init stream.drop,
+    simp, simp at h₁, apply h₁ }
+end
+
+lemma not_eventually {β} (p : cpred β) : (~<>p) = ([]~p) :=
+begin
+  apply funext,
+  intro x,
+  rw -iff_eq_eq,
+  apply not_exists_iff_forall_not,
+end
+
+theorem em {β} (p : cpred β) : ⦃ <>[]p || []<>(~ p) ⦄ :=
+begin
+  intro τ,
+  assert h : (<>[]p || ~<>[]p) τ,
+  { apply classical.em (<>[]p $ τ) },
+  simp [not_eventually,not_henceforth] at h,
+  apply h
+end
+
+theorem em' {β} (p : cpred β) (τ) : (<>[]p) τ ∨ ([]<>(~ p)) τ :=
+by apply em
 
 lemma stable_imp_inf {p : cpred β} : (<>[]p) ⟹ ([]<>p) :=
 begin
@@ -157,6 +286,23 @@ begin
   intro x,
   rw -iff_eq_eq,
   split ; intro h ; trivial,
+end
+
+lemma coincidence {p q : cpred β} {τ}
+    (Hp : (<>[]p) τ)
+    (Hq : ([]<>q) τ)
+: ([]<>(p && q)) τ :=
+begin
+  intro i,
+  cases Hp with j Hp,
+  cases (Hq $ i+j) with k Hq,
+  note Hp' := Hp (i+k),
+  simp [stream.drop_drop] at Hp',
+  simp [stream.drop_drop] at Hq,
+  unfold eventually,
+  existsi (j+k),
+  simp [stream.drop_drop],
+  exact ⟨Hp',Hq⟩
 end
 
 end temporal

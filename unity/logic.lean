@@ -2,6 +2,7 @@
 import data.stream
 
 import unity.predicate
+import unity.temporal
 import unity.safety
 
 import util.logic
@@ -285,45 +286,38 @@ class system_sem (α : Type u) extends system α :=
   (inhabited : ∀s, ∃τ, ex s τ)
   (transient_sem : ∀ {s : α} {p : pred' _} (H : transient s p) (τ : stream _),
          ex s τ →
-         ∀ i, p (τ i) → ∃ j, ¬ p (τ $ i+j))
+         ([]<>~•p) τ)
 
 namespace system_sem
 
 variables {α : Type u}
 variable [system_sem α]
 
+open temporal
+
 lemma leads_to_sem {s : α} {p q : pred α} (P : leads_to s p q)
     (τ : stream _)
     (sem : ex s τ)
     (saf : saf_ex s τ)
-: ∀ i, p (τ i) → ∃ j, q (τ $ i+j) :=
+: (p ~> q) τ :=
 begin
   induction P with p' q' T S
         p q r P₀ P₁ H₀ H₁
         X p q P₀ H₀ x y z,
     -- transient and unless
   { intros i hp,
-    note saf' := unless_sem _ saf S i hp,
+    note saf' := unless_sem' _ saf S (temporal.eventually_weaken _ hp),
     cases saf' with saf' saf',
-    { cases classical.em (q' (τ i)) with hq hnq,
-      { existsi 0, simp, apply hq },
-      { note T' := transient_sem T τ sem,
-        note T'' := T' i ⟨hp,hnq⟩,
-        cases T'' with j T'',
-        simp [not_and_iff_not_or_not,not_not_iff_self] at T'',
-        cases T'' with T'' T'',
-        { existsi j, apply T'' },
-        { cases T'' (saf' _) } } },
-    { apply saf' } },
+    { note T' := transient_sem T τ sem,
+      note T'' := (coincidence saf' (henceforth_drop i T')),
+      apply ex_map _ _ (henceforth_str _ T''),
+      intros τ' H,
+      unfold p_and p_not temporal.init at H,
+      unfold temporal.init,
+      begin [smt] eblast end },
+    { apply saf', } },
     -- transitivity
-  { intros i hp,
-    note hq := H₀ i hp,
-    cases hq with j hq,
-    note hr := H₁ _ hq,
-    cases hr with k hr,
-    simp at hr,
-    existsi (j+k),
-    apply hr },
+  { apply leads_to_trans _ H₀ H₁ },
     -- disjunction
   { intros i hp,
     cases hp with x hp,
