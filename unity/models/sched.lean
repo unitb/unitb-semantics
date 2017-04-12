@@ -11,7 +11,7 @@ section schedules
 
 open predicate
 
-parameter α : Type
+parameter {α : Type}
 
 def pred := α → Prop
 
