@@ -2,6 +2,8 @@
 import unity.logic
 import unity.temporal
 
+import unity.models.nondet
+
 import util.logic
 
 universe variable u
@@ -20,72 +22,53 @@ structure event : Type :=
   (fine_sch : pred)
   (step : ∀ s, coarse_sch s → fine_sch s → α)
 
+def event.nondet (e : event) : nondet.event :=
+  { coarse_sch := e.coarse_sch
+  , fine_sch := e.fine_sch
+  , step := λ s Hc Hf s', e.step s Hc Hf = s'
+  , fis := λ s Hc Hf, ⟨_,rfl⟩ }
+
 structure prog (lbl : Type) : Type :=
   (first : α)
   (event' : lbl → event)
 
 variables {lbl : Type}
 
-def prog.event (s : prog lbl) : option lbl → event
-  | none := { coarse_sch := True, fine_sch := True, step := λ s _ _, s }
-  | (some e) := s^.event' e
-
-def prog.init (s : prog lbl) (p : pred) : Prop
-:= p (s^.first)
-
-def prog.guard  (s : prog lbl) (e : option lbl) : α → Prop :=
-(s^.event e)^.coarse_sch && (s^.event e)^.fine_sch
-
-def prog.take_step (s : prog lbl) : ∀ (e : option lbl) (σ : α), s^.guard e σ → α
-  | none σ _ := σ
-  | (some e) σ p := (s^.event e)^.step σ p.left p.right
+def prog.nondet (p : prog lbl) : @nondet.prog α lbl :=
+  { first := λ s, s = p.first
+  , first_fis := ⟨_, rfl⟩
+  , event' := event.nondet ∘ p.event' }
 
 open temporal
 
-def is_step (s : prog lbl) (σ σ' : α) : Prop :=
-∃ ev guard, σ' = s^.take_step ev σ guard
-
 def prog.coarse_sch_of (s : prog lbl) (act : option lbl) : α → Prop :=
-(s.event act).coarse_sch
+nondet.prog.coarse_sch_of s.nondet act
 
 def prog.fine_sch_of (s : prog lbl) (act : option lbl) : α → Prop :=
-(s.event act).fine_sch
+nondet.prog.fine_sch_of s.nondet act
 
 def prog.step_of (s : prog lbl) (act : option lbl) : α → α → Prop :=
-λ σ σ', ∃ guard, s.take_step act σ guard = σ'
+s.nondet.step_of act
 
-structure prog.ex (s : prog lbl) (τ : stream α) : Prop :=
-    (init : τ 0 = s^.first)
-    (safety : ∀ i, ⟦ is_step s ⟧ (τ.drop i))
-    (liveness : ∀ e, (<>[]• s^.coarse_sch_of e) τ →
-                     ([]<>• s^.fine_sch_of e) τ →
-                     ([]<> ⟦ s.step_of e ⟧) τ)
+def is_step (s : prog lbl) : α → α → Prop :=
+nondet.is_step s.nondet
 
-structure prog.falsify (s : prog lbl) (act : option lbl) (p : pred' α) : Prop :=
-  (enable : ∀ σ, p σ → s^.coarse_sch_of act σ)
-  (schedule : ∀ τ, prog.ex s τ → (<>[]•p ⟶ []<>• s^.fine_sch_of act) τ)
-  (negate' : ∀ σ (H : s^.guard act σ), p σ → ¬ p (s^.take_step act σ H))
+def prog.ex (s : prog lbl) (τ : stream α) : Prop :=
+nondet.prog.ex (s.nondet) τ
+
+def prog.falsify (s : prog lbl) (act : option lbl) (p : pred' α) : Prop :=
+nondet.prog.falsify s.nondet act p
 
 open temporal
 
 lemma prog.falsify.negate
    {s : prog lbl} {act : option lbl} {p : pred' α}
-:  prog.falsify s act p
-→  •p && ⟦ s^.step_of act ⟧ ⟹ <>~•p :=
-begin
-  intros h₀ τ h₁,
-  unfold eventually p_not init,
-  existsi 1,
-  unfold p_and action prog.step_of init at h₁,
-  cases h₁ with h₁ h₂,
-  cases h₂ with guard h₂,
-  unfold stream.drop,
-  simp, rw [-h₂],
-  apply falsify.negate' h₀ _ _ h₁,
-end
+   (F : prog.falsify s act p)
+:  •p && ⟦ s^.step_of act ⟧ ⟹ <>~•p :=
+@nondet.prog.falsify.negate _ _ s.nondet act p F
 
-def prog.transient (s : prog lbl) (p : pred' α) : Prop :=
-∃ (act : option lbl), prog.falsify s act p
+def prog.transient (s : prog lbl) : pred' α → Prop :=
+nondet.prog.transient s.nondet
 
 section theorems
 
@@ -95,127 +78,57 @@ open prog
 open event
 
 theorem prog.transient_false : transient s False :=
-begin
-  unfold prog.transient,
-  existsi none,
-  apply falsify.mk,
-  { intros σ h, cases h },
-  { intros τ i h₀ h₁,
-    simp at h₀,
-    cases h₀, },
-  { intros σ h₀ h₁, cases h₁ }
-end
+nondet.prog.transient_false _
 
-def prog.transient_str : ∀ (s : prog lbl) {p q : α → Prop}, (∀ (i : α), p i → q i) → prog.transient s q → prog.transient s p :=
-begin
-  intros s p q h,
-  unfold transient,
-  apply exists_imp_exists,
-  intros e h',
-  apply falsify.mk,
-  { apply forall_imp_forall _ h'.enable,
-    intro x,
-    apply imp_imp_imp_left,
-    apply h },
-  { apply forall_imp_forall _ h'.schedule,
-    intro τ,
-    apply forall_imp_forall _,
-    intro j,
-    apply p_imp_p_imp_p_imp_left _,
-    apply ex_map,
-    apply hence_map,
-    apply init_map,
-    apply h },
-  { apply forall_imp_forall _ h'.negate',
-    intro σ,
-    apply forall_imp_forall _,
-    intro H,
-    apply imp_mono _ _,
-    { apply h },
-    { intros hnq hp,
-      apply hnq (h _ hp) } }
-end
+def prog.transient_str (s : prog lbl) {p q : α → Prop}
+: (∀ (i : α), p i → q i) → prog.transient s q → prog.transient s p :=
+nondet.prog.transient_str _
 
 end theorems
 
 instance prog_is_system : unity.system (prog lbl) :=
-{ σ := α
-, transient := @prog.transient lbl
+{ σ := _
+, transient := _
 , step := is_step
-, init   := prog.init
+, init   := nondet.prog.init ∘ prog.nondet
 , transient_false := prog.transient_false
 , transient_str := prog.transient_str }
 
-section soundness
+open unity
 
-open prog
-
-variables {s : prog lbl} {p : pred' α}
-variables (T₀ : prog.transient s p)
-include T₀
-variables (τ : stream α)
-
-lemma transient.semantics (h : ex s τ)
-: ([]<>~•p) τ :=
+lemma leads_to.nondet (s : prog lbl) {p q : pred' α}
+   (h : leads_to s p q)
+: leads_to s.nondet p q :=
 begin
-  cases (temporal.em' (•p) τ) with h_p ev_np,
-  { unfold prog.transient at T₀,
-    cases T₀ with ev T₀,
-    assert Hc : (<>[]•s.coarse_sch_of ev) τ,
-    { apply ex_map _ _ h_p,
-      apply hence_map _ ,
-      apply init_map _ ,
-      apply T₀.enable },
-    assert Hf : ([]<>•s.fine_sch_of ev) τ,
-    { apply T₀.schedule _ h h_p, },
-    note act := coincidence h_p (h.liveness ev Hc Hf),
-    rw [-eventually_eventually],
-    apply hence_map _ _ act,
-    apply ex_map _ ,
-    apply T₀.negate },
-  { apply ev_np },
+  induction h with
+      p q T S
+      p q r P₀ Q₀ P₁ Q₁
+      X p q P P'
+      XX YY ZZ,
+  { apply leads_to.basis,
+    apply T,
+    apply S },
+  { apply leads_to.trans _ P₁ Q₁ },
+  { apply leads_to.disj X,
+    apply P' }
 end
-
-end soundness
 
 -- instance {α} [sched lbl] : system_sem (prog lbl) :=
 instance : unity.system_sem (prog lbl) :=
   { (_ : unity.system (prog lbl)) with
     ex := prog.ex
-  , safety := @prog.ex.safety _ _
-  , inhabited := sorry
-  , transient_sem := @transient.semantics _ }
+  , safety := λ s, unity.system_sem.safety s.nondet
+  , inhabited := λ s, unity.system_sem.inhabited s.nondet
+  , transient_sem := λ s, @unity.system_sem.transient_sem _ _ s.nondet }
 
 open unity
 
 theorem transient_rule {s : prog lbl} {p : pred' α} (ev : option lbl)
    (EN : p ⟹ s.coarse_sch_of ev)
    (FLW : leads_to s (p && s.coarse_sch_of ev) (s.fine_sch_of ev))
-   (NEG : ∀ σ σ', p σ → s.guard ev σ → s.step_of ev σ σ' → ¬p σ')
+   (NEG : ∀ σ σ', p σ → s.step_of ev σ σ' → ¬p σ')
 : s.transient p :=
-begin
-  unfold prog.transient,
-  existsi ev,
-  apply falsify.mk,
-    -- enablement
-  { apply EN },
-    -- follow
-  { intros τ sem H,
-    apply inf_often_of_leads_to (system_sem.leads_to_sem FLW _ sem),
-    note H' := inf_often_of_stable _ H,
-    apply hence_map _ _ H',
-    apply ex_map _ ,
-    apply init_map _ ,
-    intros σ Hp,
-    apply and.intro Hp,
-    apply EN _ Hp },
-    -- negation
-  { intros σ Hguard Hp,
-    apply NEG _ _ Hp Hguard,
-    unfold prog.step_of,
-    existsi Hguard,
-    refl }
-end
+@nondet.transient_rule _ _ s.nondet p ev EN (leads_to.nondet _ FLW) NEG
 
 end schedules
 

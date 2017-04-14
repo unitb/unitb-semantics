@@ -9,6 +9,9 @@
 	* ~~in unitb.models.sched, give a rule that relies only on predicate
       calculus and UNITY logic~~
 	* study model where the invariant is encoded in the state space
+	* generalize transient_rule (from unity.models.nondet) and put in
+      type class so that it becomes a requirement that other models
+      can subscribe to
 	* refinement
 	  * schedules
 	  * simulation

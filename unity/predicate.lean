@@ -39,7 +39,7 @@ def ew (p : β → Prop) : Prop :=
 
 infixl ` || ` := p_or
 infixl ` && ` := p_and
-infixl ` ⟶ `:60 := p_impl
+infixr ` ⟶ `:60 := p_impl
 infix ` ⟹ `:60 := p_entails
 notation `⦃ `:max act ` ⦄` := ew act
 

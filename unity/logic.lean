@@ -29,44 +29,23 @@ class system (α : Type u) extends has_safety α : Type (u+1) :=
 
 def system.state := system.σ
 
--- def state α [system α] := system.state α
-
 def transient {α} [system α] (s : α) (p : pred α) : Prop
 := system.transient s p
 
 def init {α} [system α] (s : α) (p : pred α) : Prop
 := system.init s p
 
--- inductive unless {s} (p q : pred s) : Prop
---   | un : unless
-
--- variable t : @pred s
-
-inductive leads_to {α} [system α] (s : α) : pred α → pred α → Prop
+inductive leads_to {α} [system α] (s : α) : pred' (state α) → pred' (state α) → Prop
   | basis : ∀ {p q},
           transient s (p && ~ q) →
           unless s p q →
           leads_to p q
---  | impl : ∀ {p q : pred α}, (∀ i, p i → q i) → leads_to p q
   | trans : ∀ {p} q {r}, leads_to p q → leads_to q r → leads_to p r
-  | disj : ∀ {t : Type} {p : t → pred α} {q},
+  | disj : ∀ (t : Type) (p : t → pred' (state α)) {q},
          (∀ i, leads_to (p i) q) →
-         leads_to (λ s, ∃ i, p i s) q
-
-
--- def select {α β γ} (p q : α) : β ⊕ γ → α
---   | (inl _) := p
---   | (inr _) := q
-
--- set_option pp.notation false
-
--- check @leads_to.disj
--- check bool
--- check sum
+         leads_to (λ σ, ∃ i, p i σ) q
 
 end connectors
-
--- def leads_to.rw_lhs
 
 theorem system.unless_conj {α} [system α] (s : α) {p₀ q₀ p₁ q₁ : pred α} :
          unless s p₀ q₀ →
@@ -192,12 +171,6 @@ begin
   intro, apply id
 end
 
--- print notation &&
--- print notation ||
-
--- set_option pp.implicit true
--- set_option pp.notation false
-
 def rel α [system α] : Type := system.state α → system.state α → Prop
 
 theorem leads_to.induction {α} [system α] {s : α} {lt' : rel α} [wf : well_founded lt']
@@ -213,7 +186,6 @@ begin
     apply @well_founded.induction _ lt' wf PP,
     intros j IH,
     change leads_to _ _ _,
-    -- assert h₀ : q = (q || q), { admit },
     apply leads_to.strengthen_rhs (q || q),
     { intro, unfold p_or, rw or_self, exact id },
     apply leads_to.cancellation (p && lt j) (P _),

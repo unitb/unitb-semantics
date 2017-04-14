@@ -320,4 +320,15 @@ begin
   exact ⟨Hp',Hq⟩
 end
 
+lemma next_imp_next {p q : pred' β} (τ) (h : p ⟹ q)
+: (⟦ λ _, p ⟧ ⟶ ⟦ λ _, q ⟧) τ :=
+h _
+
+lemma entail_contrapos {p q : pred' β} : p ⟹ q → (~q) ⟹ ~p :=
+begin
+  intros h τ hnq hp,
+  apply hnq,
+  apply h _ hp,
+end
+
 end temporal
