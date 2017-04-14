@@ -13,6 +13,7 @@ structure prog (lbl : Type) (α : Type) : Type :=
   (first : α)
   (step : lbl → α → α)
 
+@[reducible]
 def pred α := α → Prop
 
 variables {lbl α : Type}

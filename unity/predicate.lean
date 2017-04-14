@@ -2,40 +2,66 @@
 
 namespace predicate
 
-universe variable u
+universe variables u u'
 
 variables {α β : Type u}
 
+@[reducible]
 def pred' α := α → Prop
 
-def False : pred' α := λ_, false
-def True : pred' α := λ_, true
+def lifted₀ : Prop → pred' α := λ p _, p
+def lifted₁ (op : Prop → Prop) : pred' α → pred' α :=
+λ p i, op (p i)
+def lifted₂ (op : Prop → Prop → Prop) (p q : pred' α) : pred' α :=
+λ i, op (p i) (q i)
 
-@[reducible]
+def ew (p : pred' α) : Prop :=
+∀ i, p i
+
+def False : pred' α := lifted₀ false
+def True : pred' α := lifted₀ true
+
 def p_or (p₀ p₁ : pred' α) : pred' α
-:= λx, p₀ x ∨ p₁ x
+:= lifted₂ or p₀ p₁
 
-@[reducible]
+@[simp]
+lemma p_or_to_fun (p₀ p₁ : pred' α) (x : α)
+: p_or p₀ p₁ x ↔ p₀ x ∨ p₁ x := by refl
+
 def p_and (p₀ p₁ : pred' α) : pred' α
-:= λx, p₀ x ∧ p₁ x
+:= lifted₂ and p₀ p₁
+
+@[simp]
+lemma p_and_to_fun (p₀ p₁ : pred' α) (x : α)
+: p_and p₀ p₁ x ↔ p₀ x ∧ p₁ x := by refl
 
 def p_impl (p₀ p₁ : pred' α) : pred' α
-:= λx, p₀ x → p₁ x
+:= lifted₂ implies p₀ p₁
+
+@[simp]
+lemma p_impl_to_fun (p₀ p₁ : pred' α) (x : α)
+: p_impl p₀ p₁ x ↔ (p₀ x → p₁ x) := by refl
+
 
 def p_entails (p₀ p₁ : pred' α) : Prop
-:= ∀ x, p₀ x → p₁ x
+:= ew (p_impl p₀ p₁)
 
-@[reducible]
+lemma p_entails_of_fun (p₀ p₁ : pred' α) (x : β)
+: p_entails p₀ p₁ ↔ ∀ x, p₀ x → p₁ x := by refl
+
+
 def p_not (p : pred' α) : pred' α
-:= λx, ¬ p x
+:= lifted₁ not p
+
+@[simp]
+lemma p_not_to_fun (p₀ : pred' α) (x : α)
+: p_not p₀ x ↔ ¬ p₀ x := by refl
+
 
 @[simp]
 lemma False_eq_false (τ : β) : False τ = false := rfl
 @[simp]
 lemma True_eq_true (τ : β) : True τ = true := rfl
-
-def ew (p : β → Prop) : Prop :=
-∀ x, p x
 
 infixl ` || ` := p_or
 infixl ` && ` := p_and

@@ -10,6 +10,8 @@ namespace unity
 
 universe variable u
 
+open predicate
+
 class has_safety (α : Type u) : Type (u+1) :=
   (σ : Type)
   (step : α → σ → σ → Prop)
@@ -19,9 +21,8 @@ def state := has_safety.σ
 def step {α} [has_safety α] : α → state α → state α → Prop :=
 has_safety.step
 
-def pred α [has_safety α] := state α → Prop
 
-def unless {α} [has_safety α] (s : α) (p q : pred α) : Prop
+def unless {α} [has_safety α] (s : α) (p q : pred' (state α)) : Prop
 := ∀ σ σ', step s σ σ' → p σ ∧ ¬ q σ → p σ' ∨ q σ'
 
 def saf_ex {α} [has_safety α] (s : α) (τ : stream (state α)) : Prop :=
@@ -36,7 +37,7 @@ variable [has_safety α]
 variable s : α
 def σ := state α
 
-lemma unless_action {α} [has_safety α] {s : α} {p q : pred α}
+lemma unless_action {α} [has_safety α] {s : α} {p q : pred' (state α)}
   (h : unless s p q)
 : ⟦ λ σ σ', (p σ ∧ ¬ q σ) ⟧ ⟹ ( ⟦ step s ⟧ ⟶  ⟦ λ _, p || q ⟧ ) :=
 begin
@@ -117,7 +118,7 @@ begin
   intros h,
   cases classical.em ((<> •q) (τ.drop i)) with H' H',
   { right, assumption },
-  { left,  rw [p_not_eq_not,not_eventually] at H' ,
+  { left,  simp [p_not_eq_not,not_eventually] at H' ,
     apply ex_map' _ h,
     intros j,
     apply induct,

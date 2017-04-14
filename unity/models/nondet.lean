@@ -13,6 +13,7 @@ open predicate
 
 parameter {α : Type}
 
+@[reducible]
 def pred := α → Prop
 
 structure event : Type :=
@@ -77,7 +78,7 @@ structure prog.falsify (s : prog lbl) (act : option lbl) (p : pred' α) : Prop :
 open temporal
 
 lemma prog.falsify.negate
-   {s : prog lbl} {act : option lbl} {p : pred' α}
+   {s : prog lbl} {act : option lbl} {p : pred}
 :  prog.falsify s act p
 →  •p && ⟦ s^.step_of act ⟧ ⟹ <>~•p :=
 begin

@@ -12,6 +12,7 @@ universe variables u u'
 
 variables {β : Type u}
 
+@[reducible]
 def cpred (β : Type u) := stream β → Prop
 
 def action (a : β → β → Prop) : cpred β
@@ -29,6 +30,9 @@ prefix `[]`:85 := henceforth
 prefix `•`:75 := init
 notation `⟦`:max act `⟧` := action act
 -- notation `⦃` act `⦄`:95 := ew act
+
+@[simp]
+lemma init_to_fun (p : pred' β) (τ : stream β) : (•p) τ = p (τ 0) := rfl
 
 def tl_leads_to (p q : pred' β) : cpred β :=
 [] (•p ⟶ <>•q)
