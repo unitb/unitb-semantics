@@ -47,6 +47,8 @@ inductive leads_to {α} [system α] (s : α) : pred' (state α) → pred' (state
 
 end connectors
 
+notation x ` ↦ `:60 y ` in ` s := leads_to s x y
+
 open predicate
 
 theorem system.unless_conj {α} [system α] (s : α) {p₀ q₀ p₁ q₁ : pred' (state α)} :
@@ -251,6 +253,17 @@ begin
       exact ⟨h,h'⟩ },
     apply leads_to.disj, intro i,
     apply ih_1 i, },
+end
+
+lemma True_leads_to_True {α} [system α] (s : α)
+: True ↦ True in s :=
+begin
+  apply leads_to.basis,
+  { assert H : (True && ~True) = (False : pred' (state α)),
+    { apply funext, intro x, simp },
+    rw H,
+    apply system.transient_false },
+  { apply True_unless }
 end
 
 open predicate

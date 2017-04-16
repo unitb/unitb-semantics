@@ -105,6 +105,25 @@ begin
     exact ⟨P₀,P₁⟩ },
 end
 
+lemma unless_refl (p : pred' (state α)) : unless s p p :=
+begin
+  apply impl_unless,
+  apply λ _, id
+end
+
+lemma unless_antirefl (p : pred' (state α)) : unless s p (~p) :=
+begin
+  intros σ σ' X h,
+  simp,
+  apply classical.em,
+end
+
+lemma True_unless (p : pred' (state α)) : unless s True p :=
+begin
+  intros σ σ' X h,
+  left, trivial
+end
+
 open nat
 
 open temporal

@@ -4,7 +4,7 @@ import unity.temporal
 
 import util.logic
 
-universe variable u
+universe variables u u'
 namespace nondet
 
 section nondet
@@ -21,6 +21,9 @@ structure event : Type :=
   (fine_sch : pred)
   (step : ∀ s, coarse_sch s → fine_sch s → α → Prop)
   (fis : ∀ s CS FS, ∃ s', step s CS FS s')
+
+def event.step_of (e : event) (σ σ' : α) : Prop :=
+∃ Hc Hf, e.step σ Hc Hf σ'
 
 structure prog (lbl : Type) : Type :=
   (first : α → Prop)
@@ -45,23 +48,53 @@ def prog.init (s : prog lbl) (p : pred) : Prop
 def prog.guard  (s : prog lbl) (e : option lbl) : α → Prop :=
 (s^.event e)^.coarse_sch && (s^.event e)^.fine_sch
 
-def prog.take_step (s : prog lbl) : ∀ (e : option lbl) (σ : α), s^.guard e σ → α → Prop
-  | none σ _ := λ σ', σ = σ'
-  | (some e) σ p := (s^.event e)^.step σ p.left p.right
-
-open temporal
-
 def prog.coarse_sch_of (s : prog lbl) (act : option lbl) : α → Prop :=
 (s.event act).coarse_sch
+
+@[simp]
+lemma prog.coarse_sch_of_none (s : prog lbl)
+: s.coarse_sch_of none = True :=
+by refl
 
 def prog.fine_sch_of (s : prog lbl) (act : option lbl) : α → Prop :=
 (s.event act).fine_sch
 
+@[simp]
+lemma prog.fine_sch_of_none (s : prog lbl)
+: s.fine_sch_of none = True :=
+by refl
+
+def prog.take_step (s : prog lbl)
+: ∀ (e : option lbl) (σ : α), s^.coarse_sch_of e σ → s^.fine_sch_of e σ → α → Prop
+  | none σ _ _ := λ σ', σ = σ'
+  | (some e) σ Hc Hf := (s^.event e)^.step σ Hc Hf
+
 def prog.step_of (s : prog lbl) (act : option lbl) : α → α → Prop :=
-λ σ σ', ∃ guard, s.take_step act σ guard σ'
+λ σ σ', ∃ Hc Hf, s.take_step act σ Hc Hf σ'
 
 def is_step (s : prog lbl) (σ σ' : α) : Prop :=
 ∃ ev, s.step_of ev σ σ'
+
+open temporal
+
+lemma is_step_exists_event  (s : prog lbl)
+ : temporal.action (is_step s) = (⟦ eq ⟧ || ∃∃ ev : lbl, ⟦ (s.event' ev).step_of ⟧) :=
+begin
+  simp [exists_action,or_action],
+  apply congr_arg,
+  apply funext, intro σ,
+  apply funext, intro σ',
+  unfold is_step,
+  simp [exists_option],
+  rw or_congr,
+  { unfold prog.step_of prog.coarse_sch_of prog.event skip event.coarse_sch True lifted₀,
+    unfold prog.step_of prog.fine_sch_of prog.event skip event.fine_sch True lifted₀,
+    simp [exists_true],
+    unfold prog.take_step,
+    refl },
+  { apply exists_congr, intro e,
+    refl }
+end
 
 structure prog.ex (s : prog lbl) (τ : stream α) : Prop :=
     (init : s^.first (τ 0))

@@ -15,7 +15,9 @@ variables {β : Type u}
 @[reducible]
 def cpred (β : Type u) := stream β → Prop
 
-def action (a : β → β → Prop) : cpred β
+def act (β : Type u) := β → β → Prop
+
+def action (a : act β) : cpred β
   | τ := a (τ 0) (τ 1)
 
 def eventually (p : cpred β) : cpred β
@@ -28,7 +30,7 @@ def init (p : β → Prop) : cpred β
 prefix `<>`:85 := eventually
 prefix `[]`:85 := henceforth
 prefix `•`:75 := init
-notation `⟦`:max act `⟧` := action act
+notation `⟦`:max act `⟧`:0 := action act
 -- notation `⦃` act `⦄`:95 := ew act
 
 @[simp]
@@ -335,4 +337,20 @@ begin
   apply h _ hp,
 end
 
+lemma exists_action (t : Type u) (A : t → act β)
+: (∃∃ x : t, ⟦ A x ⟧) = ⟦ λ σ σ', ∃ x, A x σ σ' ⟧ :=
+begin
+  apply funext, intro i,
+  simp,
+  unfold temporal.action,
+  refl
+end
+
+lemma or_action (A B : act β)
+: ⟦ A ⟧ || ⟦ B ⟧ = ⟦ λ σ σ', A σ σ' ∨ B σ σ' ⟧ :=
+begin
+  apply funext, intro i,
+  simp,
+  refl
+end
 end temporal

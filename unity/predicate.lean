@@ -63,6 +63,11 @@ lemma False_eq_false (τ : β) : False τ = false := rfl
 @[simp]
 lemma True_eq_true (τ : β) : True τ = true := rfl
 
+def p_exists {t : Type u} {β : Type u'} (P : t → pred' β) : pred' β :=
+λ x, ∃ y, P y x
+
+notation `∃∃` binders `, ` r:(scoped P, p_exists P) := r
+
 infixl ` || ` := p_or
 infixl ` && ` := p_and
 infixr ` ⟶ `:60 := p_impl
@@ -70,6 +75,13 @@ infix ` ⟹ `:60 := p_entails
 notation `⦃ `:max act ` ⦄` := ew act
 
 notation `~`:75 x := p_not x
+
+@[simp]
+lemma p_not_True : (~ True) = (False : pred' α) :=
+begin
+  apply funext, intro x,
+  simp,
+end
 
 lemma p_imp_p_imp_p_imp {p p' q q' : pred' α} {τ}
   (hp : (p' ⟶ p) τ)
@@ -89,5 +101,27 @@ p_imp_p_imp_p_imp id hq
 
 lemma p_not_eq_not (p : pred' β) (τ) : ¬ p τ ↔ (~p) τ :=
 by refl
+
+lemma p_or_entails_p_or_right (p q x : pred' β)
+: p ⟹ q → x || p ⟹ x || q :=
+begin
+  intros h i, simp,
+  apply or.imp_left (h _),
+end
+
+@[simp]
+lemma p_exists_to_fun {t : Type u'} (P : t → pred' β) (i : β)
+: (∃∃ x, P x) i ↔ (∃ x, P x i) :=
+by refl
+
+lemma p_exists_entails_p_exists {t : Type u'} (p q : t → pred' β)
+: (∀ x, p x ⟹ q x) → (∃∃ x, p x) ⟹ (∃∃ x, q x) :=
+begin
+  intros h i,
+  simp,
+  apply exists_imp_exists,
+  intro,
+  apply h
+end
 
 end predicate
