@@ -83,6 +83,14 @@ begin
   simp,
 end
 
+@[simp]
+lemma True_p_and (p : pred' α)
+: True && p = p :=
+begin
+  apply funext, intro x,
+  simp,
+end
+
 lemma p_imp_p_imp_p_imp {p p' q q' : pred' α} {τ}
   (hp : (p' ⟶ p) τ)
   (hq : (q ⟶ q') τ)
