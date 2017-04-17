@@ -294,7 +294,7 @@ begin
         X p q P₀ H₀ x y z,
     -- transient and unless
   { intros i hp,
-    note saf' := unless_sem' _ saf S (temporal.eventually_weaken _ hp),
+    note saf' := unless_sem' _ _ saf S (temporal.eventually_weaken _ hp),
     cases saf' with saf' saf',
     { note T' := transient_sem T τ sem,
       note T'' := (coincidence saf' (henceforth_drop i T')),

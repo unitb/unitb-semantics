@@ -102,6 +102,36 @@ p_imp_p_imp_p_imp id hq
 lemma p_not_eq_not (p : pred' β) (τ) : ¬ p τ ↔ (~p) τ :=
 by refl
 
+lemma p_and_comm (p q : pred' β) : p && q = q && p :=
+begin apply funext, intro x, simp end
+
+lemma p_and_p_imp (p q r : pred' β) : p && q ⟶ r = p ⟶ (q ⟶ r) :=
+begin
+  apply funext, intro x, simp,
+  rw -iff_eq_eq,
+  split
+  ; intros h h' ; intros
+  ; apply h
+  ; try { split }
+  ; try { cases h' }
+  ; assumption
+end
+
+lemma shunting (p q r : pred' β)
+: p ⟶ q || r = (p && ~ q) ⟶ r :=
+begin
+  apply funext, intro i,
+  simp, rw -iff_eq_eq,
+  split ; intros h₀ h₁,
+  { cases h₁ with h₁ h₂,
+    cases h₀ h₁ with h₃ h₃,
+    { cases h₂ h₃ },
+    { apply h₃ } },
+  { cases classical.em (q i) with h₂ h₂,
+    { left, apply h₂ },
+    { right, apply h₀, exact ⟨h₁,h₂⟩ } }
+end
+
 lemma p_or_entails_p_or_right (p q x : pred' β)
 : p ⟹ q → x || p ⟹ x || q :=
 begin

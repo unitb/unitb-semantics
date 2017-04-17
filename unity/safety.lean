@@ -129,7 +129,7 @@ open nat
 open temporal
 open stream
 
-lemma unless_sem' {τ : stream σ} {p q : pred' σ} {i : ℕ}
+lemma unless_sem' {τ : stream σ} {p q : pred' σ} (i : ℕ)
     (sem : saf_ex s τ)
     (H : unless s p q)
 : (<>•p) (τ.drop i) → (<>[]•p) (τ.drop i) ∨ (<>•q) (τ.drop i) :=
@@ -172,6 +172,18 @@ lemma unless_sem {τ : stream σ} {p q : pred' σ}
     (H : unless s p q)
 : (<>•p) τ → (<>[]•p) τ ∨ (<>•q) τ :=
 by apply @unless_sem' _ _ _ _ _ _ 0 sem H
+
+lemma unless_sem_str {τ : stream σ} {p q : pred' σ}
+    (sem : saf_ex s τ)
+    (H : unless s p q)
+: ([]<>•p ⟶ <>[]•p || []<>•q) τ :=
+begin
+  rw [shunting,-eventually_eventually ([] _),not_eventually,-henceforth_and],
+  apply hence_map', intro j,
+  rw [-shunting],
+  note H' := unless_sem' _ j sem H,
+  apply H'
+end
 
 end properties
 

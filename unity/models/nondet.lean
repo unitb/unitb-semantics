@@ -70,12 +70,23 @@ def prog.take_step (s : prog lbl)
   | (some e) σ Hc Hf := (s^.event e)^.step σ Hc Hf
 
 def prog.step_of (s : prog lbl) (act : option lbl) : α → α → Prop :=
-λ σ σ', ∃ Hc Hf, s.take_step act σ Hc Hf σ'
+(s.event act).step_of
 
 def is_step (s : prog lbl) (σ σ' : α) : Prop :=
 ∃ ev, s.step_of ev σ σ'
 
 open temporal
+
+lemma step_of_none  (s : prog lbl) : s.step_of none = eq :=
+begin
+  unfold prog.step_of prog.event skip,
+  apply funext, intro σ,
+  apply funext, intro σ',
+  unfold event.step_of,
+  unfold event.coarse_sch event.fine_sch event.step,
+  unfold True lifted₀,
+  simp [exists_true],
+end
 
 lemma is_step_exists_event  (s : prog lbl)
  : temporal.action (is_step s) = (⟦ eq ⟧ || ∃∃ ev : lbl, ⟦ (s.event' ev).step_of ⟧) :=
@@ -87,18 +98,18 @@ begin
   unfold is_step,
   simp [exists_option],
   rw or_congr,
-  { unfold prog.step_of prog.coarse_sch_of prog.event skip event.coarse_sch True lifted₀,
-    unfold prog.step_of prog.fine_sch_of prog.event skip event.fine_sch True lifted₀,
-    simp [exists_true],
-    unfold prog.take_step,
-    refl },
+  { simp [step_of_none] },
   { apply exists_congr, intro e,
     refl }
 end
 
+instance : unity.has_safety (prog lbl) :=
+  { σ := α
+  , step := is_step }
+
 structure prog.ex (s : prog lbl) (τ : stream α) : Prop :=
     (init : s^.first (τ 0))
-    (safety : ∀ i, ⟦ is_step s ⟧ (τ.drop i))
+    (safety : unity.saf_ex s τ)
     (liveness : ∀ e, (<>[]• s^.coarse_sch_of e) τ →
                      ([]<>• s^.fine_sch_of e) τ →
                      ([]<> ⟦ s.step_of e ⟧) τ)

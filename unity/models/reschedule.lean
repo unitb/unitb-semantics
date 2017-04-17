@@ -19,10 +19,19 @@ structure evt_ref (mc : @prog α lbl) (ea ec : @event α) : Prop :=
 
 structure refined (m₀ m₁ : @prog α lbl) : Prop :=
   (sim_init : m₁^.first ⟹ m₀^.first)
-  (sim : ⟦ is_step m₁ ⟧ ⟹ ⟦ is_step m₀ ⟧)
+  (sim' : ∀ e, ⟦ m₁.step_of e ⟧ ⟹ ⟦ m₀.step_of e ⟧)
   (delay : ∀ e, m₀^.coarse_sch_of e ↦ m₁^.coarse_sch_of e in m₁)
   (stable : ∀ e, unless m₁ (m₁^.coarse_sch_of e) (~m₀^.coarse_sch_of e))
   (resched : ∀ e, m₀^.fine_sch_of e ↦ m₁^.fine_sch_of e in m₁)
+
+lemma refined.sim {m₀ m₁ : @prog α lbl} (R : refined m₀ m₁)
+: ⟦ is_step m₁ ⟧ ⟹ ⟦ is_step m₀ ⟧ :=
+begin
+  simp [is_step_exists_event],
+  apply p_or_entails_p_or_right,
+  apply p_exists_entails_p_exists, intro e,
+  apply R.sim' (some e),
+end
 
 lemma event_refinement {m₀ m₁ : @prog α lbl}
    (INIT : m₁^.first ⟹ m₀^.first)
@@ -31,10 +40,12 @@ lemma event_refinement {m₀ m₁ : @prog α lbl}
 begin
   apply refined.mk,
   { apply INIT },
-  { simp [is_step_exists_event],
-    apply p_or_entails_p_or_right,
-    apply p_exists_entails_p_exists, intro e,
-    apply (EVT e).sim },
+  { intro e,
+    cases e with e,
+    { simp [step_of_none],
+      intro, apply id },
+    { unfold prog.step_of prog.event,
+      apply (EVT e).sim } },
   all_goals
     { intro e, cases e with e,
       try { apply True_leads_to_True },
@@ -49,32 +60,32 @@ variables  (m₀ m₁ : @prog α lbl)
 open temporal
 
 theorem soundness : refined m₀ m₁ → unity.refinement.refined m₀ m₁ :=
-sorry
--- begin
---   intros R τ M₁,
---   apply nondet.prog.ex.mk,
---   { apply R.sim_init,
---     apply M₁.init },
---   { intro i,
---     apply R.sim,
---     unfold temporal.action is_step nondet.is_step,
---     cases M₁.safety i with ev H,
---     existsi ev,
---     unfold nondet.prog.step_of,
---     rw R.sim _ ,
---     apply H },
---   { intros e COARSE₀ FINE₀,
---     assert COARSE₁ : (<>[]•prog.coarse_sch_of m₁ e) τ,
---     { clear FINE₀,
---       note UNLESS := unless_sem _ τ (R.stable e),
---       note COARSE₀ := inf_often_of_stable _ COARSE₀,
---       note COARSE₀' := inf_often_of_leads_to (system_sem.leads_to_sem (R.delay e) _ M₁) COARSE₀, },
---     assert FINE₁ : ([]<>•prog.fine_sch_of m₁ e) τ,
---     {  },
---     apply hence_map _ _ (M₁.liveness _ COARSE₁ FINE₁),
---     apply ex_map,
---     rw R.sim,
---     intro, apply id },
--- end
+begin
+  intros R τ M₁,
+  apply nondet.prog.ex.mk,
+  { apply R.sim_init,
+    apply M₁.init },
+  { intro i,
+    apply R.sim,
+    apply M₁.safety },
+  { intros e COARSE₀ FINE₀,
+    assert COARSE₁ : (<>[]•prog.coarse_sch_of m₁ e) τ,
+    { clear FINE₀,
+      assert COARSE₂ : ([]<>•prog.coarse_sch_of m₁ e) τ,
+      { apply inf_often_of_leads_to (system_sem.leads_to_sem (R.delay e) _ M₁),
+        apply inf_often_of_stable _,
+        apply COARSE₀ },
+      note UNLESS := unless_sem_str _ M₁.safety (R.stable e) COARSE₂,
+      cases UNLESS with UNLESS H,
+      { apply UNLESS },
+      { assert H' : (~<>[]•prog.coarse_sch_of m₀ e) τ,
+        { rw [not_eventually,not_henceforth,not_init], apply H },
+        cases H' COARSE₀, } },
+    assert FINE₁ : ([]<>•prog.fine_sch_of m₁ e) τ,
+    { apply inf_often_of_leads_to (system_sem.leads_to_sem (R.resched _) _ M₁) FINE₀, },
+    apply hence_map _ _ (M₁.liveness _ COARSE₁ FINE₁),
+    apply ex_map,
+    apply R.sim', },
+end
 
 end nondet

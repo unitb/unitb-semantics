@@ -201,16 +201,25 @@ lemma not_init (p : pred' β) : (~•p) = •~p := rfl
 
 open nat
 
+lemma induct' {β} (p : pred' β) {τ} (h : ([] (•p ⟶ ⟦ λ _, p ⟧)) τ)
+: [] (•p ⟶ []•p) $ τ :=
+begin
+  intros j h' i,
+  induction i with i ih,
+  { apply h' },
+  { simp [stream.drop_drop] at ih,
+    note h₁ := (h (j+i) ih),
+    unfold action stream.drop at h₁,
+    simp [stream.drop_drop,add_succ],
+    unfold init stream.drop,
+    simp, simp at h₁, apply h₁ }
+end
+
 lemma induct {β} (p : pred' β) {τ} (h : ([] (•p ⟶ ⟦ λ _, p ⟧)) τ)
 : (•p ⟶ []•p) τ :=
 begin
-  intros h' i,
-  induction i with i ih,
-  { apply h' },
-  { note h₁ := (h _ ih),
-    unfold action stream.drop at h₁,
-    unfold init stream.drop,
-    simp, simp at h₁, apply h₁ }
+  apply henceforth_str _ _,
+  apply induct' _ h
 end
 
 lemma not_eventually {β} (p : cpred β) : (~<>p) = ([]~p) :=
@@ -336,6 +345,33 @@ begin
   apply hnq,
   apply h _ hp,
 end
+
+lemma eventually_and {p q : cpred β} {τ : stream β}
+   (h₀ : ([]p) τ)
+   (h₁ : (<>q) τ)
+: (<>(p && q) ) τ :=
+begin
+  unfold eventually at h₀ h₁,
+  cases h₁ with j h₁,
+  unfold eventually,
+  existsi j,
+  exact ⟨h₀ _,h₁⟩
+end
+
+lemma henceforth_and (p q : cpred β)
+: [](p && q) = []p && []q :=
+begin
+  apply funext, intro τ,
+  simp,
+  rw [-iff_eq_eq],
+  repeat { split ; intros }
+  ; intros i ; try { simp, split },
+  { apply (a i).left },
+  { apply (a i).right },
+  { apply a.left },
+  { apply a.right },
+end
+/- Actions -/
 
 lemma exists_action (t : Type u) (A : t → act β)
 : (∃∃ x : t, ⟦ A x ⟧) = ⟦ λ σ σ', ∃ x, A x σ σ' ⟧ :=
