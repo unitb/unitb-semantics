@@ -70,3 +70,9 @@ notifications:
   slack:
     rooms:
       secure: ToqNpQO5kipHcuV9zrUodENHyuIiizuX01rdRjvSRGxw9Ad1JbvAnm4wUZhEl+ikgUDLXBwbngWj7uxLUCXiWn84hLU/WGqfKWre0KBvrpLXNDfwvHhxPZsIy0bmWqdQ2di86Fzd6dcNitQT5SXn6ydpTTNqDth/MGSljEEaqCJqdEEOZWlGJ4SoQ3ujf5fk5gjojg76FJ1Ua/VlnS/aziLveECgk4webztjxPgGYz6KlSF7vTinO9LXUObfOfy4M0MPze/QdxtHVdlnpCggASfdvx7js//9BP/Ap2tKK2mp5eQ66hqzXHCyzuuOpL7u3jeSNGkI5kZgCQiFPZzT+Fxc7I1DdRJ5S/guG39MY/2H2Z5vahMFWuVkkrEgfyVf+b85rGYMPSRrGV8PDLLiaxiwjec121xpmbnpuLfL4ZZQ1/+Oct8jUordbbS9ZIr0HCcFckR4GVhA4iDgl6NErBfpAKhs8jhBKAHicJpgQm6LborWdSiOs24TBwOI4e1xvllNaJHzUfM9yhXVc1Y0hQr88anwtBh7VCvk3a2HchVGo684WwZcoJn3y2MGVw6U3ecOBPnrAnG4nTKD2WlpOqmr0wEzxxTRhW2Bm3Djgn2p8xsNgwcQigYrE2p89nrgcd7Xv3gxNW/Qe/dp3bTEgdbDo8fFhsO+ZB940SvDTos=
+  webhooks:
+    urls:
+      - "https://scalar.vector.im/api/neb/services/hooks/dHJhdmlzLWNpLyU0MGFtaW5iJTNBbWF0cml4Lm9yZy8lMjF4eUlwdkJPc3FYWWhVRmdWWVclM0FtYXRyaXgub3Jn"
+    on_success: always  # always|never|change
+    on_failure: always
+    on_start: never
