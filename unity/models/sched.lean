@@ -28,51 +28,51 @@ def event.nondet (e : event) : nondet.event :=
   , step := λ s Hc Hf s', e.step s Hc Hf = s'
   , fis := λ s Hc Hf, ⟨_,rfl⟩ }
 
-structure prog (lbl : Type) : Type :=
+structure prog : Type 2 :=
+  (lbl : Type)
   (first : α)
   (event' : lbl → event)
 
-variables {lbl : Type}
-
-def prog.nondet (p : prog lbl) : @nondet.prog α lbl :=
+def prog.nondet (p : prog) : @nondet.prog α :=
   { first := λ s, s = p.first
+  , lbl := p.lbl
   , first_fis := ⟨_, rfl⟩
   , event' := event.nondet ∘ p.event' }
 
 open temporal
 
-def prog.coarse_sch_of (s : prog lbl) (act : option lbl) : α → Prop :=
+def prog.coarse_sch_of (s : prog) (act : option s.lbl) : α → Prop :=
 nondet.prog.coarse_sch_of s.nondet act
 
-def prog.fine_sch_of (s : prog lbl) (act : option lbl) : α → Prop :=
+def prog.fine_sch_of (s : prog) (act : option s.lbl) : α → Prop :=
 nondet.prog.fine_sch_of s.nondet act
 
-def prog.step_of (s : prog lbl) (act : option lbl) : α → α → Prop :=
+def prog.step_of (s : prog) (act : option s.lbl) : α → α → Prop :=
 s.nondet.step_of act
 
-def is_step (s : prog lbl) : α → α → Prop :=
+def is_step (s : prog) : α → α → Prop :=
 nondet.is_step s.nondet
 
-def prog.ex (s : prog lbl) (τ : stream α) : Prop :=
+def prog.ex (s : prog) (τ : stream α) : Prop :=
 nondet.prog.ex (s.nondet) τ
 
-def prog.falsify (s : prog lbl) (act : option lbl) (p : pred' α) : Prop :=
+def prog.falsify (s : prog) (act : option s.lbl) (p : pred' α) : Prop :=
 nondet.prog.falsify s.nondet act p
 
 open temporal
 
 lemma prog.falsify.negate
-   {s : prog lbl} {act : option lbl} {p : pred' α}
+   {s : prog} {act : option s.lbl} {p : pred' α}
    (F : prog.falsify s act p)
 :  •p && ⟦ s^.step_of act ⟧ ⟹ <>~•p :=
-@nondet.prog.falsify.negate _ _ s.nondet act p F
+@nondet.prog.falsify.negate _ s.nondet act p F
 
-def prog.transient (s : prog lbl) : pred' α → Prop :=
+def prog.transient (s : prog) : pred' α → Prop :=
 nondet.prog.transient s.nondet
 
 section theorems
 
-variable (s : prog lbl)
+variable (s : prog)
 
 open prog
 open event
@@ -80,13 +80,13 @@ open event
 theorem prog.transient_false : transient s False :=
 nondet.prog.transient_false _
 
-def prog.transient_str (s : prog lbl) {p q : α → Prop}
+def prog.transient_str (s : prog) {p q : α → Prop}
 : (∀ (i : α), p i → q i) → prog.transient s q → prog.transient s p :=
 nondet.prog.transient_str _
 
 end theorems
 
-instance prog_is_system : unity.system (prog lbl) :=
+instance prog_is_system : unity.system prog :=
 { σ := _
 , transient := _
 , step := is_step
@@ -96,7 +96,7 @@ instance prog_is_system : unity.system (prog lbl) :=
 
 open unity
 
-lemma leads_to.nondet (s : prog lbl) {p q : pred' α}
+lemma leads_to.nondet (s : prog) {p q : pred' α}
    (h : leads_to s p q)
 : leads_to s.nondet p q :=
 begin
@@ -114,8 +114,8 @@ begin
 end
 
 -- instance {α} [sched lbl] : system_sem (prog lbl) :=
-instance : unity.system_sem (prog lbl) :=
-  { (_ : unity.system (prog lbl)) with
+instance : unity.system_sem prog :=
+  { (_ : unity.system prog) with
     ex := prog.ex
   , safety := λ s, unity.system_sem.safety s.nondet
   , inhabited := λ s, unity.system_sem.inhabited s.nondet
@@ -123,12 +123,12 @@ instance : unity.system_sem (prog lbl) :=
 
 open unity
 
-theorem transient_rule {s : prog lbl} {p : pred' α} (ev : option lbl)
+theorem transient_rule {s : prog} {p : pred' α} (ev : option s.lbl)
    (EN : p ⟹ s.coarse_sch_of ev)
    (FLW : leads_to s (p && s.coarse_sch_of ev) (s.fine_sch_of ev))
    (NEG : ∀ σ σ', p σ → s.step_of ev σ σ' → ¬p σ')
 : s.transient p :=
-@nondet.transient_rule _ _ s.nondet p ev EN (leads_to.nondet _ FLW) NEG
+@nondet.transient_rule _ s.nondet p ev EN (leads_to.nondet _ FLW) NEG
 
 end schedules
 

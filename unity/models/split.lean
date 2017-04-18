@@ -10,9 +10,9 @@ open unity
 
 universe variable u
 
-variables {lbl lbl' α β : Type}
+variables {α β : Type}
 
-structure evt_ref (mc : @prog α lbl) (ea : @event α) (ecs : set (@event α)) : Type :=
+structure evt_ref (mc : @prog α) (ea : @event α) (ecs : set (@event α)) : Type :=
   (sim : ∀ ec : event, ec ∈ ecs → (action ec.step_of) ⟹ ⟦ ea.step_of ⟧)
   (witness : subtype ecs → α → Prop)
   (witness_fis : ⦃ ∃∃ e : subtype ecs, witness e ⦄)
@@ -23,13 +23,13 @@ structure evt_ref (mc : @prog α lbl) (ea : @event α) (ecs : set (@event α)) :
 def surjective (f : α → β) : Prop :=
 ∀ y, ∃ x, f x = y
 
-structure refined (ma : @prog α lbl) (mc : @prog α lbl') : Type :=
+structure refined (ma mc : @prog α) : Type :=
   (sim_init : mc^.first ⟹ ma^.first)
-  (abs : lbl' → lbl)
+  (abs : mc.lbl → ma.lbl)
   (abs_surj : surjective abs)
   (events : ∀ ae, evt_ref mc (ma.event' ae) { ce | ∃ l, abs l = ae ∧ ce = mc.event' l } )
 
-lemma refined.sim {ma : @prog α lbl}  {mc : @prog α lbl'}
+lemma refined.sim {ma mc : @prog α}
   (R : refined ma mc)
 : ⟦ is_step mc ⟧ ⟹ ⟦ is_step ma ⟧ :=
 begin

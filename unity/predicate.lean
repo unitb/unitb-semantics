@@ -1,8 +1,9 @@
 
+import util.logic
 
 namespace predicate
 
-universe variables u u'
+universe variables u u' u₀ u₁
 
 variables {α β : Type u}
 
@@ -160,6 +161,21 @@ begin
   apply exists_imp_exists,
   intro,
   apply h
+end
+
+lemma p_exists_entails_p_exists' {t : Type u₀} {t' : Type u₁}
+  (p : t → pred' β)
+  (q : t' → pred' β)
+  (f : t → t')
+  (h : (∀ x, p x ⟹ q (f x)))
+: (∃∃ x, p x) ⟹ (∃∃ x, q x) :=
+begin
+  intros h' h'',
+  simp,
+  apply exists_imp_exists',
+  intro,
+  apply h a,
+  apply h''
 end
 
 end predicate
