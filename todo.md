@@ -1,6 +1,6 @@
 
 
-# Todo #
+## Todo ##
 
     * tactic for monotonicity in predicate calculus
     * ~~reduce soundness of leads-to properties to assumptions about transient~~
@@ -13,8 +13,19 @@
       type class so that it becomes a requirement that other models
       can subscribe to
 	* refinement
-	  * schedules
-	  * simulation
+	  * ~~schedules~~
+	  * ~~simulation~~
+	  * use `unless` `except`
 	  * splitting / merging
 	  * data refinement
+	  * reusing liveness properties
 	* shared variable decomposition
+	* spontaneous events
+	* state hiding
+	* pseudo code
+	* state variables
+	* multiple coarse schedules
+
+# cleanup #
+
+    * unity.temporal has hence_map, ex_map, init_map. rename them

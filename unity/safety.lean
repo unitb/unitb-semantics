@@ -11,6 +11,7 @@ namespace unity
 universe variable u
 
 open predicate
+open temporal
 
 class has_safety (α : Type u) : Type (u+1) :=
   (σ : Type)
@@ -25,8 +26,8 @@ has_safety.step
 def unless {α} [has_safety α] (s : α) (p q : pred' (state α)) : Prop
 := ∀ σ σ', step s σ σ' → p σ ∧ ¬ q σ → p σ' ∨ q σ'
 
-def saf_ex {α} [has_safety α] (s : α) (τ : stream (state α)) : Prop :=
-∀ i, ⟦ step s ⟧ (τ.drop i)
+def saf_ex {α} [has_safety α] (s : α) : cpred (state α) :=
+ ([] ⟦ step s ⟧)
 
 section properties
 
@@ -183,6 +184,49 @@ begin
   rw [-shunting],
   note H' := unless_sem' _ j sem H,
   apply H'
+end
+
+
+lemma unless_sem_exists' {τ : stream σ} {t} {p : t → pred' σ} {q : pred' σ}
+    (sem : saf_ex s τ)
+    (H : ∀ x, unless s (p x) q)
+: ( []<>(∃∃ x, •p x) ⟶ (∃∃ x, <>[]•p x) || []<>•q ) τ :=
+begin
+  intro H₀,
+  rw [p_or_comm,-p_not_p_imp],
+  intro H₁,
+  rw [not_henceforth,not_eventually] at H₁,
+  unfold eventually at H₁,
+  rw eventually_exists at H₀,
+  cases H₁ with i H₁,
+  note H₂ := H₀ i,
+  cases H₂ with x H₂,
+  unfold eventually at H₂,
+  cases H₂ with j H₂,
+  simp,
+  existsi x,
+  unfold eventually,
+  existsi i+j,
+  intro k,
+  induction k with k
+  ; simp [drop_drop] at H₂,
+  { apply H₂, },
+  { simp [drop_drop] at ih_1,
+    rw [drop_succ,-tail_drop],
+    simp [drop_drop],
+    unfold tail,
+    pose σ := (drop (i + (j + k)) τ 0),
+    pose σ' := (τ (i + (j + (k + 1)))),
+    note H₂ := H₁ (j+k),
+    simp [drop_drop] at H₂,
+    note H₃ := H₁ (j+k+1),
+    simp [drop_drop] at H₃,
+    note IH := H x σ _ (sem _) ⟨ih_1,H₂⟩,
+    cases IH with IH IH,
+    { apply IH },
+    { unfold drop at H₃ IH,
+      simp at H₃ IH,
+      cases H₃ IH }, },
 end
 
 end properties

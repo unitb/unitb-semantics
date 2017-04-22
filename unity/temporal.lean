@@ -10,7 +10,7 @@ open predicate
 
 universe variables u u'
 
-variables {β : Type u}
+variables {β : Type u} {α : Type u'}
 
 @[reducible]
 def cpred (β : Type u) := stream β → Prop
@@ -24,12 +24,15 @@ def eventually (p : cpred β) : cpred β
   | τ := ∃ i, p (τ.drop i)
 def henceforth (p : cpred β) : cpred β
   | τ := Π i, p (τ.drop i)
+def next (p : cpred β) : cpred β
+  | τ := p τ.tail
 def init (p : β → Prop) : cpred β
   | τ := p (τ 0)
 
-prefix `<>`:85 := eventually
-prefix `[]`:85 := henceforth
-prefix `•`:75 := init
+prefix `•`:85 := init
+prefix `⊙`:90 := next
+prefix `<>`:95 := eventually
+prefix `[]`:95 := henceforth
 notation `⟦`:max act `⟧`:0 := action act
 -- notation `⦃` act `⦄`:95 := ew act
 
@@ -39,7 +42,7 @@ lemma init_to_fun (p : pred' β) (τ : stream β) : (•p) τ = p (τ 0) := rfl
 def tl_leads_to (p q : pred' β) : cpred β :=
 [] (•p ⟶ <>•q)
 
-infix ` ~> `:85 := tl_leads_to
+infix ` ~> `:50 := tl_leads_to
 
 lemma eventually_weaken {p : cpred β} :
   (p ⟹ <> p) :=
@@ -116,6 +119,7 @@ begin
   apply h,
 end
 
+
 lemma ex_map {p q : cpred β} (f : p ⟹ q) : (<>p) ⟹ (<>q) :=
 begin
   intro τ,
@@ -161,7 +165,7 @@ end
 --   apply eventually_weaken _ H₀,
 -- end
 
-lemma eventually_of_leads_to {p q : pred' β} {τ} (i : ℕ)
+lemma eventually_of_leads_to' {p q : pred' β} {τ} (i : ℕ)
   (h : (p ~> q) τ)
 : (<>•p ⟶ <>•q) (τ.drop i)  :=
 begin
@@ -171,12 +175,17 @@ begin
   apply @henceforth_drop _ _ τ i h,
 end
 
+lemma eventually_of_leads_to {p q : pred' β} {τ}
+  (h : (p ~> q) τ)
+: (<>•p ⟶ <>•q) τ  :=
+by apply eventually_of_leads_to' 0 h
+
 lemma inf_often_of_leads_to {p q : pred' β} {τ}
   (h : (p ~> q) τ)
 : ([]<>•p ⟶ []<>•q) τ :=
 begin
   intros P i,
-  apply eventually_of_leads_to _ h (P _)
+  apply eventually_of_leads_to' _ h (P _)
 end
 
 lemma leads_to_trans {p q r : pred' β} (τ)
@@ -185,7 +194,7 @@ lemma leads_to_trans {p q r : pred' β} (τ)
 : (p ~> r) τ :=
 begin
   intros i hp,
-  apply eventually_of_leads_to _ Hq,
+  apply eventually_of_leads_to' _ Hq,
   apply Hp _ hp,
 end
 
@@ -201,7 +210,7 @@ lemma not_init (p : pred' β) : (~•p) = •~p := rfl
 
 open nat
 
-lemma induct' {β} (p : pred' β) {τ} (h : ([] (•p ⟶ ⟦ λ _, p ⟧)) τ)
+lemma induct' {β} (p : pred' β) {τ} (h : ([] (•p ⟶ ⊙•p)) τ)
 : [] (•p ⟶ []•p) $ τ :=
 begin
   intros j h' i,
@@ -215,7 +224,7 @@ begin
     simp, simp at h₁, apply h₁ }
 end
 
-lemma induct {β} (p : pred' β) {τ} (h : ([] (•p ⟶ ⟦ λ _, p ⟧)) τ)
+lemma induct {β} (p : pred' β) {τ} (h : ([] (•p ⟶ ⊙•p)) τ)
 : (•p ⟶ []•p) τ :=
 begin
   apply henceforth_str _ _,
@@ -335,8 +344,8 @@ begin
   exact ⟨Hp',Hq⟩
 end
 
-lemma next_imp_next {p q : pred' β} (τ) (h : p ⟹ q)
-: (⟦ λ _, p ⟧ ⟶ ⟦ λ _, q ⟧) τ :=
+lemma next_imp_next {p q : cpred β} (τ) (h : p ⟹ q)
+: (⊙ p ⟶ ⊙ q) τ :=
 h _
 
 lemma entail_contrapos {p q : pred' β} : p ⟹ q → (~q) ⟹ ~p :=
@@ -371,6 +380,20 @@ begin
   { apply a.left },
   { apply a.right },
 end
+
+lemma eventually_exists (P : α → cpred β)
+: <>(∃∃ x, P x) = ∃∃ x, <>P x :=
+begin
+  apply funext, intro τ,
+  rw -iff_eq_eq,
+  unfold eventually p_exists,
+  split
+  ; intro H
+  ; cases H with i H
+  ; cases H with j H
+  ; exact ⟨_,_,H⟩ ,
+end
+
 /- Actions -/
 
 lemma exists_action (t : Type u) (A : t → act β)

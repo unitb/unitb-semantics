@@ -102,6 +102,17 @@ begin
     refl }
 end
 
+lemma is_step_exists_event'  (s : prog)
+ : temporal.action (is_step s) = (∃∃ ev : option s.lbl, ⟦ s.step_of ev ⟧) :=
+begin
+  simp [exists_action,or_action],
+  apply congr_arg,
+  apply funext, intro σ,
+  apply funext, intro σ',
+  unfold is_step,
+  simp [exists_option],
+end
+
 instance : unity.has_safety prog :=
   { σ := α
   , step := is_step }
@@ -116,7 +127,7 @@ structure prog.ex (s : prog) (τ : stream α) : Prop :=
 structure prog.falsify (s : prog) (act : option s.lbl) (p : pred' α) : Prop :=
   (enable : p ⟹ s^.coarse_sch_of act)
   (schedule : prog.ex s ⟹ (<>[]•p ⟶ []<>• s^.fine_sch_of act) )
-  (negate' : ⦃ •p ⟶ ⟦ s^.step_of act ⟧ ⟶ ⟦ λ _, ~p ⟧ ⦄)
+  (negate' : ⦃ •p ⟶ ⟦ s^.step_of act ⟧ ⟶ ⊙~•p ⦄)
 
 open temporal
 
@@ -181,6 +192,7 @@ begin
     apply imp_imp_imp_right _,
     apply next_imp_next _ _,
     apply entail_contrapos,
+    apply init_map,
     apply h }
 end
 

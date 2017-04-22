@@ -67,15 +67,20 @@ lemma True_eq_true (τ : β) : True τ = true := rfl
 def p_exists {t : Type u} {β : Type u'} (P : t → pred' β) : pred' β :=
 λ x, ∃ y, P y x
 
+def p_forall {t : Type u} {β : Type u'} (P : t → pred' β) : pred' β :=
+λ x, ∀ y, P y x
+
 notation `∃∃` binders `, ` r:(scoped P, p_exists P) := r
+notation `∀∀` binders `, ` r:(scoped P, p_forall P) := r
 
 infixl ` || ` := p_or
 infixl ` && ` := p_and
 infixr ` ⟶ `:60 := p_impl
 infix ` ⟹ `:60 := p_entails
-notation `⦃ `:max act ` ⦄` := ew act
+notation `⦃ `:max act ` ⦄`:0 := ew act
 
-notation `~`:75 x := p_not x
+notation `~`:80 x := p_not x
+
 
 @[simp]
 lemma p_not_True : (~ True) = (False : pred' α) :=
@@ -111,6 +116,9 @@ p_imp_p_imp_p_imp id hq
 lemma p_not_eq_not (p : pred' β) (τ) : ¬ p τ ↔ (~p) τ :=
 by refl
 
+lemma p_or_comm (p q : pred' β) : p || q = q || p :=
+begin apply funext, intro x, simp end
+
 lemma p_and_comm (p q : pred' β) : p && q = q && p :=
 begin apply funext, intro x, simp end
 
@@ -126,6 +134,24 @@ begin
   ; assumption
 end
 
+lemma True_p_imp (p : pred' β)
+: True ⟶ p = p :=
+begin
+  apply funext, intro, rw [-iff_eq_eq],
+  split
+  ; intro h
+  ; try { intro }
+  ; apply h,
+  trivial
+end
+
+lemma ew_eq_true {p : pred' β} : ⦃ p ⦄ → p = True :=
+sorry
+
+lemma p_and_over_p_exists_right {t} (p : t → pred' β) (q : pred' β)
+: (∃∃ x, p x) && q = (∃∃ x, p x && q) :=
+sorry
+
 lemma shunting (p q r : pred' β)
 : p ⟶ q || r = (p && ~ q) ⟶ r :=
 begin
@@ -139,6 +165,12 @@ begin
   { cases classical.em (q i) with h₂ h₂,
     { left, apply h₂ },
     { right, apply h₀, exact ⟨h₁,h₂⟩ } }
+end
+
+lemma p_not_p_imp (p q : pred' β)
+: (~p) ⟶ q = p || q :=
+begin
+  rw [-True_p_and (~p),-shunting,True_p_imp],
 end
 
 lemma p_or_entails_p_or_right (p q x : pred' β)

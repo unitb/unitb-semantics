@@ -43,7 +43,7 @@ inductive leads_to {α} [system α] (s : α) : pred' (state α) → pred' (state
   | trans : ∀ {p} q {r}, leads_to p q → leads_to q r → leads_to p r
   | disj : ∀ (t : Type) (p : t → pred' (state α)) {q},
          (∀ i, leads_to (p i) q) →
-         leads_to (λ σ, ∃ i, p i σ) q
+         leads_to (∃∃ i, p i) q
 
 end connectors
 
@@ -159,6 +159,17 @@ begin
     intro i, apply or.inl },
   { apply leads_to.strengthen_rhs _ _ Pq,
     intro i, apply or.inr },
+end
+
+theorem leads_to.gen_disj' {t : Type} {α} [system α] {s : α} {p q : t → pred' (state α)}
+    (P : ∀ x, p x ↦ q x in s)
+    : (∃∃ x, p x) ↦ (∃∃ x, q x) in s :=
+begin
+  apply leads_to.disj _ p,
+  intro x,
+  apply leads_to.strengthen_rhs _ _ (P x),
+  intros i h,
+  exact ⟨_,h⟩,
 end
 
 -- print heq
