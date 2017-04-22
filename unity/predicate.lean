@@ -146,11 +146,30 @@ begin
 end
 
 lemma ew_eq_true {p : pred' β} : ⦃ p ⦄ → p = True :=
-sorry
+begin
+  intros h,
+  apply funext, intro x,
+  simp [eq_true],
+  apply h
+end
+
+@[simp]
+lemma p_exists_to_fun {t : Type u'} (P : t → pred' β) (i : β)
+: (∃∃ x, P x) i ↔ (∃ x, P x i) :=
+by refl
 
 lemma p_and_over_p_exists_right {t} (p : t → pred' β) (q : pred' β)
 : (∃∃ x, p x) && q = (∃∃ x, p x && q) :=
-sorry
+begin
+  apply funext, intro i,
+  rw -iff_eq_eq,
+  simp,
+  split
+  ; intro h
+  ; cases h with x y
+  ; cases y with y h
+  ; exact ⟨y,x,h⟩,
+end
 
 lemma shunting (p q r : pred' β)
 : p ⟶ q || r = (p && ~ q) ⟶ r :=
@@ -180,10 +199,6 @@ begin
   apply or.imp_left (h _),
 end
 
-@[simp]
-lemma p_exists_to_fun {t : Type u'} (P : t → pred' β) (i : β)
-: (∃∃ x, P x) i ↔ (∃ x, P x i) :=
-by refl
 
 lemma p_exists_entails_p_exists {t : Type u'} (p q : t → pred' β)
 : (∀ x, p x ⟹ q x) → (∃∃ x, p x) ⟹ (∃∃ x, q x) :=
