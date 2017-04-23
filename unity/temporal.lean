@@ -334,7 +334,18 @@ lemma stable_and_of_stable_of_stable {p q : cpred β} {τ}
     (Hp : (<>[]p) τ)
     (Hq : (<>[]q) τ)
 : (<>[](p && q)) τ :=
-sorry
+begin
+  unfold eventually henceforth at Hp Hq,
+  cases Hp with i Hp,
+  cases Hq with j Hq,
+  unfold eventually henceforth,
+  existsi (i+j), intro k,
+  simp [stream.drop_drop],
+  note Hq' := Hq (i+k),
+  note Hp' := Hp (j+k),
+  simp [stream.drop_drop] at Hp' Hq',
+  exact ⟨Hp',Hq'⟩
+end
 
 lemma coincidence {p q : cpred β} {τ}
     (Hp : (<>[]p) τ)
@@ -425,5 +436,10 @@ end
 lemma action_entails_action (A B : act β)
   (h : ∀ σ σ', A σ σ' → B σ σ')
 : ⟦ A ⟧ ⟹ ⟦ B ⟧ :=
-sorry
+begin
+  unfold p_entails ew,
+  intro, simp,
+  apply h
+end
+
 end temporal

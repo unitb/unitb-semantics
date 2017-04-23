@@ -163,9 +163,22 @@ end
 -- (- ∀∀ x, p x) = (∃∃ x, -p x) :=
 -- sorry
 
+@[simp]
+lemma p_exists_to_fun {t : Type u'} (P : t → pred' β) (i : β)
+: (∃∃ x, P x) i ↔ (∃ x, P x i) :=
+by refl
+
+@[simp]
+lemma p_forall_to_fun {t : Type u'} (P : t → pred' β) (i : β)
+: (∀∀ x, P x) i ↔ (∀ x, P x i) :=
+by refl
+
 lemma p_not_p_exists {t} (p : t → pred' β) :
 (- ∃∃ x, p x) = (∀∀ x, -p x) :=
-sorry
+begin
+  apply funext, intro x,
+  simp [not_exists_iff_forall_not],
+end
 
 lemma p_or_comm (p q : pred' β) : p || q = q || p :=
 begin apply funext, intro x, simp end
@@ -203,11 +216,6 @@ begin
   simp [eq_true],
   apply h
 end
-
-@[simp]
-lemma p_exists_to_fun {t : Type u'} (P : t → pred' β) (i : β)
-: (∃∃ x, P x) i ↔ (∃ x, P x i) :=
-by refl
 
 lemma p_and_over_p_exists_right {t} (p : t → pred' β) (q : pred' β)
 : (∃∃ x, p x) && q = (∃∃ x, p x && q) :=
@@ -276,9 +284,21 @@ begin
   apply h''
 end
 
+lemma p_exists_imp_eq_p_forall_imp
+  (p : α → pred' β) (q : pred' β)
+: ((∃∃ x, p x) ⟶ q) = (∀∀ x, p x ⟶ q) :=
+begin
+  apply funext, intro i,
+  simp [exists_imp_iff_forall_imp],
+end
+
 lemma p_exists_entails_eq_p_forall_entails
   (p : α → pred' β) (q : pred' β)
-: ((∃∃ x, p x) ⟹ q) = (∀ x, p x ⟹ q) :=
-sorry
+: ((∃∃ x, p x) ⟹ q) ↔ (∀ x, p x ⟹ q) :=
+begin
+  unfold p_entails ew,
+  rw forall_swap,
+  simp [p_exists_imp_eq_p_forall_imp],
+end
 
 end predicate
