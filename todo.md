@@ -16,15 +16,15 @@
 	  * ~~schedules~~
 	  * ~~simulation~~
 	  * use `unless` `except`
-	  * splitting / merging
+	  * ~~splitting / merging~~
 	  * data refinement
 	  * reusing liveness properties
 	* shared variable decomposition
+	* multiple coarse schedules
 	* spontaneous events
 	* state hiding
 	* pseudo code
 	* state variables
-	* multiple coarse schedules
 
 # cleanup #
 

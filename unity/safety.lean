@@ -22,9 +22,28 @@ def state := has_safety.σ
 def step {α} [has_safety α] : α → state α → state α → Prop :=
 has_safety.step
 
-
 def unless {α} [has_safety α] (s : α) (p q : pred' (state α)) : Prop
 := ∀ σ σ', step s σ σ' → p σ ∧ ¬ q σ → p σ' ∨ q σ'
+
+def unless' {α} [has_safety α] (s : α) (p q : pred' (state α)) (e : act (state α)) : Prop
+:= ∀ σ σ', step s σ σ' → ¬ e σ σ' → p σ ∧ ¬ q σ → p σ' ∨ q σ'
+
+lemma unless_eq_unless_except {α} [has_safety α] (s : α) (p q : pred' (state α))
+: unless s p q = unless' s p q (λ _, False) :=
+begin
+  unfold unless unless',
+  apply forall_congr_eq, intro σ,
+  apply forall_congr_eq, intro σ',
+  apply forall_congr_eq, intro P,
+  generalize (p σ ∧ ¬q σ → p σ' ∨ q σ') r,
+  simp,
+  intro,
+  rw [-iff_eq_eq],
+  split
+  ; intro hr ; intros
+  ; apply hr,
+  trivial,
+end
 
 def saf_ex {α} [has_safety α] (s : α) : cpred (state α) :=
  ([] ⟦ step s ⟧)
@@ -112,10 +131,9 @@ begin
   apply λ _, id
 end
 
-lemma unless_antirefl (p : pred' (state α)) : unless s p (~p) :=
+lemma unless_antirefl (p : pred' (state α)) : unless s p (-p) :=
 begin
   intros σ σ' X h,
-  simp,
   apply classical.em,
 end
 
@@ -187,15 +205,15 @@ begin
 end
 
 
-lemma unless_sem_exists' {τ : stream σ} {t} {p : t → pred' σ} {q : pred' σ}
+lemma unless_sem_exists' {τ : stream σ} {t} {p : t → pred' σ} {q : pred' σ} {evt : act σ}
     (sem : saf_ex s τ)
-    (H : ∀ x, unless s (p x) q)
-: ( []<>(∃∃ x, •p x) ⟶ (∃∃ x, <>[]•p x) || []<>•q ) τ :=
+    (H : ∀ x, unless' s (p x) q evt)
+: ( []<>(∃∃ x, •p x) ⟶ (∃∃ x, <>[]•p x) || []<>(•q || ⟦ evt ⟧) ) τ :=
 begin
   intro H₀,
   rw [p_or_comm,-p_not_p_imp],
   intro H₁,
-  rw [not_henceforth,not_eventually] at H₁,
+  simp [p_not_p_exists,not_henceforth,not_eventually] at H₁,
   unfold eventually at H₁,
   rw eventually_exists at H₀,
   cases H₁ with i H₁,
@@ -221,12 +239,30 @@ begin
     simp [drop_drop] at H₂,
     note H₃ := H₁ (j+k+1),
     simp [drop_drop] at H₃,
-    note IH := H x σ _ (sem _) ⟨ih_1,H₂⟩,
+    simp [not_or_iff_not_and_not] at H₂,
+    note IH := H x σ _ (sem _) H₂.right ⟨ih_1,H₂.left⟩,
     cases IH with IH IH,
     { apply IH },
     { unfold drop at H₃ IH,
       simp at H₃ IH,
-      cases H₃ IH }, },
+      simp [not_or_iff_not_and_not] at H₃,
+      cases H₃.left IH }, },
+end
+
+lemma unless_sem_exists {τ : stream σ} {t} {p : t → pred' σ} {q : pred' σ}
+    (sem : saf_ex s τ)
+    (H : ∀ x, unless s (p x) q)
+: ( []<>(∃∃ x, •p x) ⟶ (∃∃ x, <>[]•p x) || []<>•q ) τ :=
+begin
+  assert H₀ : ( []<>(∃∃ x, •p x) ⟶ (∃∃ x, <>[]•p x) || []<>(•q || ⟦ λ _, False ⟧) ) τ,
+  { apply unless_sem_exists' _ sem,
+    simp [unless_eq_unless_except] at H,
+    apply H, },
+  assert H₁ : action (λ _, False) = (False : cpred σ),
+  { apply funext, intro σ,
+    refl, },
+  rw [H₁,p_or_False] at H₀,
+  apply H₀,
 end
 
 end properties

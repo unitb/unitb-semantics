@@ -19,7 +19,7 @@ structure evt_ref (lbl : Type) (mc : @prog α) (ea : @event α) (ecs : lbl → @
   (witness_fis : ⦃ ∃∃ e, witness e ⦄)
   (sim : ∀ ec, ⟦ (ecs ec).step_of ⟧ ⟹ ⟦ ea.step_of ⟧)
   (delay : ∀ ec, witness ec && ea.coarse_sch && ea.fine_sch ↦ witness ec && (ecs ec).coarse_sch in mc)
-  (stable : ∀ ec, unless mc (witness ec && (ecs ec).coarse_sch) (~ea.coarse_sch))
+  (stable : ∀ ec, unless mc (witness ec && (ecs ec).coarse_sch) (-ea.coarse_sch))
   (resched : ∀ ec, ea.coarse_sch && ea.fine_sch && witness ec ↦ (ecs ec).fine_sch in mc)
 
 structure refined (ma mc : @prog α) : Type :=
@@ -86,8 +86,8 @@ end
 
 lemma conc_coarse : ∃ e', (<>[](• W e' && • CC e'.val) ) τ :=
 begin
-  assert H : ((∃∃ e', <>[](• W ma mc R e e' && • CC mc e'.val)) || []<>~•AC ma e) τ,
-  { apply unless_sem_exists' mc M₁.safety (R.events e).stable,
+  assert H : ((∃∃ e', <>[](• W ma mc R e e' && • CC mc e'.val)) || []<>-•AC ma e) τ,
+  { apply unless_sem_exists mc M₁.safety (R.events e).stable,
     note H' := leads_to.gen_disj' (R.events e).delay,
     apply inf_often_of_leads_to (system_sem.leads_to_sem H' _ M₁),
     simp,

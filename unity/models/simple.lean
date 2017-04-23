@@ -86,7 +86,7 @@ include T₀
 variable τ : stream α
 
 lemma transient.semantics (H : τ = ex s) :
-([]<>~•p) τ :=
+([]<>-•p) τ :=
 begin
   intros i,
   cases classical.em ((•p) (stream.drop i τ)) with hp hnp,

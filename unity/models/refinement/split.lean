@@ -18,7 +18,7 @@ structure evt_ref (lbl : Type) (mc : @prog α) (ea : @event α) (ecs : lbl → @
   (witness : lbl → α → Prop)
   (witness_fis : ⦃ ∃∃ e, witness e ⦄)
   (delay : ∀ ec, witness ec && ea.coarse_sch && ea.fine_sch ↦ witness ec && (ecs ec).coarse_sch in mc)
-  (stable : ∀ ec, unless mc (witness ec && (ecs ec).coarse_sch) (~ea.coarse_sch))
+  (stable : ∀ ec, unless_except mc (witness ec && (ecs ec).coarse_sch) (-ea.coarse_sch) { e | ∃ l, ecs l = e })
   (resched : ∀ ec, ea.coarse_sch && ea.fine_sch && witness ec ↦ (ecs ec).fine_sch in mc)
 
 structure refined (ma mc : @prog α) : Type :=
@@ -67,7 +67,7 @@ def W (e' : imp_lbl) := (R.events e).witness e'
 def CC (e' : option mc.lbl) := mc.coarse_sch_of e'
 def CF (e' : option mc.lbl) := mc.fine_sch_of e'
 
-parameter abs_coarse : (<>[]•AC) τ
+parameter abs_coarse : (<>[](•AC && -⟦ ma.step_of e ⟧)) τ
 
 parameter abs_fine : ([]<>•AF) τ
 
@@ -80,14 +80,30 @@ lemma abs_coarse_and_fine
 : ([]<>(•AC && •AF)) τ :=
 begin
   apply coincidence,
-  apply abs_coarse,
-  apply abs_fine,
+  { apply ex_map _ _ abs_coarse,
+    apply hence_map,
+    apply λ _, and.left },
+  { apply abs_fine },
 end
 
 lemma conc_coarse : ∃ e', (<>[](• W e' && • CC e'.val) ) τ :=
 begin
-  assert H : ((∃∃ e', <>[](• W ma mc R e e' && • CC mc e'.val)) || []<>~•AC ma e) τ,
-  { apply unless_sem_exists' mc M₁.safety (R.events e).stable,
+  assert H : ((∃∃ e', <>[](• W ma mc R e e' && • CC mc e'.val))
+                   || []<>((-•AC ma e) || ∃∃ e' : imp_lbl ma mc R e, ⟦ mc.step_of e'.val ⟧)) τ,
+  { rw exists_action,
+    apply p_or_p_imp_p_or_right _ (unless_sem_exists' mc M₁.safety (R.events e).stable _),
+    { apply hence_map,
+      apply ex_map,
+      apply p_or_p_imp_p_or_right' _,
+      apply action_entails_action,
+      intros σ σ',
+      simp [mem_set_of,and_exists], rw [exists_swap],
+      apply exists_imp_exists,
+      intros ec H,
+      cases H with e' H,
+      cases H with H₀ H₁,
+      unfold prog.step_of,
+      rw H₁, apply H₀, },
     note H' := leads_to.gen_disj' (R.events e).delay,
     apply inf_often_of_leads_to (system_sem.leads_to_sem H' _ M₁),
     simp,
@@ -98,12 +114,17 @@ begin
     apply abs_coarse_and_fine ma mc _ M₁ _ abs_coarse abs_fine, },
   simp at H,
   cases H with H H,
+  { apply H },
   { exfalso,
     revert abs_coarse,
     change ¬ _,
-    rw [p_not_eq_not,not_eventually,not_henceforth],
-    apply H },
-  { apply H }
+    rw [p_not_eq_not,not_eventually,not_henceforth,p_not_p_and,p_not_p_not_iff_self],
+    apply hence_map _ _ H,
+    apply ex_map,
+    apply p_or_p_imp_p_or_right',
+    rw p_exists_entails_eq_p_forall_entails,
+    intro ec, cases ec with ec Hec,
+    subst e, apply R.evt_sim },
 end
 
 lemma conc_fine : ∀ e',
@@ -132,7 +153,12 @@ begin
     apply R.sim,
     apply M₁.safety },
   { intros e COARSE₀ FINE₀,
-    cases conc_coarse ma mc R τ M₁ _ COARSE₀ FINE₀ with e' C_COARSE',
+    apply assume_neg _, intro ACT,
+    assert COARSE₁ :  (<>[](•AC ma e && -⟦prog.step_of ma e⟧)) τ,
+    { rw [p_not_eq_not,not_henceforth,not_eventually] at ACT,
+      apply stable_and_of_stable_of_stable COARSE₀ ACT },
+    clear COARSE₀ ACT,
+    cases conc_coarse ma mc R τ M₁ _ COARSE₁ FINE₀ with e' C_COARSE',
     assert C_COARSE : (<>[]•CC mc e'.val) τ,
     { apply ex_map _ _ C_COARSE',
       apply hence_map,
@@ -141,7 +167,7 @@ begin
     { apply ex_map _ _ C_COARSE',
       apply hence_map,
       intro, apply and.left },
-    note C_FINE := conc_fine ma mc R τ M₁ e COARSE₀ FINE₀ e' WIT,
+    note C_FINE := conc_fine ma mc R τ M₁ e COARSE₁ FINE₀ e' WIT,
     apply hence_map _ _ (M₁.liveness _ C_COARSE C_FINE),
     apply ex_map,
     note H := R.evt_sim e'.val,

@@ -47,7 +47,7 @@ variables {α : Type}
 structure evt_ref (mc : @prog α) (ea ec : @event α) : Prop :=
   (sim : ⟦ ec.step_of ⟧ ⟹ ⟦ ea.step_of ⟧)
   (delay : ea.coarse_sch && ea.fine_sch ↦ ec.coarse_sch in mc)
-  (stable : unless mc ec.coarse_sch (~ea.coarse_sch))
+  (stable : unless mc ec.coarse_sch (-ea.coarse_sch))
   (resched : ea.coarse_sch && ea.fine_sch ↦ ec.fine_sch in mc)
 
 open temporal
@@ -57,7 +57,7 @@ structure refined (ma mc : @prog α) : Prop :=
   (sim_init : mc^.first ⟹ ma^.first)
   (sim' : ∀ e, ⟦ mc.step_of e ⟧ ⟹ action (ma.step_of (e.cast bij) ))
   (delay : ∀ e, ma^.coarse_sch_of e && ma^.fine_sch_of e ↦ mc^.coarse_sch_of (e.cast' bij) in mc)
-  (stable : ∀ e, unless mc (mc^.coarse_sch_of e) (~ma^.coarse_sch_of (e.cast bij)))
+  (stable : ∀ e, unless mc (mc^.coarse_sch_of e) (-ma^.coarse_sch_of (e.cast bij)))
   (resched : ∀ e, ma^.coarse_sch_of e && ma^.fine_sch_of e ↦ mc^.fine_sch_of (e.cast' bij) in mc)
 
 lemma refined.sim {m₀ m₁ : @prog α} (R : refined m₀ m₁)
@@ -134,7 +134,7 @@ begin
       note UNLESS := unless_sem_str _ M₁.safety (R.stable e') COARSE₂,
       cases UNLESS with UNLESS H,
       { apply UNLESS },
-      { assert H' : (~<>[]•prog.coarse_sch_of ma e) τ,
+      { assert H' : (-<>[]•prog.coarse_sch_of ma e) τ,
         { rw [not_eventually,not_henceforth,not_init],
           simp [option_cast_cast'] at H,
           apply H },

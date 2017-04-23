@@ -37,7 +37,7 @@ def init {α} [system α] (s : α) (p : pred' (state α)) : Prop
 
 inductive leads_to {α} [system α] (s : α) : pred' (state α) → pred' (state α) → Prop
   | basis : ∀ {p q},
-          transient s (p && ~ q) →
+          transient s (p && - q) →
           unless s p q →
           leads_to p q
   | trans : ∀ {p} q {r}, leads_to p q → leads_to q r → leads_to p r
@@ -71,10 +71,10 @@ end
 
 theorem leads_to.impl {α} [system α] (s : α) {p q : pred' (state α)}
    (h : ∀ i, p i → q i)
-   : leads_to s p q :=
+   : p ↦ q in s :=
 begin
   apply leads_to.basis,
-  { assert h' : (p && ~q) = λ _, false,
+  { assert h' : (p && -q) = λ _, false,
     { apply funext,
       intro x, unfold p_and p_not,
       apply eq_false_of_not_eq_true,
@@ -90,8 +90,8 @@ open predicate
 
 theorem leads_to.weaken_lhs {α} [system α] {s : α} (q : pred' (state α)) {p r : pred' (state α)}
     (H : ∀ i, p i → q i)
-    (P₀ : leads_to s q r)
-    : leads_to s p r :=
+    (P₀ : q  ↦ r in s)
+    : p ↦ r in s :=
 begin
   apply leads_to.trans,
   apply leads_to.impl s H,
@@ -100,8 +100,8 @@ end
 
 theorem leads_to.strengthen_rhs {α} [system α] {s : α} (q : pred' (state α)) {p r : pred' (state α)}
     (H : ∀ i, q i → r i)
-    (P₀ : leads_to s p q)
-    : leads_to s p r :=
+    (P₀ : p  ↦ q in s)
+    : p ↦ r in s :=
 begin
   apply leads_to.trans,
   apply P₀,
@@ -109,18 +109,17 @@ begin
 end
 
 lemma leads_to.disj_rng {α} [system α] {s : α} {t : Type} {p : t → pred' (state α)} {q} {r : t → Prop}
-         (h : ∀ i, r i → leads_to s (p i) q)
-         : leads_to s (λ s, ∃ i, r i ∧ p i s) q :=
+         (h : ∀ i, r i → p i ↦ q in s)
+         : (∃∃ i, (λ _, r i) && p i) ↦ q in s :=
 begin
-  assert h' : (λ s, ∃ (i : t), r i ∧ p i s) =
-              (λ s, ∃ (i : { x : t // r x }), p i s),
+  assert h' : (∃∃ (i : t), (λ _, r i) && p i) =
+              (∃∃ (i : { x : t // r x }), p i),
   { apply funext, intro x,
     rw -iff_eq_eq, split,
     { intro h, cases h with j h,
-      existsi subtype.mk j h^.left, apply h^.right },
+      exact ⟨⟨j, h^.left⟩, h^.right⟩ },
     { intro h₀, cases h₀ with j h₀, cases j with j h₁ h₂,
-      existsi j,
-      split, apply h₁, apply h₀ } },
+      exact ⟨j,h₁,h₀⟩, } },
   rw h',
   apply leads_to.disj,
   intro i,
@@ -129,9 +128,9 @@ begin
 end
 
 theorem leads_to.disj' {α} [system α] {s : α} {p q r : pred' (state α)}
-    (Pp : leads_to s p r)
-    (Pq : leads_to s q r)
-    : leads_to s (p || q) r :=
+    (Pp : p ↦ r in s)
+    (Pq : q ↦ r in s)
+    : p || q ↦ r in s :=
 begin
   apply leads_to.weaken_lhs (λ i, (∃ x : bool, (if x then p else q) i)),
   { intro i,
@@ -150,9 +149,9 @@ begin
 end
 
 theorem leads_to.gen_disj {α} [system α] {s : α} {p q r₀ r₁ : pred' (state α)}
-    (Pp : leads_to s p r₀)
-    (Pq : leads_to s q r₁)
-    : leads_to s (p || q) (r₀ || r₁) :=
+    (Pp : p ↦ r₀ in s)
+    (Pq : q ↦ r₁ in s)
+    : p || q ↦ r₀ || r₁ in s :=
 begin
   apply leads_to.disj',
   { apply leads_to.strengthen_rhs _ _ Pp,
@@ -176,9 +175,9 @@ end
 
 
 theorem leads_to.cancellation {α} [system α] {s : α} (q : pred' (state α)) {p r b : pred' (state α)}
-    (P₀ : leads_to s p (q || b))
-    (P₁ : leads_to s q r)
-    : leads_to s p ( r || b ) :=
+    (P₀ : p ↦ q || b in s)
+    (P₁ : q ↦ r in s)
+    : p ↦ r || b in s :=
 begin
   apply leads_to.trans _ P₀,
   apply leads_to.gen_disj P₁,
@@ -190,13 +189,13 @@ def rel α [system α] : Type := system.state α → system.state α → Prop
 
 theorem leads_to.induction {α} [system α] {s : α} {lt' : rel α} [wf : well_founded lt']
     {p q : pred' (state α)}
-    (P : ∀ v, leads_to s (p && eq v) (p && flip lt' v || q))
-  : leads_to s p q :=
+    (P : ∀ v, p && eq v  ↦ p && flip lt' v || q in s)
+  : p ↦ q in s :=
 begin
   pose lt := flip lt',
-  assert P' : leads_to s (λ v', ∃ v, p v' ∧ eq v v') q,
+  assert P' : (∃∃ v, p && eq v)  ↦ q in s,
   { apply leads_to.disj, intro i,
-    pose PP := λ i, leads_to s (λ (v' : system.state α), p v' ∧ i = v') q,
+    pose PP := λ i, p && eq i  ↦  q in s,
     change PP i,
     apply @well_founded.induction _ lt' wf PP,
     intros j IH,
@@ -217,19 +216,19 @@ begin
     rw h', clear h',
     apply leads_to.disj_rng,
     apply IH, },
-  { assert h : (λ (v' : state α), ∃ (v : state α), p v' ∧ v = v') = p,
+  { assert h : (∃∃ (v : state α), p && eq v) = p,
     { apply funext,
       intro x, rw -iff_eq_eq, split,
       { intro h, cases h with x h, cases h with h, apply h },
-      { intro h, existsi x, split, assumption, refl } },
+      { intro h, exact ⟨x,h,rfl⟩ } },
     rw h at P',
     apply P' }
 end
 
 theorem leads_to.PSP {α} [system α] {s : α} {p q r b : pred' (state α)}
-    (P : leads_to s p q)
+    (P : p ↦ q in s)
     (S : unless s r b)
-    : leads_to s (p && r) ( (q && r) || b ) :=
+    : p && r  ↦  (q && r) || b in s :=
 begin
   induction P with p₀ q₀ t₀ u₀ p₁ q₁ r₁ PP₀ PP₁,
   { apply leads_to.basis,
@@ -270,7 +269,7 @@ lemma True_leads_to_True {α} [system α] (s : α)
 : True ↦ True in s :=
 begin
   apply leads_to.basis,
-  { assert H : (True && ~True) = (False : pred' (state α)),
+  { assert H : (True && -True) = (False : pred' (state α)),
     { apply funext, intro x, simp },
     rw H,
     apply system.transient_false },
@@ -285,7 +284,7 @@ class system_sem (α : Type u) extends system α :=
   (inhabited : ∀s, ∃τ, ex s τ)
   (transient_sem : ∀ {s : α} {p : pred' _} (H : transient s p) (τ : stream _),
          ex s τ →
-         ([]<>~•p) τ)
+         ([]<>-•p) τ)
 
 namespace system_sem
 
@@ -294,7 +293,8 @@ variable [system_sem α]
 
 open temporal
 
-lemma leads_to_sem {s : α} {p q : pred' (state α)} (P : leads_to s p q)
+lemma leads_to_sem {s : α} {p q : pred' (state α)}
+    (P : p ↦ q in s)
     (τ : stream _)
     (sem : ex s τ)
 : (p ~> q) τ :=

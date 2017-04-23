@@ -64,7 +64,7 @@ open temporal
 lemma prog.falsify.negate
    {s : prog} {act : option s.lbl} {p : pred' α}
    (F : prog.falsify s act p)
-:  •p && ⟦ s^.step_of act ⟧ ⟹ <>~•p :=
+:  •p && ⟦ s^.step_of act ⟧ ⟹ <>-•p :=
 @nondet.prog.falsify.negate _ s.nondet act p F
 
 def prog.transient (s : prog) : pred' α → Prop :=

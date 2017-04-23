@@ -127,14 +127,14 @@ structure prog.ex (s : prog) (τ : stream α) : Prop :=
 structure prog.falsify (s : prog) (act : option s.lbl) (p : pred' α) : Prop :=
   (enable : p ⟹ s^.coarse_sch_of act)
   (schedule : prog.ex s ⟹ (<>[]•p ⟶ []<>• s^.fine_sch_of act) )
-  (negate' : ⦃ •p ⟶ ⟦ s^.step_of act ⟧ ⟶ ⊙~•p ⦄)
+  (negate' : ⦃ •p ⟶ ⟦ s^.step_of act ⟧ ⟶ ⊙-•p ⦄)
 
 open temporal
 
 lemma prog.falsify.negate
    {s : prog} {act : option s.lbl} {p : pred}
 :  prog.falsify s act p
-→  •p && ⟦ s^.step_of act ⟧ ⟹ <>~•p :=
+→  •p && ⟦ s^.step_of act ⟧ ⟹ <>-•p :=
 begin
   intros h₀ τ h₁,
   note h₂ := h₀.negate' _ h₁^.left h₁^.right,
@@ -216,7 +216,7 @@ include T₀
 variables (τ : stream α)
 
 lemma transient.semantics (h : ex s τ)
-: ([]<>~•p) τ :=
+: ([]<>-•p) τ :=
 begin
   cases (temporal.em' (•p) τ) with h_p ev_np,
   { unfold prog.transient at T₀,
@@ -247,6 +247,64 @@ instance : unity.system_sem prog :=
   , transient_sem := @transient.semantics }
 
 open unity
+
+def unless_except (s : prog) (p q : pred' α) (evts : set event) : Prop :=
+unless' s p q (λ σ σ', ∃ e, e ∈ evts ∧ event.step_of e σ σ')
+
+theorem unless_except_rule {s : prog} {p q : pred' α} (exp : set event)
+  (ACT : ∀ (e : s.lbl) σ Hc Hf σ',
+        ¬ s.event' e ∈ exp
+      → (s.event' e).step σ Hc Hf σ'
+      → p σ → ¬ q σ → p σ' ∨ q σ')
+: unless_except s p q exp :=
+begin
+  intros σ σ' STEP EXP H,
+  cases H with Hp Hq,
+  unfold step has_safety.step is_step at STEP,
+  cases STEP with e STEP,
+  unfold prog.step_of event.step_of at STEP,
+  cases STEP with Hc STEP,
+  cases STEP with Hf STEP,
+  cases e with e,
+  { unfold prog.event skip event.step at STEP,
+    subst σ',
+    left, apply Hp },
+  { apply ACT e _ Hc Hf _ _ STEP Hp Hq,
+    intro Hin,
+    apply EXP,
+    clear ACT EXP,
+    unfold prog.step_of event.step_of prog.event,
+    existsi s.event' e, split, apply Hin,
+    existsi Hc, existsi Hf,
+    apply STEP }
+end
+
+theorem unless_rule {s : prog} {p q : pred' α}
+  (ACT : ∀ (e : s.lbl) σ Hc Hf σ', (s.event' e).step σ Hc Hf σ' → p σ → ¬ q σ → p σ' ∨ q σ')
+: unless s p q :=
+begin
+  rw unless_eq_unless_except,
+  assert H : unless_except s p q ∅,
+  { apply unless_except_rule,
+    intros,
+    apply ACT
+    ; try { assumption }, },
+  unfold unless_except at H,
+  assert Heq : (λ (σ σ' : α), ∃ (e : event), e ∈ (∅ : set event) ∧ e.step_of σ σ')
+             = (λ (_x : α), False),
+  { apply funext, intro,
+    apply funext, intro,
+    simp,
+    apply eq_false_of_not_eq_true,
+    apply eq_true_intro,
+    intro H,
+    cases H with e H,
+    cases H with H₀ H₁,
+    apply H₁, },
+  apply iff.elim_left _ H,
+  rw iff_eq_eq,
+  apply congr_arg _ Heq,
+end
 
 theorem transient_rule {s : prog} {p : pred' α} (ev : option s.lbl)
    (EN : p ⟹ s.coarse_sch_of ev)

@@ -39,7 +39,7 @@ def prog.transient (s : prog lbl α) (p : pred α) : Prop
 
 def prog.falsify_action (s : prog lbl α) (p : pred α) (ev : option lbl)
   (h : s.falsify ev p)
-: •p ⟹ ( ⟦ prog.action_of s ev ⟧ ⟶ ⟦ λ _, ~ p ⟧ ) :=
+: •p ⟹ ( ⟦ prog.action_of s ev ⟧ ⟶ ⟦ λ _, - p ⟧ ) :=
 begin
   unfold prog.transient at h,
   intros τ H₀ H₁,
@@ -53,10 +53,10 @@ end
 lemma prog.falsify.negate
    {s : prog lbl α} {act : option lbl} {p : pred' α}
 :  prog.falsify s act p
-→  •p && ⟦ s^.action_of act ⟧ ⟹ <>~•p :=
+→  •p && ⟦ s^.action_of act ⟧ ⟹ <>-•p :=
 begin
   intros FALSE τ H,
-  assert GOAL : ⟦ λ _, ~ p ⟧ τ,
+  assert GOAL : ⟦ λ _, - p ⟧ τ,
   { cases H with H₀ H₁,
     apply prog.falsify_action s p act FALSE
     ; assumption },
@@ -197,7 +197,7 @@ include T₀
 variables (τ : stream α)
 
 lemma transient.semantics (h : ex s τ)
-: ([]<>~•p) τ :=
+: ([]<>-•p) τ :=
 begin
   unfold prog.transient at T₀,
   cases T₀ with ev T₀,

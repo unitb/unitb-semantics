@@ -198,7 +198,7 @@ begin
   apply Hp _ hp,
 end
 
-lemma not_henceforth (p : cpred β) : (~[]p) = (<>~p) :=
+lemma not_henceforth (p : cpred β) : (- []p) = (<>-p) :=
 begin
   apply funext,
   intro x,
@@ -206,7 +206,7 @@ begin
   apply not_forall_iff_exists_not,
 end
 
-lemma not_init (p : pred' β) : (~•p) = •~p := rfl
+lemma not_init (p : pred' β) : (-•p) = •-p := rfl
 
 open nat
 
@@ -231,7 +231,7 @@ begin
   apply induct' _ h
 end
 
-lemma not_eventually {β} (p : cpred β) : (~<>p) = ([]~p) :=
+lemma not_eventually {β} (p : cpred β) : (-<>p) = ([]-p) :=
 begin
   apply funext,
   intro x,
@@ -239,17 +239,19 @@ begin
   apply not_exists_iff_forall_not,
 end
 
-theorem em {β} (p : cpred β) : ⦃ <>[]p || []<>(~ p) ⦄ :=
+theorem em {β} (p : cpred β) : ⦃ <>[]p || []<>(- p) ⦄ :=
 begin
   intro τ,
-  assert h : (<>[]p || ~<>[]p) τ,
+  assert h : (<>[]p || -<>[]p) τ,
   { apply classical.em (<>[]p $ τ) },
   simp [not_eventually,not_henceforth] at h,
   apply h
 end
 
-theorem em' {β} (p : cpred β) (τ) : (<>[]p) τ ∨ ([]<>(~ p)) τ :=
+theorem em' {β} (p : cpred β) (τ) : (<>[]p) τ ∨ ([]<>(- p)) τ :=
 by apply em
+
+-- lemma not_stable (p : pred' β) : (-<>[]•p) = []<>•-p := sorry
 
 lemma inf_often_of_stable {p : cpred β} : (<>[]p) ⟹ ([]<>p) :=
 begin
@@ -327,6 +329,12 @@ begin
   split ; intro h ; trivial,
 end
 
+lemma stable_and_of_stable_of_stable {p q : cpred β} {τ}
+    (Hp : (<>[]p) τ)
+    (Hq : (<>[]q) τ)
+: (<>[](p && q)) τ :=
+sorry
+
 lemma coincidence {p q : cpred β} {τ}
     (Hp : (<>[]p) τ)
     (Hq : ([]<>q) τ)
@@ -348,7 +356,7 @@ lemma next_imp_next {p q : cpred β} (τ) (h : p ⟹ q)
 : (⊙ p ⟶ ⊙ q) τ :=
 h _
 
-lemma entail_contrapos {p q : pred' β} : p ⟹ q → (~q) ⟹ ~p :=
+lemma entail_contrapos {p q : pred' β} : p ⟹ q → (-q) ⟹ -p :=
 begin
   intros h τ hnq hp,
   apply hnq,
@@ -412,4 +420,9 @@ begin
   simp,
   refl
 end
+
+lemma action_entails_action (A B : act β)
+  (h : ∀ σ σ', A σ σ' → B σ σ')
+: ⟦ A ⟧ ⟹ ⟦ B ⟧ :=
+sorry
 end temporal

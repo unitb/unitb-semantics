@@ -55,11 +55,6 @@ def p_not (p : pred' α) : pred' α
 := lifted₁ not p
 
 @[simp]
-lemma p_not_to_fun (p₀ : pred' α) (x : α)
-: p_not p₀ x ↔ ¬ p₀ x := by refl
-
-
-@[simp]
 lemma False_eq_false (τ : β) : False τ = false := rfl
 @[simp]
 lemma True_eq_true (τ : β) : True τ = true := rfl
@@ -79,13 +74,20 @@ infixr ` ⟶ `:60 := p_impl
 infix ` ⟹ `:60 := p_entails
 notation `⦃ `:max act ` ⦄`:0 := ew act
 
-notation `~`:80 x := p_not x
-
+instance : has_neg (pred' α) := has_neg.mk p_not
 
 @[simp]
-lemma p_not_True : (~ True) = (False : pred' α) :=
+lemma p_not_to_fun (p₀ : pred' α) (x : α)
+: (- p₀) x ↔ ¬ p₀ x := by refl
+
+lemma p_not_eq_not (p : pred' β) (τ) : ¬ p τ ↔ (-p) τ :=
+by refl
+
+@[simp]
+lemma p_not_True : (- True) = (False : pred' α) :=
 begin
   apply funext, intro x,
+  rw [-p_not_eq_not],
   simp,
 end
 
@@ -96,6 +98,36 @@ begin
   apply funext, intro x,
   simp,
 end
+
+@[simp]
+lemma p_or_False (p : pred' α)
+: p || False = p :=
+begin
+  apply funext, intro x,
+  simp,
+end
+
+lemma p_or_p_imp_p_or' {p p' q q' : pred' α}
+  (hp : p ⟹ p')
+  (hq : q ⟹ q')
+: (p || q)  ⟹  (p' || q')  :=
+by { intro, apply or.imp (hp _) (hq _) }
+
+lemma p_or_p_imp_p_or {p p' q q' : pred' α} {τ}
+  (hp : (p ⟶ p') τ)
+  (hq : (q ⟶ q') τ)
+: ( p || q ) τ → ( p' || q' ) τ :=
+by apply or.imp hp hq
+
+lemma p_or_p_imp_p_or_right' {p q q' : pred' α}
+  (hq : q ⟹ q')
+: ( p || q ) ⟹ ( p || q' ) :=
+by { intro, apply or.imp id (hq _) }
+
+lemma p_or_p_imp_p_or_right {p q q' : pred' α} {τ}
+  (hq : (q ⟶ q') τ)
+: ( p || q ) τ → ( p || q' ) τ :=
+by apply or.imp id hq
 
 lemma p_imp_p_imp_p_imp {p p' q q' : pred' α} {τ}
   (hp : (p' ⟶ p) τ)
@@ -113,8 +145,27 @@ lemma p_imp_p_imp_p_imp_right {p q q' : pred' α} {τ}
 : ( p ⟶ q ) τ → ( p ⟶ q' ) τ :=
 p_imp_p_imp_p_imp id hq
 
-lemma p_not_eq_not (p : pred' β) (τ) : ¬ p τ ↔ (~p) τ :=
-by refl
+lemma p_not_p_not_iff_self (p : pred' β) :
+- - p = p :=
+begin
+  apply funext, intro x,
+  simp [not_not_iff_self],
+end
+
+lemma p_not_p_and (p q : pred' β) :
+- (p && q) = -p || -q :=
+begin
+  apply funext, intro x,
+  simp [not_and_iff_not_or_not],
+end
+
+-- lemma p_not_p_forall {t} (p : t → pred' β) :
+-- (- ∀∀ x, p x) = (∃∃ x, -p x) :=
+-- sorry
+
+lemma p_not_p_exists {t} (p : t → pred' β) :
+(- ∃∃ x, p x) = (∀∀ x, -p x) :=
+sorry
 
 lemma p_or_comm (p q : pred' β) : p || q = q || p :=
 begin apply funext, intro x, simp end
@@ -172,7 +223,7 @@ begin
 end
 
 lemma shunting (p q r : pred' β)
-: p ⟶ q || r = (p && ~ q) ⟶ r :=
+: p ⟶ q || r = (p && - q) ⟶ r :=
 begin
   apply funext, intro i,
   simp, rw -iff_eq_eq,
@@ -187,9 +238,9 @@ begin
 end
 
 lemma p_not_p_imp (p q : pred' β)
-: (~p) ⟶ q = p || q :=
+: (-p) ⟶ q = p || q :=
 begin
-  rw [-True_p_and (~p),-shunting,True_p_imp],
+  rw [-True_p_and (-p),-shunting,True_p_imp],
 end
 
 lemma p_or_entails_p_or_right (p q x : pred' β)
@@ -224,5 +275,10 @@ begin
   apply h a,
   apply h''
 end
+
+lemma p_exists_entails_eq_p_forall_entails
+  (p : α → pred' β) (q : pred' β)
+: ((∃∃ x, p x) ⟹ q) = (∀ x, p x ⟹ q) :=
+sorry
 
 end predicate
