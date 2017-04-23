@@ -17,6 +17,7 @@ variables {α β : Type}
 structure evt_ref (lbl : Type) (mc : @prog α) (ea : @event α) (ecs : lbl → @event α) : Type :=
   (witness : lbl → α → Prop)
   (witness_fis : ⦃ ∃∃ e, witness e ⦄)
+  (sim : ∀ ec, ⟦ (ecs ec).step_of ⟧ ⟹ ⟦ ea.step_of ⟧)
   (delay : ∀ ec, witness ec && ea.coarse_sch && ea.fine_sch ↦ witness ec && (ecs ec).coarse_sch in mc)
   (stable : ∀ ec, unless mc (witness ec && (ecs ec).coarse_sch) (~ea.coarse_sch))
   (resched : ∀ ec, ea.coarse_sch && ea.fine_sch && witness ec ↦ (ecs ec).fine_sch in mc)
@@ -143,9 +144,7 @@ begin
     note C_FINE := conc_fine ma mc R τ M₁ e COARSE₀ FINE₀ e' WIT,
     apply hence_map _ _ (M₁.liveness _ C_COARSE C_FINE),
     apply ex_map,
-    note H := R.evt_sim e'.val,
-    rw [subtype.property e'] at H,
-    apply H, },
+    apply (R.events e).sim e', },
 end
 
 end soundness
