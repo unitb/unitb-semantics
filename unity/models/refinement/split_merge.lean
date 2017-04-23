@@ -23,9 +23,10 @@ structure evt_ref (lbl : Type) (mc : @prog α) (ea : @event α) (ecs : lbl → @
 
 structure refined (ma mc : @prog α) : Type :=
   (sim_init : mc^.first ⟹ ma^.first)
-  (abs : option mc.lbl → option ma.lbl)
-  (evt_sim : ∀ ec, ⟦ mc.step_of ec ⟧ ⟹ ⟦ ma.step_of (abs ec) ⟧)
-  (events : ∀ ae, evt_ref { ec // abs ec = ae } mc (ma.event ae) (λ ec, mc.event ec.val) )
+  (ref : option mc.lbl → option ma.lbl → Prop)
+  (ref_wit : ∀ ec, ∃ ea, ref ec ea)
+  (evt_sim : ∀ ec, ⟦ mc.step_of ec ⟧ ⟹ ∃∃ ea : { ea // ref ec ea }, ⟦ ma.step_of ea.val ⟧)
+  (events : ∀ ae, evt_ref { ec // ref ec ae } mc (ma.event ae) (λ ec, mc.event ec.val) )
 
 lemma refined.sim {ma mc : @prog α}
   (R : refined ma mc)
@@ -36,9 +37,8 @@ begin
   simp,
   intros H,
   cases H with ce H,
-  existsi (R.abs ce),
-  unfold prog.event, unfold prog.event at H,
-  apply R.evt_sim _ _ H,
+  apply exists_imp_exists' subtype.val _ (R.evt_sim ce τ H),
+  intro, apply id,
 end
 
 end defs
@@ -59,7 +59,7 @@ parameter M₁ : system_sem.ex mc τ
 section schedules
 
 parameter e : option ma.lbl
-def imp_lbl := { ec : option mc.lbl // R.abs ec = e }
+def imp_lbl := { ec : option mc.lbl // R.ref ec e }
 
 def AC := (prog.event ma e).coarse_sch
 def AF := (prog.event ma e).fine_sch
@@ -72,7 +72,6 @@ parameter abs_coarse : (<>[]•AC) τ
 parameter abs_fine : ([]<>•AF) τ
 
 include M₁
-include W
 include abs_coarse
 include abs_fine
 
