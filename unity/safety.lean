@@ -157,7 +157,7 @@ begin
   cases classical.em ((<> •q) (τ.drop i)) with H' H',
   { right, assumption },
   { left,  simp [p_not_eq_not,not_eventually] at H' ,
-    apply ex_map' _ h,
+    apply eventually_imp_eventually _ h,
     intros j,
     apply induct,
     intros k hp,
@@ -198,7 +198,7 @@ lemma unless_sem_str {τ : stream σ} {p q : pred' σ}
 : ([]<>•p ⟶ <>[]•p || []<>•q) τ :=
 begin
   rw [shunting,-eventually_eventually ([] _),not_eventually,-henceforth_and],
-  apply hence_map', intro j,
+  apply henceforth_imp_henceforth, intro j,
   rw [-shunting],
   note H' := unless_sem' _ j sem H,
   apply H'

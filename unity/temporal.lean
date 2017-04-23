@@ -120,7 +120,7 @@ begin
 end
 
 
-lemma ex_map {p q : cpred β} (f : p ⟹ q) : (<>p) ⟹ (<>q) :=
+lemma eventually_entails_eventually {p q : cpred β} (f : p ⟹ q) : (<>p) ⟹ (<>q) :=
 begin
   intro τ,
   apply exists_imp_exists,
@@ -128,14 +128,15 @@ begin
   apply f,
 end
 
-lemma ex_map' {p q : cpred β} {τ} (f : ([] (p ⟶ q)) τ) : ((<>p) ⟶ (<>q)) τ :=
+lemma eventually_imp_eventually {p q : cpred β} {τ} (f : ([] (p ⟶ q)) τ)
+: ((<>p) ⟶ (<>q)) τ :=
 begin
   apply exists_imp_exists,
   intro i,
   apply f,
 end
 
-lemma hence_map {p q : cpred β} (f : p ⟹ q) : ([]p) ⟹ ([]q) :=
+lemma henceforth_entails_henceforth {p q : cpred β} (f : p ⟹ q) : ([]p) ⟹ ([]q) :=
 begin
   intro τ,
   apply forall_imp_forall,
@@ -143,14 +144,14 @@ begin
   apply f,
 end
 
-lemma hence_map' {p q : cpred β} {τ} (f : ([] (p ⟶ q)) τ) : (([]p) ⟶ ([]q)) τ :=
+lemma henceforth_imp_henceforth {p q : cpred β} {τ} (f : ([] (p ⟶ q)) τ) : (([]p) ⟶ ([]q)) τ :=
 begin
   apply forall_imp_forall,
   intro i,
   apply f,
 end
 
-lemma init_map {p q : pred' β} (f : p ⟹ q) : (•p) ⟹ (•q) :=
+lemma init_entails_init {p q : pred' β} (f : p ⟹ q) : (•p) ⟹ (•q) :=
 begin
   intro τ,
   apply f,
@@ -171,7 +172,7 @@ lemma eventually_of_leads_to' {p q : pred' β} {τ} (i : ℕ)
 begin
   intro hp,
   rw -eventually_eventually,
-  apply ex_map' _ hp,
+  apply eventually_imp_eventually _ hp,
   apply @henceforth_drop _ _ τ i h,
 end
 

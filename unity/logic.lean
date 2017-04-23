@@ -309,7 +309,7 @@ begin
     cases saf' with saf' saf',
     { note T' := transient_sem T τ sem,
       note T'' := (coincidence saf' (henceforth_drop i T')),
-      apply ex_map _ _ (henceforth_str _ T''),
+      apply eventually_entails_eventually _ _ (henceforth_str _ T''),
       intros τ',
       simp,
       intro,

@@ -204,8 +204,8 @@ begin
   cases temporal.em' (• p) τ with hp hnp,
   { note occ := coincidence hp (h.liveness ev),
     rw -eventually_eventually,
-    apply hence_map _ _ occ,
-    apply ex_map,
+    apply henceforth_entails_henceforth _ _ occ,
+    apply eventually_entails_eventually,
     apply T₀.negate },
   { apply hnp }
 end
