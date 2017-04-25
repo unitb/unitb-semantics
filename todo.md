@@ -1,6 +1,6 @@
 
 
-## Todo ##
+Todo
 
     * tactic for monotonicity in predicate calculus
     * ~~reduce soundness of leads-to properties to assumptions about transient~~
@@ -15,10 +15,18 @@
 	* refinement
 	  * ~~schedules~~
 	  * ~~simulation~~
-	  * use `unless` `except`
+	  * ~~use `unless` `except`~~
 	  * ~~splitting / merging~~
 	  * data refinement
+		  * based on observation function
+		  * based on ghost state
+		  * if we prove `p ↦ q in ma`, define what `p ↦ q in mc`, if
+            mc is a data refinement
 	  * reusing liveness properties
+    * examples
+	  * advisors
+	  * train station
+	  * lock free algorithm
 	* shared variable decomposition
 	* multiple coarse schedules
 	* spontaneous events
@@ -28,4 +36,4 @@
 
 # cleanup #
 
-    * unity.temporal has hence_map, ex_map, init_map. rename them
+    * ~~unity.temporal has hence_map, ex_map, init_map. rename them~~

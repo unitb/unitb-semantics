@@ -2,41 +2,9 @@
 import unity.models.nondet
 import unity.refinement
 
+import util.cast
+
 universe variable u
-
-def option.cast : ∀ {α β : Type u}, option α → (α = β) → option β
-  | α ._ x rfl := x
-
-def option.cast' : ∀ {α β : Type u}, option α → (β = α) → option β
-  | α ._ x rfl := x
-
-lemma cast_some {α β} (x : α) (P : α = β) : (some x).cast P = some (cast P x) :=
-begin
-  cases P, refl
-end
-
-lemma cast_some' {α β} (x : β) (P : α = β) : (some x).cast' P = some (cast P.symm x) :=
-begin
-  cases P, refl
-end
-
-lemma cast_none : ∀ {α β} (P : α = β), none.cast P = none
- | α ._ rfl := rfl
-
-lemma cast_none' : ∀ {α β} (P : α = β), none.cast' P = none
- | α ._ rfl := rfl
-
-lemma cast_cast : ∀ {α β} (P₀ : α = β) (P₁ : β = α) (x : β), cast P₀ (cast P₁ x) = x
- | α ._ rfl rfl x := rfl
-
-lemma option_cast_cast : ∀ {α β : Type u} (P₀ : α = β) (P₁ : β = α) (x : option β), option.cast(option.cast x P₁) P₀ = x
- | α ._ rfl rfl (some x) := rfl
- | α ._ rfl rfl none := rfl
-
-lemma option_cast_cast' : ∀ {α β : Type u} (P₀ P₁ : α = β) (x : option β),
-  option.cast (option.cast' x P₁) P₀ = x
- | α ._ rfl rfl (some x) := rfl
- | α ._ rfl rfl none := rfl
 
 namespace nondet
 open predicate

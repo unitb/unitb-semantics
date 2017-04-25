@@ -113,6 +113,27 @@ begin
   simp [exists_option],
 end
 
+lemma is_step_inst' (s : prog) (ev : option s.lbl)
+: ⟦ s.step_of ev ⟧ ⟹ ⟦ is_step s ⟧ :=
+begin
+  rw is_step_exists_event',
+  intros τ, simp,
+  apply exists.intro ev,
+end
+
+def pair  (σ σ' : α) : stream α
+  | 0 := σ
+  | (nat.succ i) := σ'
+
+lemma is_step_inst (s : prog) (ev : option s.lbl) (σ σ' : α)
+  (h : s.step_of ev σ σ')
+: is_step s σ σ' :=
+begin
+  change ⟦ is_step s ⟧ (pair σ σ'),
+  apply is_step_inst' _ ev,
+  apply h
+end
+
 instance : unity.has_safety prog :=
   { σ := α
   , step := is_step }
