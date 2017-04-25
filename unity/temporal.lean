@@ -442,4 +442,12 @@ begin
   apply h
 end
 
+lemma action_drop (A : act α) (τ : stream α) (i : ℕ)
+: ⟦ A ⟧ (τ.drop i) ↔ A (τ i) (τ $ succ i) :=
+by { unfold stream.drop action, simp }
+
+lemma init_drop (p : pred' α) (τ : stream α) (i : ℕ)
+: (• p) (τ.drop i) ↔ p (τ i)  :=
+by { unfold stream.drop action, simp }
+
 end temporal
