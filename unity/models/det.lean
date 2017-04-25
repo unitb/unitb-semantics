@@ -1,6 +1,9 @@
 
 import data.stream
+
+import unity.scheduling
 import unity.logic
+
 import util.data.bijection
 import util.data.finite
 import util.data.countable
@@ -110,84 +113,6 @@ def run (s : prog lbl α) (τ : stream (option lbl)) : stream α
   | 0 := prog.first s
   | (succ n) := prog.take_step s (τ n) (run n)
 
-@[simp]
-lemma run_succ (s : prog lbl α) (τ : stream (option lbl)) (i : ℕ)
-: run s τ (succ i) = prog.take_step s (τ i) (run s τ i)
-:= rfl
-
-class sched (lbl : Type) :=
-  (sched : ∀ α (s : prog lbl α), ∃ τ, ex s τ)
-
-def inf_sched [infinite lbl] : stream (option lbl) :=
-stream.map (infinite.to_nat (option lbl))^.g inf_interleave
-
-def fin_sched [finite lbl] : stream (option lbl) :=
-stream.map (pos_finite.to_nat (option lbl))^.g (fin_interleave _)
-
-lemma saf_ex_run_fin_sched [finite lbl] (s : prog lbl α)
-: saf_ex s (run s fin_sched) :=
-begin
-  unfold saf_ex,
-  intros i,
-  unfold action step has_safety.step system.step is_step,
-  existsi (@fin_sched _ _inst_1 i),
-  unfold stream.drop,
-  simp [add_one_eq_succ],
-  apply rfl,
-end
-
-lemma ex_fin_sched [finite lbl] (s : prog lbl α) : ex s (run s fin_sched) :=
-  { init := rfl
-  , safety := saf_ex_run_fin_sched _
-  , liveness :=
-    begin
-      intros e i,
-      cases inf_repeat_fin_inter ((pos_finite.to_nat $ option lbl)^.f e) i with j h,
-      unfold eventually,
-      existsi j, unfold fin_sched,
-      simp [stream.drop_drop],
-      unfold action prog.action_of stream.drop,
-      simp [add_one_eq_succ],
-      apply congr,
-      { rw [stream.map_app,h,bijection.f_inv] },
-      refl
-    end }
-
-lemma saf_ex_run_inf_sched [infinite lbl] (s : prog lbl α)
-: saf_ex s (run s inf_sched) :=
-begin
-  unfold saf_ex,
-  intros i,
-  unfold action step has_safety.step system.step is_step,
-  existsi (@inf_sched _ _inst_1 i),
-  unfold stream.drop,
-  simp [add_one_eq_succ],
-  apply rfl,
-end
-
-lemma ex_inf_sched [infinite lbl] (s : prog lbl α) : ex s (run s inf_sched) :=
-  { init := rfl
-  , safety := saf_ex_run_inf_sched _
-  , liveness :=
-    begin
-      intros e i,
-      cases inf_repeat_inf_inter ((infinite.to_nat $ option lbl)^.f e) i with j h,
-      unfold eventually,
-      existsi j, unfold fin_sched,
-      simp [stream.drop_drop],
-      unfold action prog.action_of stream.drop,
-      simp [add_one_eq_succ],
-      apply congr,
-      { apply congr_arg,
-        unfold inf_sched, rw [stream.map_app,h,bijection.f_inv] },
-      refl
-    end }
-
-instance fin_sched_i {lbl} [finite lbl] : sched lbl :=
-  { sched := λ _ s, ⟨run s fin_sched, ex_fin_sched s⟩ }
-
-instance inf_sched_i {lbl} [infinite lbl] : sched lbl :=
-  { sched := λ _ s, ⟨run s inf_sched, ex_inf_sched s⟩ }
 
 section soundness
 
@@ -212,11 +137,37 @@ end
 
 end soundness
 
+open scheduling
+
+lemma prog.witness [sched lbl] (s : prog lbl α) : ∃ (τ : stream (state (prog lbl α))), ex s τ :=
+begin
+  apply exists_imp_exists' (run s) _ (sched.sched' (option lbl)),
+  intros τ h,
+  apply ex.mk,
+  { refl },
+  { unfold saf_ex,
+    intro i,
+    simp [action_drop],
+    unfold run,
+    cases (τ i) with e
+    ; unfold prog.take_step step has_safety.step system.step is_step,
+    { existsi @none lbl, apply rfl },
+    { existsi (some e), apply rfl } },
+  { apply forall_imp_forall _ h,
+    intros e Heq i,
+    cases (Heq i) with j Heq,
+    rw [stream.drop_drop,init_drop] at Heq,
+    unfold eventually, existsi j,
+    rw [stream.drop_drop,action_drop,Heq],
+    unfold prog.action_of,
+    refl },
+end
+
 instance {α} [sched lbl] : system_sem (prog lbl α) :=
   { (_ : system (prog lbl α)) with
     ex := λ p τ, ex p τ
   , safety := @ex.safety _ _
-  , inhabited := sched.sched _
+  , inhabited := prog.witness
   , transient_sem := @transient.semantics _ _ }
 
 end det
