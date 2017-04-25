@@ -13,12 +13,11 @@ structure fair {lbl : Type} (req : stream (set lbl)) (τ : stream lbl) : Prop :=
   (fair : ∀ l, ([]<>•mem l) req → ([]<>•eq l) τ)
 
 class inductive sched (lbl : Type)
-  | fin : pos_finite lbl → sched
+  | fin : finite lbl → sched
   | inf : infinite lbl → sched
 
-instance nonempty_of_sched {lbl : Type} [sched lbl] : nonempty lbl := sorry
-
-lemma sched.sched {lbl : Type} : ∀ req : stream (set lbl), ∃ τ : stream lbl, fair req τ :=
+lemma sched.sched {lbl : Type} [sched lbl] [nonempty lbl]
+: ∀ req : stream (set lbl), ∃ τ : stream lbl, fair req τ :=
 sorry
 
 instance {lbl} [i : nonempty lbl] : nonempty (stream lbl) :=
@@ -28,10 +27,10 @@ begin
   intro i, apply l,
 end
 
-noncomputable def fair_sched_of {lbl : Type} [sched lbl] (req : stream (set lbl)) : stream lbl :=
+noncomputable def fair_sched_of {lbl : Type} [nonempty lbl] [sched lbl] (req : stream (set lbl)) : stream lbl :=
 epsilon (fair req)
 
-lemma fair_sched_of_spec {lbl : Type} [sched lbl] (req : stream (set lbl))
+lemma fair_sched_of_spec {lbl : Type} [nonempty lbl] [sched lbl] (req : stream (set lbl))
 : fair req (fair_sched_of req) :=
 begin
   unfold fair_sched_of,
@@ -39,7 +38,7 @@ begin
   apply sched.sched req
 end
 
-lemma fair_sched_of_mem  {lbl : Type} [sched lbl] (req : stream (set lbl))
+lemma fair_sched_of_mem  {lbl : Type} [nonempty lbl] [sched lbl] (req : stream (set lbl))
   (i : ℕ)
   (Hnemp : req i ≠ ∅)
 : fair_sched_of req i ∈ req i :=
@@ -49,14 +48,14 @@ begin
   { apply H' }
 end
 
-lemma fair_sched_of_is_fair  {lbl : Type} [sched lbl] (req : stream (set lbl)) (l : lbl)
+lemma fair_sched_of_is_fair  {lbl : Type} [nonempty lbl] [sched lbl] (req : stream (set lbl)) (l : lbl)
 : ([]<>•mem l) req → ([]<>•eq l) (fair_sched_of req) :=
 (fair_sched_of_spec req).fair l
 
-noncomputable def fair_sched (lbl : Type) [sched lbl] : stream lbl :=
+noncomputable def fair_sched (lbl : Type) [nonempty lbl] [sched lbl] : stream lbl :=
 fair_sched_of (λ _ _, true)
 
-lemma fair_sched_is_fair  {lbl : Type} [sched lbl] (l : lbl)
+lemma fair_sched_is_fair  {lbl : Type} [nonempty lbl] [sched lbl] (l : lbl)
 : ([]<>•eq l) (fair_sched lbl) :=
 begin
   apply (fair_sched_of_spec _).fair l,
@@ -65,7 +64,7 @@ begin
   simp [init_drop],
 end
 
-lemma sched.sched' (lbl : Type) [sched lbl]
+lemma sched.sched' (lbl : Type) [nonempty lbl] [sched lbl]
 : ∃ τ : stream lbl, ∀ (l : lbl), ([]<>•eq l) τ  := ⟨_,fair_sched_is_fair⟩
 
 instance fin_sched {lbl : Type} [pos_finite lbl] : sched lbl :=
