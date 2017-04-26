@@ -442,6 +442,56 @@ begin
   apply h
 end
 
+open function
+
+lemma henceforth_trading (f : α → β) (p : cpred β)
+: ([] (p ∘ comp f)) = ([] p) ∘ comp f :=
+sorry
+
+lemma eventually_trading (f : α → β) (p : cpred β)
+: (<> (p ∘ comp f)) = (<> p) ∘ comp f :=
+sorry
+
+lemma init_trading (f : α → β) (p : pred' β)
+: • (p ∘ f) = (• p) ∘ comp f :=
+sorry
+
+lemma doo (p : cpred β) (f : α → β) (τ : stream α)
+: (p ∘ comp f) τ ↔ p (f ∘ τ) :=
+by refl
+
+lemma inf_often_trace_init_trading (τ : stream α) (f : α → β) (p : β → Prop)
+: ([]<>•(p ∘ f)) τ = ([]<>•p) (λ i, f $ τ i) :=
+by rw [init_trading,eventually_trading,henceforth_trading]
+
+lemma inf_often_trace_action_trading (τ : stream α) (f : α → α → β) (p : β → Prop)
+: ([]<>⟦ λ σ σ', p (f σ σ') ⟧) τ = ([]<>•p) (λ i, f (τ i) (τ $ succ i)) :=
+sorry
+
+lemma congr_inf_often_trace {x : α} {τ : stream α} (f : α → β)
+  (Hinj : injective f)
+: ([]<>•eq x) τ ↔ ([]<>•(eq (f x))) (f ∘ τ) :=
+begin
+  rw [ -doo ([]<>•eq (f x)) f τ ],
+  simp [ (henceforth_trading f (<>•eq (f x))).symm  ],
+  simp [ (eventually_trading f (•eq (f x))).symm ],
+  simp [ (init_trading f (eq (f x))).symm ],
+  assert H : eq (f x) ∘ f = eq x,
+  { apply funext, intro y,
+    unfold comp,
+    rw -iff_eq_eq,
+    split,
+    { apply Hinj },
+    apply congr_arg },
+  rw H,
+end
+
+lemma events_to_states {lbl : Type u} (s : stream lbl) (act : lbl → α → α → Prop) {τ : stream α}
+  (h : ∀ i, act (s i) (τ i) (τ (succ i)))
+  (e : lbl)
+: ([]<>•eq e) s → ([]<>⟦act e⟧) τ :=
+sorry
+
 lemma action_drop (A : act α) (τ : stream α) (i : ℕ)
 : ⟦ A ⟧ (τ.drop i) ↔ A (τ i) (τ $ succ i) :=
 by { unfold stream.drop action, simp }

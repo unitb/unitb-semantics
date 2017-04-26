@@ -1,6 +1,9 @@
 
+import data.set
+
 import unity.temporal
 import unity.refinement
+import unity.scheduling
 import unity.models.nondet
 
 import util.cast
@@ -59,27 +62,32 @@ parameter [nonempty (unity.state (@prog α))]
 parameter Tc : stream (unity.state (@prog β))
 parameter Hc : system_sem.ex mc Tc
 
--- set_option pp.implicit true
-
 open nat
 
-noncomputable def Tevt  : stream (option (mc.lbl))
-  | i := classical.epsilon $ λ e, mc.step_of e (Tc i) (Tc (succ i))
+def Tevts  : stream (set (option (mc.lbl))) :=
+  λ i, { e | mc.step_of e (Tc i) (Tc (succ i)) }
 
--- ∀ τ, τ ∈ Mc ⟹ ∃ τ', τ' ∈ Ma ∧ obs.τ = obs.τ'
+open scheduling
+
+noncomputable def Tevt [sched mc.lbl] : stream (option (mc.lbl)) :=
+fair_sched_of Tevts
+
 include Hc
+
+parameter [sched mc.lbl]
 
 example (i : ℕ) : mc.step_of (Tevt i) (Tc i) (Tc $ succ i) :=
 begin
-  unfold Tevt,
-  pose P := (λ (e : option (mc.lbl)), prog.step_of mc e (Tc i) (Tc (succ i))),
-  apply @classical.epsilon_spec _ P,
-  revert P, simp,
-  note H := Hc.safety i,
-  unfold step has_safety.step is_step action stream.drop at H,
-  apply exists_imp_exists _ H,
-  intros e, simp [add_one_eq_succ],
-  apply id,
+  unfold Tevt Tevts,
+  assert H : Tevts mc Tc i ≠ ∅,
+  { unfold Tevts,
+    note Hsaf := Hc.safety i,
+    rw [action_drop] at Hsaf,
+    cases Hsaf with e He,
+    apply @set.ne_empty_of_mem _ _ e He },
+  note H' := fair_sched_of_mem (Tevts mc Tc) i H,
+  unfold Tevts at H',
+  apply H',
 end
 
 omit Hc
@@ -104,17 +112,16 @@ include R
 lemma conc_step (i : ℕ)
 : mc.step_of (Tevt i) (Tc i) (Tc (succ i)) :=
 begin
-  pose P := (λ (e : option (mc.lbl)), prog.step_of mc e (Tc i) (Tc (succ i))),
-  unfold Tevt,
-  apply @classical.epsilon_spec _ P,
-  revert P, simp,
-  note H := Hc.safety i,
-  unfold temporal.action stream.drop at H,
-  simp [add_one_eq_succ] at H,
-  unfold step has_safety.step is_step at H,
-  apply exists_imp_exists _ H,
-  intro ec,
-  apply id,
+  unfold Tevt Tevts,
+  assert H : Tevts mc Tc i ≠ ∅,
+  { unfold Tevts,
+    note Hsaf := Hc.safety i,
+    rw [action_drop] at Hsaf,
+    cases Hsaf with e He,
+    apply @set.ne_empty_of_mem _ _ e He },
+  note H' := fair_sched_of_mem (Tevts mc Tc) i H,
+  unfold Tevts at H',
+  apply H',
 end
 
 lemma abs_step (i : ℕ) [nonempty α]
@@ -130,21 +137,6 @@ begin
   apply exists_imp_exists _ H',
   intro, apply (and_comm _ _).mp,
 end
-
--- problem: Ta (succ i) might be chosen to satisfy a different concrete event
--- implementable?
-
--- we must prove []<>[cevt] ⟹ []<>[aevt] instead of [cevt] ⟹ [aevt].
--- If cevt simulates more than one abstract event that don't agree with each other
--- when cevt occurs, we must choose one of aevt.
-
-lemma abs_step' (i : ℕ) [nonempty α]
-  (evt : option mc.lbl)
-  (J : R.glue (Ta i) (Tc i))
-  (ACT : mc.step_of evt (Tc i) (Tc (succ i)))
-:   R.glue (Ta (succ i)) (Tc (succ i))
-  ∧ ma.step_of (evt.cast R.bij) (Ta i) (Ta (succ i)) :=
-sorry
 
 theorem glued [nonempty α] (i : ℕ) : R.glue (Ta i) (Tc i) :=
 begin
@@ -194,15 +186,23 @@ begin
       pose ec := (option.cast' ea (R.bij)),
       rw [R.fine ec,option_cast_cast'],
       apply glued, apply Hc },
-    { apply forall_imp_forall, intro j,
-      apply exists_imp_exists, intro i,
-      unfold action stream.drop,
-      simp [add_one_eq_succ,add_succ],
-      generalize (j+i) k, intros k H,
-      note GLUE := glued f ma g mc R Tc Hc k,
-      note H' := (abs_step' _ _ _ _ R _ Hc _ _ GLUE H).right,
-      rw option_cast_cast' at H',
-      apply H', }, },
+    { intro Hevt,
+      definev Tevt' : stream (option ma.lbl) := λ i, (Tevt mc Tc i).cast R.bij,
+      apply events_to_states Tevt' (prog.step_of ma),
+      intro i,
+      apply (abs_step f ma g mc _ _ Hc i _).right,
+      { apply glued, apply Hc },
+      rw [congr_inf_often_trace (λ e, option.cast' e R.bij)], simp,
+      { unfold function.comp, revert  Tevt', simp [option_cast'_cast],
+        apply fair_sched_of_is_fair,
+        unfold Tevts ,
+        pose F := λ σ σ', {e : option (mc.lbl) | prog.step_of mc e σ σ'},
+        rw -inf_often_trace_action_trading Tc F,
+        apply henceforth_entails_henceforth _ _ Hevt,
+        apply eventually_entails_eventually,
+        apply action_entails_action, intros s s',
+        apply id, },
+      { apply option_cast_injective } }, },
   { apply funext, intro i,
     unfold function.comp,
     symmetry,
