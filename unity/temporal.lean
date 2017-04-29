@@ -461,11 +461,21 @@ lemma doo (p : cpred β) (f : α → β) (τ : stream α)
 by refl
 
 lemma inf_often_trace_init_trading (τ : stream α) (f : α → β) (p : β → Prop)
-: ([]<>•(p ∘ f)) τ = ([]<>•p) (λ i, f $ τ i) :=
+: ([]<>•(p ∘ f)) τ = ([]<>•p) (f ∘ τ) :=
 by rw [init_trading,eventually_trading,henceforth_trading]
 
 lemma inf_often_trace_action_trading (τ : stream α) (f : α → α → β) (p : β → Prop)
 : ([]<>⟦ λ σ σ', p (f σ σ') ⟧) τ = ([]<>•p) (λ i, f (τ i) (τ $ succ i)) :=
+sorry
+
+lemma inf_often_induction
+  {τ : stream α} (f : α → β) (p q : α → Prop)
+  [decidable_pred p]
+  {lt : β → β → Prop}
+  (wf : well_founded lt)
+  (h₀ : ([]<>•p) τ)
+  (h₁ : ([]⟦ λ s s', if p s' then q s' ∨ lt (f s') (f s) else f s = f s' ⟧) τ)
+: ([]<>•q) τ :=
 sorry
 
 lemma congr_inf_often_trace {x : α} {τ : stream α} (f : α → β)
