@@ -311,7 +311,7 @@ begin
       note T'' := (coincidence saf' (henceforth_drop i T')),
       apply eventually_entails_eventually _ _ (henceforth_str _ T''),
       intros τ',
-      simp,
+      simp [init_to_fun],
       intro,
       begin [smt] eblast end },
     { apply saf', } },

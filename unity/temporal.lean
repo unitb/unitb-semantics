@@ -36,7 +36,6 @@ prefix `[]`:95 := henceforth
 notation `⟦`:max act `⟧`:0 := action act
 -- notation `⦃` act `⦄`:95 := ew act
 
-@[simp]
 lemma init_to_fun (p : pred' β) (τ : stream β) : (•p) τ = p (τ 0) := rfl
 
 def tl_leads_to (p q : pred' β) : cpred β :=
@@ -444,19 +443,49 @@ end
 
 open function
 
+lemma action_drop (A : act α) (τ : stream α) (i : ℕ)
+: ⟦ A ⟧ (τ.drop i) ↔ A (τ i) (τ $ succ i) :=
+by { unfold stream.drop action, simp }
+
+lemma init_drop (p : pred' α) (τ : stream α) (i : ℕ)
+: (• p) (τ.drop i) ↔ p (τ i)  :=
+by { unfold stream.drop action, simp [init_to_fun] }
+
 lemma henceforth_trading (f : α → β) (p : cpred β)
 : ([] (p ∘ comp f)) = ([] p) ∘ comp f :=
-sorry
+begin
+  apply funext, intro τ,
+  rw -iff_eq_eq,
+  unfold comp henceforth,
+  apply forall_congr, intro i,
+  rw iff_eq_eq,
+  apply congr_arg,
+  apply funext, intro j,
+  unfold stream.drop, refl
+end
 
 lemma eventually_trading (f : α → β) (p : cpred β)
 : (<> (p ∘ comp f)) = (<> p) ∘ comp f :=
-sorry
+begin
+  apply funext, intro τ,
+  rw -iff_eq_eq,
+  unfold comp eventually,
+  apply exists_congr, intro i,
+  rw iff_eq_eq,
+  apply congr_arg,
+  apply funext, intro j,
+  unfold stream.drop, refl
+end
 
 lemma init_trading (f : α → β) (p : pred' β)
 : • (p ∘ f) = (• p) ∘ comp f :=
-sorry
+begin
+  apply funext, intro x,
+  unfold comp init,
+  refl
+end
 
-lemma doo (p : cpred β) (f : α → β) (τ : stream α)
+lemma comp_comp_app_eq_app_comp (p : cpred β) (f : α → β) (τ : stream α)
 : (p ∘ comp f) τ ↔ p (f ∘ τ) :=
 by refl
 
@@ -466,7 +495,13 @@ by rw [init_trading,eventually_trading,henceforth_trading]
 
 lemma inf_often_trace_action_trading (τ : stream α) (f : α → α → β) (p : β → Prop)
 : ([]<>⟦ λ σ σ', p (f σ σ') ⟧) τ = ([]<>•p) (λ i, f (τ i) (τ $ succ i)) :=
-sorry
+begin
+  unfold henceforth eventually,
+  rw -iff_eq_eq,
+  apply forall_congr, intro i,
+  apply exists_congr, intro j,
+  simp [stream.drop_drop,action_drop,init_drop],
+end
 
 lemma inf_often_induction
   {τ : stream α} (f : α → β) (p q : α → Prop)
@@ -482,7 +517,7 @@ lemma congr_inf_often_trace {x : α} {τ : stream α} (f : α → β)
   (Hinj : injective f)
 : ([]<>•eq x) τ ↔ ([]<>•(eq (f x))) (f ∘ τ) :=
 begin
-  rw [ -doo ([]<>•eq (f x)) f τ ],
+  rw [ -comp_comp_app_eq_app_comp ([]<>•eq (f x)) f τ ],
   simp [ (henceforth_trading f (<>•eq (f x))).symm  ],
   simp [ (eventually_trading f (•eq (f x))).symm ],
   simp [ (init_trading f (eq (f x))).symm ],
@@ -496,18 +531,18 @@ begin
   rw H,
 end
 
-lemma events_to_states {lbl : Type u} (s : stream lbl) (act : lbl → α → α → Prop) {τ : stream α}
+lemma events_to_states {lbl : Type u} (s : stream lbl)
+  (act : lbl → α → α → Prop) {τ : stream α}
   (h : ∀ i, act (s i) (τ i) (τ (succ i)))
   (e : lbl)
 : ([]<>•eq e) s → ([]<>⟦act e⟧) τ :=
-sorry
-
-lemma action_drop (A : act α) (τ : stream α) (i : ℕ)
-: ⟦ A ⟧ (τ.drop i) ↔ A (τ i) (τ $ succ i) :=
-by { unfold stream.drop action, simp }
-
-lemma init_drop (p : pred' α) (τ : stream α) (i : ℕ)
-: (• p) (τ.drop i) ↔ p (τ i)  :=
-by { unfold stream.drop action, simp }
+begin
+  intros h' i,
+  cases h' i with j h',
+  simp [stream.drop_drop, init_drop] at h',
+  unfold eventually, existsi j,
+  simp [stream.drop_drop, action_drop,h'],
+  apply h,
+end
 
 end temporal
