@@ -4,6 +4,7 @@ import unity.temporal
 import util.data.bijection
 import util.data.perm
 import util.data.nat
+import util.data.minimum
 import util.data.fin
 
 namespace scheduling
@@ -59,7 +60,7 @@ noncomputable def fin.state [pos_finite lbl] (req : stream (set lbl))
 def fin.last {n α} (l : bijection (fin $ succ n) α) : α :=
 l.f fin.max
 
-lemma fin.state_fst {lbl : Type} [s : finite lbl] [nonempty lbl]
+lemma fin.state_fst {lbl : Type} [s : pos_finite lbl]
   (req : stream (set lbl))
 : req = prod.fst ∘ fin.state req :=
 by refl
