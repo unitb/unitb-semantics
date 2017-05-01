@@ -150,7 +150,7 @@ begin
     simp [action_drop],
     unfold run,
     cases (τ i) with e
-    ; unfold prog.take_step step has_safety.step system.step is_step,
+    ; unfold prog.take_step step has_safety.step is_step,
     { existsi @none lbl, apply rfl },
     { existsi (some e), apply rfl } },
   { apply forall_imp_forall _ h,

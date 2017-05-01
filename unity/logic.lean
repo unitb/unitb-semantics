@@ -27,7 +27,7 @@ class system (α : Type u) extends has_safety α : Type (u+1) :=
          transient s q →
          transient s p )
 
-def system.state := system.σ
+def system.state (α : Type u) [system α] := has_safety.σ α
 
 def transient {α} [system α] (s : α) (p : pred' (state α)) : Prop
 := system.transient s p
