@@ -503,6 +503,70 @@ begin
   simp [stream.drop_drop,action_drop,init_drop],
 end
 
+protected theorem leads_to_disj {α t}
+    {p : t → pred' α}
+    {q : pred' α}
+    {τ : stream α}
+    (P₀ : ∀ i, p i ~> q $ τ)
+    : (∃∃ i, p i) ~> q $ τ :=
+sorry
+
+
+protected theorem leads_to_strengthen_rhs {α} (q : pred' α) {p r : pred' α} {τ : stream α}
+    (H : q ⟹ r)
+    (P₀ : p ~> q $ τ)
+    : p ~> r $ τ :=
+sorry
+
+protected lemma leads_to_cancellation {α} {p q b r : pred' α} {τ : stream α}
+    (P₀ : (p ~> q || b) τ)
+    (P₁ : (q ~> r) τ)
+    : (p ~> r || b) τ :=
+sorry
+
+protected lemma leads_to_disj_rng {α} {t : Type u}
+         {p : t → pred' α} {q} {r : t → Prop} {τ : stream α}
+         (h : ∀ i, r i → (p i ~> q) τ)
+         : (∃∃ i, (λ _, r i) && p i) ~> q $ τ :=
+sorry
+
+protected lemma induction
+  {τ : stream α} (f : α → β) (p q : α → Prop)
+  [decidable_pred p]
+  {lt : β → β → Prop}
+  (wf : well_founded lt)
+  (P : ∀ v, p && eq v ∘ f  ~>  p && flip lt v ∘ f || q $ τ)
+: (p ~> q) τ :=
+begin
+  assert h₂ : ∀ V, ((p && eq V ∘ f) ~> q) τ,
+  { intro V,
+    apply well_founded.induction wf V _,
+    intros x IH,
+    assert Hq : q || q ⟹ q,
+    { intro, simp [or_self], apply id },
+    apply temporal.leads_to_strengthen_rhs _ Hq,
+    apply temporal.leads_to_cancellation (P _),
+    assert h' : (p && flip lt x ∘ f) = (λ s, ∃v, flip lt x v ∧ (p s ∧ (eq v ∘ f) s)),
+    { apply funext,
+      intro x,
+      rw -iff_eq_eq,
+      simp, unfold function.comp,
+      rw [exists_one_point_right (f x),eq_true_intro rfl,and_true],
+      intro, apply and.right ∘ and.right },
+    rw h',
+    apply @temporal.leads_to_disj_rng _ β,
+    apply IH, },
+  note h₃ := temporal.leads_to_disj h₂,
+  assert h₄ : (∃∃ (i : β), (λ (V : β), p && eq V ∘ f) i) = p,
+  { apply funext, intro i,
+    rw -iff_eq_eq, simp,
+    unfold function.comp,
+    rw [exists_one_point_right (f i),eq_true_intro rfl,and_true],
+    intro, apply and.right },
+  rw h₄ at h₃,
+  apply h₃,
+end
+
 lemma inf_often_induction
   {τ : stream α} (f : α → β) (p q : α → Prop)
   [decidable_pred p]
@@ -511,7 +575,12 @@ lemma inf_often_induction
   (h₀ : ([]<>•p) τ)
   (h₁ : ([]⟦ λ s s', if p s' then q s' ∨ lt (f s') (f s) else f s = f s' ⟧) τ)
 : ([]<>•q) τ :=
-sorry
+begin
+  assert P : ∀ v, p && eq v ∘ f  ~>  p && flip lt v ∘ f || q $ τ,
+  { admit },
+  apply inf_often_of_leads_to _ h₀,
+  apply temporal.induction _ _ _ wf P,
+end
 
 lemma congr_inf_often_trace {x : α} {τ : stream α} (f : α → β)
   (Hinj : injective f)
