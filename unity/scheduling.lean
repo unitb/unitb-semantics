@@ -30,13 +30,25 @@ minimum { x | l.f x ∈ req }
 noncomputable def fin.select [pos_finite lbl] (req : set lbl)
   (l : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
 : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl :=
-l ∘ perm.rotate_right (fin.first req l)
+l ∘ rev (perm.rotate_right (fin.first req l))
 
 lemma fin.selected [pos_finite lbl] (req : set lbl)
   (l : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
   (h : req ≠ ∅)
 : (fin.select req l).f fin.max ∈ req :=
-sorry
+begin
+  unfold fin.select,
+  rw [comp_f,rev_f],
+  unfold function.comp,
+  rw perm.rotate_right_g_max,
+  unfold fin.first,
+  apply minimum_mem {x : fin (succ (pos_finite.pred_count lbl)) | l.f x ∈ req},
+  note h' := exists_mem_of_ne_empty _ h,
+  cases h' with x h',
+  apply (@set.ne_empty_of_mem _ _ $ l.g x),
+  rw [mem_set_of,bijection.g_inv],
+  apply h',
+end
 
 lemma fin.progress [pos_finite lbl]
   {x : lbl}
@@ -44,7 +56,26 @@ lemma fin.progress [pos_finite lbl]
   (l : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
   (h : x ∈ req)
 : (fin.select req l).f fin.max = x ∨ ((fin.select req l).g x).succ = l.g x :=
-sorry
+begin
+  unfold fin.select,
+  rw [comp_f,rev_f,comp_g,rev_g],
+  unfold function.comp,
+  assert H : fin.first req l < l.g x ∨ fin.first req l = l.g x,
+  { apply lt_or_eq_of_le,
+    unfold fin.first,
+    apply minimum_le,
+    rw [mem_set_of,bijection.g_inv],
+    apply h },
+  cases H with H H,
+  { right,
+    rw [perm.rotate_right_f_lt_shifted _ _ H,fin.succ_pred],
+    rw [fin.lt_def,fin.zero_def],
+    rw [fin.lt_def] at H,
+    apply lt_of_le_of_lt (zero_le _) H, },
+  { left,
+    rw [perm.rotate_right_g_max,H],
+    apply bijection.g_inv }
+end
 
 def state_t [pos_finite lbl] := (set lbl × bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
 
