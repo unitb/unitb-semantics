@@ -3,9 +3,11 @@ import util.logic
 
 namespace predicate
 
-universe variables u u' u₀ u₁
+universe variables u u' u₀ u₁ u₂
 
-variables {α β : Type u}
+variables {α : Type u₀}
+variables {β : Type u₁}
+variables {γ : Type u₂}
 
 @[reducible]
 def pred' α := α → Prop
@@ -107,6 +109,15 @@ begin
   simp,
 end
 
+
+@[simp]
+lemma False_p_or (p : pred' α)
+: False || p = p :=
+begin
+  apply funext, intro x,
+  simp,
+end
+
 lemma p_or_p_imp_p_or' {p p' q q' : pred' α}
   (hp : p ⟹ p')
   (hq : q ⟹ q')
@@ -128,6 +139,11 @@ lemma p_or_p_imp_p_or_right {p q q' : pred' α} {τ}
   (hq : (q ⟶ q') τ)
 : ( p || q ) τ → ( p || q' ) τ :=
 by apply or.imp id hq
+
+lemma p_or_p_imp_p_or_left {p p' q : pred' α} {τ}
+  (hp : (p ⟶ p') τ)
+: ( p || q ) τ → ( p' || q ) τ :=
+by apply or.imp hp id
 
 lemma p_imp_p_imp_p_imp {p p' q q' : pred' α} {τ}
   (hp : (p' ⟶ p) τ)
@@ -173,12 +189,24 @@ lemma p_forall_to_fun {t : Type u'} (P : t → pred' β) (i : β)
 : (∀∀ x, P x) i ↔ (∀ x, P x i) :=
 by refl
 
+lemma ew_imp_eq_entails (p q : pred' α)
+: p ⟹ q ↔ ⦃ p ⟶ q ⦄ :=
+sorry
+
+lemma ew_p_forall {t} (p : t → pred' β)
+: ⦃ ∀∀ x, p x ⦄ ↔ ∀ x, ⦃ p x ⦄ :=
+sorry
+
 lemma p_not_p_exists {t} (p : t → pred' β) :
 (- ∃∃ x, p x) = (∀∀ x, -p x) :=
 begin
   apply funext, intro x,
   simp [not_exists_iff_forall_not],
 end
+
+lemma p_exists_p_imp {t} (p : t → pred' β) (q : pred' β) :
+(∃∃ x, p x) ⟶ q = (∀∀ x, p x ⟶ q) :=
+sorry
 
 lemma p_or_comm (p q : pred' β) : p || q = q || p :=
 begin apply funext, intro x, simp end
@@ -299,6 +327,43 @@ begin
   unfold p_entails ew,
   rw forall_swap,
   simp [p_exists_imp_eq_p_forall_imp],
+end
+
+lemma p_exists_variable_change
+  (p : α → pred' β) (q : γ → pred' β)
+  (f : α → γ)
+  (g : γ → α)
+  (Hf : ∀ i, p i ⟹ q (f i))
+  (Hg : ∀ j, q j ⟹ p (g j))
+: (∃∃ i, p i) = (∃∃ j, q j) :=
+begin
+  apply funext, intro i, simp,
+  unfold p_entails at Hf Hg,
+  rw [-ew_p_forall] at Hf Hg,
+  rw exists_variable_change _ _ f g,
+  apply Hf,
+  apply Hg,
+end
+
+lemma p_exists_range_subtype {α : Type u}
+  (p : α → Prop) (q : α → pred' β)
+: (∃∃ i, (λ _, p i) && q i) = (∃∃ j : subtype p, q j) :=
+begin
+  apply funext, intro i, simp,
+  rw exists_range_subtype
+end
+
+@[congr]
+lemma p_exists_congr {p q : α → pred' β}
+  (h : ∀ i, p i = q i)
+: p_exists p = p_exists q :=
+sorry
+
+lemma p_or_iff_not_imp (p q : pred' β)
+: p || q = - p ⟶ q :=
+begin
+  apply funext, intro i,
+  simp [or_iff_not_imp],
 end
 
 end predicate
