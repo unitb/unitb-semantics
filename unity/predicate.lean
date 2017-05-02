@@ -189,13 +189,13 @@ lemma p_forall_to_fun {t : Type u'} (P : t → pred' β) (i : β)
 : (∀∀ x, P x) i ↔ (∀ x, P x i) :=
 by refl
 
-lemma ew_imp_eq_entails (p q : pred' α)
-: p ⟹ q ↔ ⦃ p ⟶ q ⦄ :=
-sorry
 
 lemma ew_p_forall {t} (p : t → pred' β)
 : ⦃ ∀∀ x, p x ⦄ ↔ ∀ x, ⦃ p x ⦄ :=
-sorry
+begin
+  unfold ew p_forall,
+  rw forall_swap,
+end
 
 lemma p_not_p_exists {t} (p : t → pred' β) :
 (- ∃∃ x, p x) = (∀∀ x, -p x) :=
@@ -206,7 +206,11 @@ end
 
 lemma p_exists_p_imp {t} (p : t → pred' β) (q : pred' β) :
 (∃∃ x, p x) ⟶ q = (∀∀ x, p x ⟶ q) :=
-sorry
+begin
+  apply funext, intro,
+  simp,
+  rw exists_imp_iff_forall_imp,
+end
 
 lemma p_or_comm (p q : pred' β) : p || q = q || p :=
 begin apply funext, intro x, simp end
@@ -357,7 +361,12 @@ end
 lemma p_exists_congr {p q : α → pred' β}
   (h : ∀ i, p i = q i)
 : p_exists p = p_exists q :=
-sorry
+begin
+  apply funext, intro,
+  simp,
+  rw exists_congr,
+  intro, rw h,
+end
 
 lemma p_or_iff_not_imp (p q : pred' β)
 : p || q = - p ⟶ q :=
