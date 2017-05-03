@@ -30,18 +30,21 @@ def event.nondet (e : event) : nondet.event :=
 
 structure prog : Type 2 :=
   (lbl : Type)
+  (lbl_is_sched : scheduling.sched lbl)
   (first : α)
   (event' : lbl → event)
 
 def prog.nondet (p : prog) : @nondet.prog α :=
-  { first := λ s, s = p.first
-  , lbl := p.lbl
+  { lbl := p.lbl
+  , lbl_is_sched := p.lbl_is_sched
+  , first := λ s, s = p.first
   , first_fis := ⟨_, rfl⟩
   , event' := event.nondet ∘ p.event' }
 
 open temporal
 
-def prog.coarse_sch_of (s : prog) (act : option s.lbl) : α → Prop :=
+def prog.coarse_sch_of (s : prog) (act : option s.lbl)
+: α → Prop :=
 nondet.prog.coarse_sch_of s.nondet act
 
 def prog.fine_sch_of (s : prog) (act : option s.lbl) : α → Prop :=

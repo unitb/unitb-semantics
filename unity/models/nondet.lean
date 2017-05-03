@@ -1,5 +1,6 @@
 
 import unity.logic
+import unity.scheduling
 import unity.temporal
 
 import util.logic
@@ -27,6 +28,7 @@ def event.step_of (e : event) (σ σ' : α) : Prop :=
 
 structure prog : Type 2 :=
   (lbl : Type)
+  (lbl_is_sched : scheduling.sched lbl)
   (first : α → Prop)
   (first_fis : ∃ s, first s)
   (event' : lbl → event)
@@ -259,12 +261,98 @@ end
 
 end soundness
 
+open scheduling nat
+
+noncomputable def run (s : prog)  [∀ (x : option s.lbl) σ, decidable (s.guard x σ)] (τ : stream (option s.lbl))
+: stream α
+  | 0 := classical.some s.first_fis
+  | (succ n) := if h : s.guard (τ n) (run n) then
+                   classical.some ((s.event (τ n)).fis (run n) h.left h.right)
+                else run n
+
+open unity
+
+lemma prog.run_skip  (s : prog) (τ : stream (option s.lbl)) (i : ℕ)
+  [Π (x : option (s.lbl)) (σ : α), decidable (prog.guard s x σ)]
+  (Hguard : ¬ prog.guard s (τ i) (run s τ i))
+: (run s τ (succ i)) = run s τ i :=
+begin
+  unfold run,
+  rw dif_neg Hguard,
+end
+
+lemma prog.run_enabled  (s : prog) (τ : stream (option s.lbl)) (i : ℕ)
+  [Π (x : option (s.lbl)) (σ : α), decidable (prog.guard s x σ)]
+  (Hcoarse : prog.coarse_sch_of s (τ i) (run s τ i))
+  (Hfine : prog.fine_sch_of s (τ i) (run s τ i))
+: (prog.event s (τ i)).step (run s τ i) Hcoarse Hfine (run s τ (succ i)) :=
+begin
+  unfold run,
+  definev Hguard : s.guard (τ i) (run s τ i) := ⟨Hcoarse,Hfine⟩,
+  rw dif_pos Hguard,
+  unfold run._main._proof_3 run._main,
+  note h := classical.some_spec ((s.event (τ i)).fis (run s τ i) (and.left Hguard) (and.right Hguard)),
+  apply h,
+end
+
+lemma prog.witness (s : prog)
+: ∃ (τ : stream α), prog.ex s τ :=
+begin
+  note _inst := s.lbl_is_sched,
+  assert _inst_1 : ∀ (x : option s.lbl) σ, decidable (s.guard x σ), admit,
+
+    -- construct fair trace
+    -- we need to change sched method in sched type class as:
+    --    sched : stream (set lbl) → ...
+    --    sched : (list lbl → set lbl) → ...
+  define evts : stream (set (option s.lbl)), admit,
+
+
+  apply exists_imp_exists' (run s) _ (sched.sched'' (option s.lbl) evts),
+  intros τ h,
+  apply ex.mk,
+  { unfold run,
+    apply classical.some_spec },
+  { unfold saf_ex,
+    intro i,
+    simp [action_drop],
+    unfold step has_safety.step is_step,
+    assertv Hc : (s.event none).coarse_sch (run s τ i) := trivial,
+    assertv Hf : (s.event none).fine_sch (run s τ i) := trivial,
+    destruct (τ i),
+    { intros h,
+      existsi (τ i),
+      rw -h at Hc Hf,
+      unfold  step_of event.step_of,
+      existsi Hc, existsi Hf,
+      apply s.run_enabled, },
+    { intros e h,
+      cases _inst_1 (τ i) (run s τ i) with Hguard Hguard,
+      { existsi none,
+        rw step_of_none s,
+        rw [s.run_skip _ _ Hguard], },
+      { existsi (τ i),
+        unfold  step_of event.step_of,
+        existsi Hguard.left, existsi Hguard.right,
+        apply s.run_enabled, } }, },
+  { apply forall_imp_forall _ h,
+    intros e Heq Hc Hf i,
+    assert inf_evts : ([]<>•mem e) evts, admit,
+    cases (Heq inf_evts i) with j Heq,
+    rw [stream.drop_drop,init_drop] at Heq,
+    unfold eventually, existsi j,
+--    unfold zip' prod.fst at Heq,
+    rw [stream.drop_drop,action_drop],
+    unfold prog.step_of,
+    admit },
+end
+
 -- instance {α} [sched lbl] : system_sem (prog lbl) :=
 instance : unity.system_sem prog :=
   { (_ : unity.system prog) with
     ex := prog.ex
   , safety := @prog.ex.safety _
-  , inhabited := sorry
+  , inhabited := prog.witness
   , transient_sem := @transient.semantics }
 
 open unity

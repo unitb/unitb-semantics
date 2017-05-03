@@ -139,7 +139,8 @@ end soundness
 
 open scheduling
 
-lemma prog.witness [sched lbl] (s : prog lbl α) : ∃ (τ : stream (state (prog lbl α))), ex s τ :=
+lemma prog.witness [sched lbl] (s : prog lbl α)
+: ∃ (τ : stream (state (prog lbl α))), ex s τ :=
 begin
   apply exists_imp_exists' (run s) _ (sched.sched' (option lbl)),
   intros τ h,

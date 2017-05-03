@@ -8,9 +8,9 @@ namespace temporal
 
 open predicate
 
-universe variables u u'
+universe variables u u₀ u₁ u₂
 
-variables {β : Type u} {α : Type u'}
+variables {α : Type u₀} {β : Type u₁} {γ : Type u₂}
 
 @[reducible]
 def cpred (β : Type u) := stream β → Prop

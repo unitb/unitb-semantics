@@ -4,6 +4,7 @@ import unity.temporal
 import util.data.bijection
 import util.data.perm
 import util.data.nat
+import util.data.stream
 import util.data.minimum
 import util.data.fin
 
@@ -143,6 +144,8 @@ begin
   { apply H' }
 end
 
+open stream
+
 lemma fair_sched_of_is_fair  {lbl : Type} [nonempty lbl] [sched lbl] (req : stream (set lbl)) (l : lbl)
 : ([]<>•mem l) req → ([]<>•eq l) (fair_sched_of req) :=
 (fair_sched_of_spec req).fair l
@@ -160,7 +163,36 @@ begin
 end
 
 lemma sched.sched' (lbl : Type) [nonempty lbl] [sched lbl]
-: ∃ τ : stream lbl, ∀ (l : lbl), ([]<>•eq l) τ  := ⟨_,fair_sched_is_fair⟩
+: ∃ τ : stream lbl, ∀ (l : lbl), ([]<>•(eq l)) τ  := ⟨_,fair_sched_is_fair⟩
+
+lemma sched.sched'' (lbl : Type) [nonempty lbl] [sched lbl]
+  (req : stream (set lbl))
+: ∃ τ : stream lbl, ∀ (l : lbl),
+  ([]<>•mem l) req →
+  ([]<>•(λ x : lbl × set lbl, l = x.fst ∧ (l ∈ x.snd ∨ x.snd = ∅))) (zip' τ req)  :=
+begin
+  existsi fair_sched_of req,
+  intros l h,
+  note sched := fair_sched_of_is_fair req l h,
+  assert Heq : (λ (x : lbl × set lbl), l = x.fst ∧ (l ∈ x.snd ∨ x.snd = ∅))
+            = (λ (x : lbl × set lbl), (x.fst ∈ x.snd ∨ x.snd = ∅) ∧ l = x.fst),
+  { apply funext, intro x, cases x with x₀ x₁,
+    unfold prod.fst prod.snd,
+    rw [-iff_eq_eq],
+    assert Hrw : l = x₀ → (l ∈ x₁ ∨ x₁ = ∅ ↔ x₀ ∈ x₁ ∨ x₁ = ∅),
+    { intro h, rw h },
+    simp [and_congr_right Hrw], },
+  rw Heq,
+  apply coincidence,
+  { apply eventually_weaken,
+    intro i, unfold drop zip', simp,
+    rw or_iff_not_imp,
+    intro h,
+    apply fair_sched_of_mem _ _ h, },
+  { change (([]<>•(eq l ∘ prod.fst)) (zip' (fair_sched_of req) req)),
+    rw [inf_often_trace_init_trading,fst_comp_zip'],
+    apply sched },
+end
 
 instance fin_sched {lbl : Type} [pos_finite lbl] : sched lbl :=
 sched.fin (by apply_instance)
