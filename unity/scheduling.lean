@@ -201,7 +201,12 @@ lemma fair_sched_of_is_fair'  {lbl : Type} [nonempty lbl] [sched lbl]
   (r : stream (set lbl))
   (l : lbl)
 : ([]<>•mem l) r → ([]<>•eq l) (fair_sched_of' r) :=
-sorry
+begin
+  unfold fair_sched_of',
+  intro H,
+  rw -req_of_comp_length r (fair_sched_of $ r ∘ list.length) at H,
+  apply fair_sched_of_is_fair (r ∘ list.length) l H,
+end
 
 noncomputable def fair_sched (lbl : Type) [nonempty lbl] [sched lbl] : stream lbl :=
 fair_sched_of (λ _ _, true)
