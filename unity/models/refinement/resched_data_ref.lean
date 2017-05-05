@@ -70,7 +70,7 @@ def Tevts  : stream (set (option (mc.lbl))) :=
 open scheduling
 
 noncomputable def Tevt [sched mc.lbl] : stream (option (mc.lbl)) :=
-fair_sched_of Tevts
+fair_sched_of (Tevts ∘ list.length)
 
 include Hc
 
@@ -85,7 +85,7 @@ begin
     rw [action_drop] at Hsaf,
     cases Hsaf with e He,
     apply @set.ne_empty_of_mem _ _ e He },
-  note H' := fair_sched_of_mem (Tevts mc Tc) i H,
+  note H' := fair_sched_of_mem' (Tevts mc Tc) i H,
   unfold Tevts at H',
   apply H',
 end
@@ -119,7 +119,7 @@ begin
     rw [action_drop] at Hsaf,
     cases Hsaf with e He,
     apply @set.ne_empty_of_mem _ _ e He },
-  note H' := fair_sched_of_mem (Tevts mc Tc) i H,
+  note H' := fair_sched_of_mem' (Tevts mc Tc) i H,
   unfold Tevts at H',
   apply H',
 end
@@ -194,7 +194,7 @@ begin
       { apply glued, apply Hc },
       rw [congr_inf_often_trace (λ e, option.cast' e R.bij)], simp,
       { unfold function.comp, revert  Tevt', simp [option_cast'_cast],
-        apply fair_sched_of_is_fair,
+        apply fair_sched_of_is_fair',
         unfold Tevts ,
         pose F := λ σ σ', {e : option (mc.lbl) | prog.step_of mc e σ σ'},
         rw -inf_often_trace_action_trading Tc F,

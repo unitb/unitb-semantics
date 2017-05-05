@@ -261,23 +261,84 @@ end
 
 end soundness
 
-open scheduling nat
+open scheduling nat list
 
-noncomputable def run (s : prog)  [∀ (x : option s.lbl) σ, decidable (s.guard x σ)] (τ : stream (option s.lbl))
-: stream α
-  | 0 := classical.some s.first_fis
-  | (succ n) := if h : s.guard (τ n) (run n) then
-                   classical.some ((s.event (τ n)).fis (run n) h.left h.right)
-                else run n
+noncomputable def run_one  (p : prog)
+  [∀ (x : option p.lbl) σ, decidable (p.guard x σ)]
+  (e : option p.lbl) (s : α) : α :=
+if h : p.guard e s
+then classical.some ((p.event e).fis s h.left h.right)
+else s
+
+noncomputable def run' (p : prog)
+  [∀ (x : option p.lbl) σ, decidable (p.guard x σ)]
+: list (option p.lbl) → α → α
+  | nil s := s
+  | (cons e es) s := run' es $ run_one p e s
+
+lemma run_cons (p : prog) (xs : list (option p.lbl)) (x : option p.lbl)
+  [∀ (x : option p.lbl) σ, decidable (p.guard x σ)]
+: run' p (x :: xs) = run' p xs ∘ run_one p x :=
+by refl
+
+lemma run_append (p : prog) (xs ys : list (option p.lbl))
+  [∀ (x : option p.lbl) σ, decidable (p.guard x σ)]
+: run' p (xs ++ ys) = run' p ys ∘ run' p xs :=
+begin
+  apply funext,
+  induction xs with x xs IH
+  ; intro σ
+  ; unfold function.comp,
+  { unfold run',
+    simp },
+  { simp,
+    unfold run',
+    rw [IH], }
+end
+
+lemma run_concat_eq_comp (p : prog) (xs : list (option p.lbl)) (x : option p.lbl)
+  [∀ (x : option p.lbl) σ, decidable (p.guard x σ)]
+: run' p (concat xs x) = run_one p x ∘ run' p xs :=
+begin
+  simp [concat_eq_append,run_append],
+  refl,
+end
+
+lemma run_concat (p : prog) (xs : list (option p.lbl)) (x : option p.lbl) (σ : α)
+  [∀ (x : option p.lbl) σ, decidable (p.guard x σ)]
+: run' p (concat xs x) σ = run_one p x (run' p xs σ) :=
+by rw run_concat_eq_comp
+
+noncomputable def prog.first_state (s : prog) := (classical.some s.first_fis)
+
+noncomputable def run (s : prog)  [∀ (x : option s.lbl) σ, decidable (s.guard x σ)]
+  (τ : stream (option s.lbl))
+: stream α :=
+λ i, run' s (stream.approx i τ) s.first_state
+
+noncomputable def enabled (s : prog)
+  [∀ (x : option s.lbl) σ, decidable (s.guard x σ)]
+  (es : list (option s.lbl))
+: set (option s.lbl) :=
+{ l | s.guard l (run' s es s.first_state) }
 
 open unity
+
+lemma prog.run_succ  (s : prog) (τ : stream (option s.lbl)) (i : ℕ)
+  [Π (x : option (s.lbl)) (σ : α), decidable (prog.guard s x σ)]
+: (run s τ (succ i)) = run_one s (τ i) (run s τ i) :=
+begin
+  unfold run,
+  rw [stream.approx_succ_eq_concat,run_concat],
+end
 
 lemma prog.run_skip  (s : prog) (τ : stream (option s.lbl)) (i : ℕ)
   [Π (x : option (s.lbl)) (σ : α), decidable (prog.guard s x σ)]
   (Hguard : ¬ prog.guard s (τ i) (run s τ i))
 : (run s τ (succ i)) = run s τ i :=
 begin
-  unfold run,
+  rw [s.run_succ],
+  unfold run_one,
   rw dif_neg Hguard,
 end
 
@@ -287,10 +348,10 @@ lemma prog.run_enabled  (s : prog) (τ : stream (option s.lbl)) (i : ℕ)
   (Hfine : prog.fine_sch_of s (τ i) (run s τ i))
 : (prog.event s (τ i)).step (run s τ i) Hcoarse Hfine (run s τ (succ i)) :=
 begin
-  unfold run,
   definev Hguard : s.guard (τ i) (run s τ i) := ⟨Hcoarse,Hfine⟩,
-  rw dif_pos Hguard,
-  unfold run._main._proof_3 run._main,
+  rw [s.run_succ],
+  unfold run_one,
+  rw [dif_pos Hguard],
   note h := classical.some_spec ((s.event (τ i)).fis (run s τ i) (and.left Hguard) (and.right Hguard)),
   apply h,
 end
@@ -299,16 +360,12 @@ lemma prog.witness (s : prog)
 : ∃ (τ : stream α), prog.ex s τ :=
 begin
   note _inst := s.lbl_is_sched,
-  assert _inst_1 : ∀ (x : option s.lbl) σ, decidable (s.guard x σ), admit,
+  assert _inst_1 : ∀ (x : option s.lbl) σ, decidable (s.guard x σ),
+  { intros, apply classical.prop_decidable },
 
-    -- construct fair trace
-    -- we need to change sched method in sched type class as:
-    --    sched : stream (set lbl) → ...
-    --    sched : (list lbl → set lbl) → ...
-  define evts : stream (set (option s.lbl)), admit,
+  definev evts : list (option s.lbl) → set (option s.lbl) := enabled s,
 
-
-  apply exists_imp_exists' (run s) _ (sched.sched'' (option s.lbl) evts),
+  apply exists_imp_exists' (run s) _ (sched.sched_str' evts),
   intros τ h,
   apply ex.mk,
   { unfold run,
@@ -337,14 +394,33 @@ begin
         apply s.run_enabled, } }, },
   { apply forall_imp_forall _ h,
     intros e Heq Hc Hf i,
-    assert inf_evts : ([]<>•mem e) evts, admit,
+    assert inf_evts : ([]<>•mem e) (req_of evts τ),
+    { clear Heq h,
+      note Hg := coincidence Hc Hf,
+      revert evts, simp,
+      unfold req_of enabled,
+      change (([]<>•mem e) (λ (i : ℕ), {l : option (s.lbl) | s.guard l (run s τ i)})),
+      change (([]<>•mem e) ((λ (σ : α), {l : option (s.lbl) | s.guard l σ}) ∘ (run s τ))),
+      rw -inf_often_trace_init_trading,
+      apply Hg, },
     cases (Heq inf_evts i) with j Heq,
-    rw [stream.drop_drop,init_drop] at Heq,
+    rw [stream.drop_drop,init_drop,stream.fst_zip',stream.snd_zip'] at Heq,
+    cases Heq with He Hguard,
+    rename Hguard Hguard',
+    assert Hguard : s.guard (τ (j + i)) (run s τ (j + i)),
+    { subst e,
+      rw [or.comm,or_iff_not_imp] at Hguard',
+      apply Hguard',
+      apply @set.ne_empty_of_mem _ _ none,
+      change true ∧ true,
+      simp, },
+    clear Hguard',
     unfold eventually, existsi j,
---    unfold zip' prod.fst at Heq,
+    rw He,
     rw [stream.drop_drop,action_drop],
-    unfold prog.step_of,
-    admit },
+    unfold prog.step_of event.step_of,
+    existsi Hguard.left,existsi Hguard.right,
+    apply s.run_enabled },
 end
 
 -- instance {α} [sched lbl] : system_sem (prog lbl) :=
