@@ -48,12 +48,19 @@ begin
   apply h',
 end
 
+lemma safety
+  (x : lbl)
+  (req : set lbl)
+  (l : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
+: (select req l).f fin.max = x ∨ ((select req l).g x).val ≤ (l.g x).val :=
+sorry
+
 lemma progress
   {x : lbl}
   {req : set lbl}
   (l : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
   (h : x ∈ req)
-: (select req l).f fin.max = x ∨ ((select req l).g x).succ = l.g x :=
+: (select req l).f fin.max = x ∨ succ ((select req l).g x).val = (l.g x).val :=
 begin
   unfold select,
   rw [comp_f,rev_f,comp_g,rev_g],
@@ -66,8 +73,7 @@ begin
     apply h },
   cases H with H H,
   { right,
-    rw [perm.rotate_right_f_lt_shifted _ _ H,fin.succ_pred],
-    rw [fin.lt_def,fin.zero_def],
+    rw [perm.rotate_right_f_lt_shifted _ _ H,fin.pred_def,succ_pred_eq_of_pos],
     rw [fin.lt_def] at H,
     apply lt_of_le_of_lt (zero_le _) H, },
   { left,
@@ -79,10 +85,8 @@ structure state_t :=
   (hist  : list lbl)
   (queue : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
 
-def last {n α} (l : bijection (fin $ succ n) α) : α :=
-l.f fin.max
 
-def state_t.last (s : state_t) : lbl := last s.queue
+def state_t.last (s : state_t) : lbl := s.queue.f fin.max
 
 parameter requests : list lbl → set lbl
 
@@ -90,7 +94,7 @@ def state_t.mk'
        (h : list lbl)
        (q : bijection _ _)
 : state_t :=
-   { hist := h.concat (last q)
+   { hist := h.concat (q.f fin.max)
    , queue := q }
 
 open list
@@ -146,8 +150,7 @@ begin
   { refl },
   { rw [state_succ_queue,state_succ_hist,ilast_concat],
     unfold state_t.last,
-    rw state_succ_queue,
-    refl }
+    rw state_succ_queue }
 end
 
 lemma state_fst
@@ -178,7 +181,7 @@ begin
 end
 
 lemma hist_eq_approx (i : ℕ)
-: (state i).hist = approx (succ i) (last ∘ state_t.queue ∘ state) :=
+: (state i).hist = approx (succ i) (state_t.last ∘ state) :=
 begin
   induction i with i IH ,
   { refl, },
@@ -192,6 +195,59 @@ begin
     refl, }
 end
 
+section variant
+
+parameter l : lbl
+
+def VAR (s : state_t) : ℕ := ((s.queue).g l).val
+
+lemma variant
+: ([]⟦λ (s s' : state_t),
+         l = state_t.last s'
+       ∨ VAR s' < VAR s
+       ∨ ¬(l ∈ requests (front $ state_t.hist s')) ∧ VAR s = VAR s'⟧)
+    state :=
+begin
+  intro i, rw action_drop,
+  unfold function.comp,
+  cases classical.em (l ∈ requests (front ((state requests (succ i)).hist)))
+        with h h,
+  { rw [eq_true_intro h,not_true,false_and,or_false],
+    rw [state_succ_hist,front_concat] at h,
+    apply or.imp _ _ (progress ((state requests i).queue) h),
+    { intro h',
+      unfold state_t.last,
+      rw -h',
+      unfold state_t.last,
+      rw state_succ_queue,
+      refl },
+    { intros h',
+      unfold measure inv_image,
+      unfold VAR,
+      rw [state_succ_queue,-h'],
+      apply nat.le_of_eq,
+      refl, }, },
+  { rw [eq_false_intro h,not_false_iff,true_and],
+    apply or.imp _ _ (safety l
+         (requests (state requests i).hist)
+         (state requests i).queue),
+    { intro, subst l,
+      unfold state_t.last,
+      rw state_succ_queue, refl },
+    { intro h',
+      unfold VAR, unfold VAR,
+      note h'' := lt_or_eq_of_le h',
+      simp, simp at h'',
+      apply or.imp _ _ h'' ; clear h'' h',
+      { intro h',
+        tactic.whnf_target,
+        rw [-h',state_succ_queue], refl },
+      { unfold measure inv_image,
+        rw state_succ_queue,
+        apply id, }, } }
+end
+
+end variant
 lemma sched'
 : ∃ τ : stream lbl, fair (req_of requests τ) τ :=
 begin
@@ -219,21 +275,9 @@ begin
     rw [ state_fst requests,-function.comp.assoc,-function.comp.assoc
        , -inf_often_trace_init_trading] at h,
     rw -inf_often_trace_init_trading,
-    definev VAR : state_t  → fin (succ (pos_finite.pred_count lbl)) := (λs, s.queue.g l),
-    definev inst : decidable_pred (mem l ∘ (requests ∘ front) ∘ state_t.hist : state_t → Prop) :=
-       (λ x, prop_decidable _),
-    apply inf_often_induction VAR _ _ (measure_wf fin.val) h,
-    { clear h,
-      intro i, rw action_drop,
-      unfold function.comp,
-      cases decidable.em (l ∈ requests (front ((state requests (succ i)).hist)))
-            with h h,
-      { rw if_pos h,
-        rw [state_succ_hist,front_concat] at h,
-        apply or.imp _ _ (progress ((state requests i).queue) h),
-        { intro h', admit },
-        { admit }, },
-      { admit } } }
+    definev VAR : state_t  → ℕ := (λs, (s.queue.g l).val),
+    apply inf_often_induction VAR _ _ lt_wf h,
+    apply variant },
 end
 
 end

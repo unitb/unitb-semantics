@@ -681,11 +681,10 @@ end
 
 lemma inf_often_induction
   {τ : stream α} (f : α → β) (p q : α → Prop)
-  [decidable_pred p]
   {lt : β → β → Prop}
   (wf : well_founded lt)
   (h₀ : ([]<>•p) τ)
-  (h₁ : ([]⟦ λ s s', if p s' then q s' ∨ lt (f s') (f s) else f s = f s' ⟧) τ)
+  (h₁ : ([]⟦ λ s s', q s' ∨ lt (f s') (f s) ∨ (¬ p s' ∧ f s = f s') ⟧) τ)
 : ([]<>•q) τ :=
 begin
   pose EQ := λ v, eq v ∘ f,
@@ -698,19 +697,18 @@ begin
     apply action_entails_action _ _ _,
     intros s s' h₂ h₃,
     revert LT EQ, simp,
-    unfold comp,
+    unfold comp flip, simp,
     intros, subst v,
-    cases or_of_ite' h₂ with h₄ h₄,
-    { cases h₄ with h₄ h₄,
-      { left, apply h₄ },
-      { right, right, apply h₄, }, },
-    { right, left, apply h₄, }, },
+    apply or.imp id _ h₂,
+    apply or.imp id _,
+    apply and.right, },
   assert Q' : ∀ v, [](•EQ v ⟶ <>([]•LT v || •q) || []•EQ v) $ τ, admit,
   assert P : ∀ v, p && EQ v  ~>  p && LT v || q $ τ,
   { intro v,
     note Q' := eventually_imp_eventually (Q' v),
     admit },
   apply inf_often_of_leads_to _ h₀,
+  assertv inst : decidable_pred p := λ _, classical.prop_decidable _,
   apply temporal.induction _ _ _ wf P,
 end
 
