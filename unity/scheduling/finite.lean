@@ -5,7 +5,6 @@ import util.data.bijection
 import util.data.minimum
 import util.data.list
 import util.data.perm
--- import data.stream
 
 import unity.scheduling.basic
 
@@ -53,7 +52,17 @@ lemma safety
   (req : set lbl)
   (l : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
 : (select req l).f fin.max = x ∨ ((select req l).g x).val ≤ (l.g x).val :=
-sorry
+begin
+  unfold select,
+  rw [comp_f,comp_g,or_iff_not_imp], unfold function.comp,
+  rw [bijection.inverse,rev_f,rev_g],
+  rw perm.rotate_right_g_max,
+  intro h,
+  cases lt_or_gt_of_ne h with Hlt Hgt,
+  { rw [perm.rotate_right_f_lt_shifted _ _ Hlt,fin.pred_def],
+    apply pred_le },
+  { rw [perm.rotate_right_f_gt_eq_self _ _ Hgt], },
+end
 
 lemma progress
   {x : lbl}
