@@ -13,21 +13,24 @@ namespace scheduling.finite
 
 open nat scheduling stream temporal classical
 
-variable {lbl : Type}
+section
 
-noncomputable def first [pos_finite lbl] (req : set lbl)
+parameter {lbl : Type}
+parameter [pos_finite lbl]
+
+noncomputable def first (req : set lbl)
   (l : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
 : fin $ succ $ pos_finite.pred_count lbl :=
 minimum { x | l.f x ∈ req }
 
-noncomputable def select [pos_finite lbl] (req : set lbl)
+noncomputable def select (req : set lbl)
   (l : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
 : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl :=
 l ∘ rev (perm.rotate_right (first req l))
 
 local infixr ∘ := function.comp
 
-lemma selected [pos_finite lbl] (req : set lbl)
+lemma selected (req : set lbl)
   (l : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
   (h : req ≠ ∅)
 : (select req l).f fin.max ∈ req :=
@@ -45,7 +48,7 @@ begin
   apply h',
 end
 
-lemma progress [pos_finite lbl]
+lemma progress
   {x : lbl}
   {req : set lbl}
   (l : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
@@ -72,17 +75,18 @@ begin
     apply bijection.g_inv }
 end
 
-structure state_t [pos_finite lbl] :=
+structure state_t :=
   (hist  : list lbl)
   (queue : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
 
 def last {n α} (l : bijection (fin $ succ n) α) : α :=
 l.f fin.max
 
-def state_t.last [pos_finite lbl] (s : state_t) : lbl := last s.queue
+def state_t.last (s : state_t) : lbl := last s.queue
 
-def state_t.mk' [pos_finite lbl]
-       (req : list lbl → set lbl)
+parameter requests : list lbl → set lbl
+
+def state_t.mk'
        (h : list lbl)
        (q : bijection _ _)
 : state_t :=
@@ -91,44 +95,42 @@ def state_t.mk' [pos_finite lbl]
 
 open list
 
-noncomputable def state [pos_finite lbl] (req : list lbl → set lbl)
+noncomputable def state
 : stream state_t
-  | 0 := state_t.mk' req nil $ select (req nil) (rev (finite.to_nat _))
+  | 0 := state_t.mk' nil $ select (requests nil) (rev (finite.to_nat _))
   | (succ n) :=
       match state n with
-      | state_t.mk h q := state_t.mk' req h $ select (req h) q
+      | state_t.mk h q := state_t.mk' h $ select (requests h) q
       end
 
-def state_t.req [pos_finite lbl] (s : state_t) (req : list lbl → set lbl) : set lbl :=
-req s.hist
+def state_t.req (s : state_t) : set lbl :=
+requests s.hist
 
-noncomputable def state_t.select [pos_finite lbl] (req : list lbl → set lbl) (s : state_t)
+noncomputable def state_t.select (s : state_t)
 : bijection (fin (succ _)) lbl :=
-select (s.req req) s.queue
+select (s.req requests) s.queue
 
-lemma state_succ_hist {lbl : Type} [s : pos_finite lbl]
-  (req : list lbl → set lbl) (i : ℕ)
-: (state req (succ i)).hist = concat (state req i).hist (state req (succ i)).last :=
+lemma state_succ_hist
+  (i : ℕ)
+: (state (succ i)).hist = concat (state i).hist (state (succ i)).last :=
 begin
   unfold scheduling.finite.state,
-  cases (state req i),
+  cases (state requests i),
   refl,
 end
 
-lemma state_succ_queue {lbl : Type} [s : pos_finite lbl]
-  (req : list lbl → set lbl) (i : ℕ)
-: (state req (succ i)).queue = state_t.select req (state req i) :=
+lemma state_succ_queue
+  (i : ℕ)
+: (state (succ i)).queue = state_t.select (state i) :=
 begin
   unfold scheduling.finite.state,
-  cases (state req i),
+  cases (state requests i),
   refl
 end
 
 lemma not_hist_eq_nil
-  [pos_finite lbl]
-  (req : list lbl → set lbl)
   (i : ℕ)
-: (state req i).hist ≠ [ ] :=
+: (state i).hist ≠ [ ] :=
 begin
   cases i,
   { contradiction },
@@ -137,10 +139,8 @@ begin
 end
 
 lemma select_queue_eq_ilast_hist
-  [pos_finite lbl]
-  (req : list lbl → set lbl)
   (i : ℕ)
-: (state req i).queue.f fin.max = ilast (state req i).hist :=
+: (state i).queue.f fin.max = ilast (state i).hist :=
 begin
   cases i,
   { refl },
@@ -150,12 +150,11 @@ begin
     refl }
 end
 
-lemma state_fst {lbl : Type} [s : pos_finite lbl]
-  (req : list lbl → set lbl)
-: req_of req (state_t.last ∘ state req) = req ∘ front ∘ state_t.hist ∘ state req :=
+lemma state_fst
+: req_of requests (state_t.last ∘ state) = requests ∘ front ∘ state_t.hist ∘ state :=
 begin
   apply funext, intro i,
-  pose r := req,
+  pose r := requests,
   change req_of r _ _ = (r ∘ _) _,
   generalize r r,
   induction i with i IH ; intro r,
@@ -164,9 +163,9 @@ begin
     unfold function.comp flip,
     rw state_succ_hist,
     apply congr_arg, unfold scheduling.finite.state,
-    note H := select_queue_eq_ilast_hist req i,
-    note H' := not_hist_eq_nil req i,
-    cases (state req i),
+    note H := select_queue_eq_ilast_hist requests i,
+    note H' := not_hist_eq_nil requests i,
+    cases (state requests i),
     unfold state._match_1 state_t.mk' state_t.hist,
     unfold state_t.last last state_t.queue,
     rw front_concat,
@@ -178,33 +177,25 @@ begin
     apply H },
 end
 
-lemma hist_eq_approx  [s : pos_finite lbl]
-  (r : list lbl → set lbl)
-  (i : ℕ)
-: (state r i).hist = approx (succ i) (last ∘ state_t.queue ∘ state r) :=
+lemma hist_eq_approx (i : ℕ)
+: (state i).hist = approx (succ i) (last ∘ state_t.queue ∘ state) :=
 begin
-  induction i with i IH ;
-  unfold scheduling.finite.state state_t.hist,
+  induction i with i IH ,
   { refl, },
   { rw [approx_succ_eq_concat,-IH],
-    destruct (state r i),
+    destruct (state requests i),
     intros hist queue Hstate,
     unfold function.comp,
-    rw Hstate,
-    unfold state._match_1 state_t.hist state_t.select state_t.req,
-    unfold state_t.queue  state_t.hist last state_t.mk',
-    apply congr_arg,
-    unfold scheduling.finite.state,
-    rw Hstate,
-    unfold state._match_1 state_t.mk' state_t.queue,
-    refl }
+    unfold scheduling.finite.state state_t.hist,
+    rw [Hstate],
+    unfold state._match_1 state_t.queue  state_t.hist last state_t.mk',
+    refl, }
 end
 
-lemma sched' {lbl : Type} [s : pos_finite lbl]
-  (r : list lbl → set lbl)
-: ∃ τ : stream lbl, fair (req_of r τ) τ :=
+lemma sched'
+: ∃ τ : stream lbl, fair (req_of requests τ) τ :=
 begin
-  definev τ : stream lbl := state_t.last ∘ state r,
+  definev τ : stream lbl := λ i, (state requests i).last,
   existsi τ,
   apply fair.mk,
   { intro i,
@@ -214,35 +205,37 @@ begin
       apply selected _ (rev (pos_finite.to_nat lbl)), },
     { revert τ, simp, intros h',
       unfold function.comp state_t.last scheduling.finite.state last,
-      note HHH := hist_eq_approx r i,
-      cases (state r i),
+      note HHH := hist_eq_approx requests i,
+      cases (state requests i),
       unfold state_t.hist at HHH,
       unfold state._match_1 state_t.queue state_t.mk',
-      assert HH' : req_of r (λ (x : ℕ), ((state r x).queue).f fin.max) (succ i) = r hist,
+      assert HH' : req_of requests (λ (x : ℕ), ((state requests x).queue).f fin.max) (succ i) = requests hist,
       { rw HHH, refl },
       rw [HH'],
       apply selected }, },
   { intros l,
     revert τ, simp,
     intro h,
-    rw [ state_fst r,-function.comp.assoc,-function.comp.assoc
+    rw [ state_fst requests,-function.comp.assoc,-function.comp.assoc
        , -inf_often_trace_init_trading] at h,
     rw -inf_often_trace_init_trading,
-    definev VAR : @state_t lbl _ → fin (succ (pos_finite.pred_count lbl)) := (λs, s.queue.g l),
-    definev inst : decidable_pred (mem l ∘ (r ∘ front) ∘ state_t.hist : @state_t lbl _ → Prop) :=
+    definev VAR : state_t  → fin (succ (pos_finite.pred_count lbl)) := (λs, s.queue.g l),
+    definev inst : decidable_pred (mem l ∘ (requests ∘ front) ∘ state_t.hist : state_t → Prop) :=
        (λ x, prop_decidable _),
     apply inf_often_induction VAR _ _ (measure_wf fin.val) h,
     { clear h,
       intro i, rw action_drop,
       unfold function.comp,
-      cases decidable.em (l ∈ r (front ((state r (succ i)).hist)))
+      cases decidable.em (l ∈ requests (front ((state requests (succ i)).hist)))
             with h h,
       { rw if_pos h,
         rw [state_succ_hist,front_concat] at h,
-        apply or.imp _ _ (progress ((state r i).queue) h),
+        apply or.imp _ _ (progress ((state requests i).queue) h),
         { intro h', admit },
         { admit }, },
       { admit } } }
+end
+
 end
 
 end scheduling.finite
