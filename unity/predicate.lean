@@ -168,12 +168,28 @@ begin
   simp [not_not_iff_self],
 end
 
-lemma p_not_p_and (p q : pred' β) :
-- (p && q) = -p || -q :=
+lemma p_and_over_or_left (p q r : pred' β)
+: p && (q || r) = (p && q) || (p && r) :=
+begin
+  apply funext, intro x, simp [distrib_left_and],
+end
+
+lemma p_not_and_self (p : pred' β)
+: -p && p = False :=
+begin
+  apply funext, intro x, simp,
+end
+
+lemma p_not_p_and (p q : pred' β)
+: - (p && q) = -p || -q :=
 begin
   apply funext, intro x,
   simp [not_and_iff_not_or_not],
 end
+
+lemma p_not_and_self_or (p q : pred' β) :
+- p && (p || q) = -p && q :=
+by rw [p_and_over_or_left,p_not_and_self,False_p_or]
 
 -- lemma p_not_p_forall {t} (p : t → pred' β) :
 -- (- ∀∀ x, p x) = (∃∃ x, -p x) :=
@@ -215,7 +231,13 @@ end
 lemma p_or_comm (p q : pred' β) : p || q = q || p :=
 begin apply funext, intro x, simp end
 
+lemma p_or_assoc (p q r : pred' β) : p || (q || r) = p || q || r :=
+begin apply funext, intro x, simp end
+
 lemma p_and_comm (p q : pred' β) : p && q = q && p :=
+begin apply funext, intro x, simp end
+
+lemma p_and_assoc (p q r : pred' β) : p && (q && r) = p && q && r :=
 begin apply funext, intro x, simp end
 
 lemma p_and_p_imp (p q r : pred' β) : p && q ⟶ r = p ⟶ (q ⟶ r) :=
@@ -229,6 +251,20 @@ begin
   ; try { cases h' }
   ; assumption
 end
+
+lemma p_and_entails_p_and_right (p q x : pred' β)
+  (h : p ⟹ q)
+: x && p ⟹ x && q :=
+sorry
+
+lemma entails_of_eq (p q : pred' β)
+  (h : p = q)
+: p ⟹ q :=
+sorry
+
+lemma p_and_left (p q : pred' β)
+: p && q ⟹ p :=
+sorry
 
 lemma True_p_imp (p : pred' β)
 : True ⟶ p = p :=

@@ -143,6 +143,22 @@ begin
   left, trivial
 end
 
+lemma unless_cancellation {p q r : pred' (state α)}
+  (S₀ : unless s p q)
+  (S₁ : unless s q r)
+: unless s (p || q) r :=
+begin
+  intros σ σ' h,
+  rw and_shunting,
+  intros h₀ hr,
+  rw [p_or_comm,-p_or_not_and,p_and_comm] at h₀,
+  cases h₀ with hq hpnq,
+  { apply or.imp_left (or.intro_right _) (S₁ _ _ h _),
+    exact ⟨hq,hr⟩ },
+  { left,
+    apply S₀ _ _ h hpnq, }
+end
+
 open nat
 
 open temporal
