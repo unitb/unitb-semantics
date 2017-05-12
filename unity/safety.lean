@@ -125,6 +125,63 @@ begin
     exact ⟨P₀,P₁⟩ },
 end
 
+lemma unless_disj_gen {p₀ q₀ p₁ q₁ : pred' σ}
+         (P₀ : unless s p₀ q₀)
+         (P₁ : unless s p₁ q₁)
+         : unless s (p₀ || p₁) ((q₀ && - p₁) || (- p₀ && q₁) || (q₀ && q₁)) :=
+begin
+  intros σ σ' STEP h,
+  cases h with h₀ h₁,
+  rw [p_not_eq_not,p_not_p_or,p_not_p_or] at h₁,
+  repeat { rw p_not_p_and at h₁ },
+  simp [p_not_p_not_iff_self] at h₁,
+  cases h₁ with h₁ h₂, cases h₂ with h₂ h₃,
+  simp at h₀,
+  assert h₄ : p₀ σ ∧ ¬q₀ σ ∨ p₁ σ ∧ ¬q₁ σ,
+  { note h₄ := and.intro h₀ h₁,
+    rw -distrib_right_or at h₄,
+    note h₅ := and.intro h₂ h₃,
+    rw [or_comm,-distrib_right_or] at h₅,
+    rw [distrib_left_or],
+    exact ⟨h₄,h₅⟩, },
+  note STEP₀ := or.imp (P₀ _ _ STEP) (P₁ _ _ STEP) h₄,
+  assert STEP₁ : (p₀ σ' ∨ p₁ σ') ∨ q₀ σ' ∨ q₁ σ',
+  { revert STEP₀,
+    apply iff.mp, simp, },
+  rw [-or_not_and (p₀ σ' ∨ p₁ σ')] at STEP₁,
+  revert STEP₁,
+  apply or.imp_right,
+  rw [not_or_iff_not_and_not,distrib_left_and],
+  simp,
+  intro h, right, revert h,
+  apply or.imp,
+  { apply and.imp_right,
+    apply and.right },
+  { apply and.imp_right,
+    apply and.left },
+end
+
+lemma unless_disj' {p₀ q₀ p₁ q₁ : pred' σ}
+         (P₀ : unless s p₀ q₀)
+         (P₁ : unless s p₁ q₁)
+         : unless s (p₀ || p₁) (q₀ || q₁) :=
+begin
+  note h := unless_disj_gen _ P₀ P₁, revert h,
+  apply unless_weak_rhs,
+  intros i,
+  apply or.rec,
+  apply or.rec,
+  { apply function.comp,
+    apply or.intro_left,
+    apply and.elim_left },
+  { apply function.comp,
+    apply or.intro_right,
+    apply and.elim_right },
+  { apply function.comp,
+    apply or.intro_left,
+    apply and.elim_left },
+end
+
 lemma unless_refl (p : pred' (state α)) : unless s p p :=
 begin
   apply impl_unless,
