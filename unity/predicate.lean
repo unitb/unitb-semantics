@@ -326,6 +326,14 @@ begin
   apply or.imp_left (h _),
 end
 
+lemma p_or_not_and (p q : pred' β)
+: p || (- p && q) = p || q :=
+begin
+  apply funext, intro,
+  simp,
+  rw [-or_not_and (p _) (q _)],
+  simp
+end
 
 lemma p_exists_entails_p_exists {t : Type u'} (p q : t → pred' β)
 : (∀ x, p x ⟹ q x) → (∃∃ x, p x) ⟹ (∃∃ x, q x) :=
