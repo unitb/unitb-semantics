@@ -187,6 +187,13 @@ begin
   simp [not_and_iff_not_or_not],
 end
 
+lemma p_not_p_or (p q : pred' β)
+: - (p || q) = -p && -q :=
+begin
+  apply funext, intro x,
+  simp [not_or_iff_not_and_not],
+end
+
 lemma p_not_and_self_or (p q : pred' β) :
 - p && (p || q) = -p && q :=
 by rw [p_and_over_or_left,p_not_and_self,False_p_or]
