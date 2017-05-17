@@ -216,6 +216,17 @@ begin
     apply S₀ _ _ h hpnq, }
 end
 
+lemma exists_unless {t} {p : t → pred' (state α)} {q : pred' (state α)}
+  (h : ∀ i, unless s (p i) q)
+: unless s (∃∃ i, p i) q :=
+begin
+  intros σ σ' STEP,
+  apply and.rec,
+  intros h₀ h₁, cases h₀ with x h₀,
+  note h₂ := h x _ _ STEP ⟨h₀,h₁⟩,
+  apply or.imp_left _ h₂,
+  apply Exists.intro x,
+end
 open nat
 
 open temporal
