@@ -21,6 +21,13 @@ inductive expr : Type
   | lit {} : ℕ → expr
   | oper : oper → expr → expr → expr
 
+lemma functor.id_map' {f α} [functor f] : functor.map id = (id : f α → f α) :=
+by { apply funext, simp [functor.id_map] }
+
+lemma functor.map_comp' {F} {α β γ} [functor F] (f : α → β) (g : β → γ)
+: functor.map (g ∘ f) = (functor.map g ∘ functor.map f : F α → F γ) :=
+by { apply funext, intro, rw [functor.map_comp] }
+
 def expr.fmap {α β : Type} (f : α → β) : expr α → expr β
   | (expr.var v) := expr.var (f v)
   | (expr.lit x) := expr.lit x
@@ -31,18 +38,18 @@ instance : functor expr :=
 , id_map :=
   begin
     intros,
-    induction x,
+    induction x
+    ; unfold expr.fmap,
     { refl }, { refl },
-    { unfold expr.fmap,
-      rw [ih_1,ih_2] },
+    { rw [ih_1,ih_2] },
   end
 , map_comp :=
   begin
-    intros,
-    induction x,
+    intros, revert β γ g h,
+    induction x ; intros β γ g h
+    ; unfold expr.fmap,
     { refl }, { refl },
-    { unfold expr.fmap,
-      rw [ih_1,ih_2] },
+    { rw [ih_1,ih_2] },
   end }
 
 inductive rel : Type
@@ -56,21 +63,23 @@ inductive connective : Type
   | imp : connective
   | eqv : connective
 
-inductive prop : Type
-  | true {} : prop
-  | false {} : prop
-  | odd : expr var → prop
-  | bin : rel → expr var → expr var → prop
-  | not : prop → prop
-  | cnt : connective → prop → prop → prop
+inductive prop : Type → Type 2
+  | true  : ∀ {v}, prop v
+  | false : ∀ {v}, prop v
+  | odd : ∀ {v}, expr v → prop v
+  | bin : ∀ {v}, rel → expr v → expr v → prop v
+  | not : ∀ {v}, prop v → prop v
+  | cnt : ∀ {v}, connective → prop v → prop v → prop v
+  | all : ∀ {v}, prop (option v) → prop v
 
-def prop.fmap {α β : Type} (f : α → β) : prop α → prop β
-  | prop.true  := prop.true
-  | prop.false := prop.false
-  | (prop.odd e) := prop.odd (f <$> e)
-  | (prop.bin r e₀ e₁) := prop.bin r (f <$> e₀) (f <$> e₁)
-  | (prop.not e) := prop.not $ prop.fmap e
-  | (prop.cnt c p₀ p₁) := prop.cnt c (prop.fmap p₀) (prop.fmap p₁)
+def prop.fmap : ∀ {α : Type} {β : Type}, (α → β) → prop α → prop β
+  | α β f prop.true  := prop.true
+  | α β f prop.false := prop.false
+  | α β f (prop.odd e) := prop.odd (f <$> e)
+  | α β f (prop.bin r e₀ e₁) := prop.bin r (f <$> e₀) (f <$> e₁)
+  | α β f (prop.not e) := prop.not $ prop.fmap f e
+  | α β f (prop.cnt c p₀ p₁) := prop.cnt c (prop.fmap f p₀) (prop.fmap f p₁)
+  | α β f (prop.all e) := prop.all (prop.fmap (functor.map f) e)
 
 instance functor_prop : functor prop :=
 { map := @prop.fmap
@@ -80,23 +89,25 @@ instance functor_prop : functor prop :=
     induction x
     ; try { refl }
     ; unfold prop.fmap
-    ; repeat { rw [functor.id_map] }
-    ; rw ih_1
-    ; rw ih_2
+    ; repeat { rw [functor.id_map] },
+    { rw ih_1 },
+    { rw [ih_1,ih_2] },
+    { rw [functor.id_map',ih_1] }
   end
 , map_comp :=
   begin
-    intros,
-    induction x
+    intros, revert β γ,
+    induction x ; intros β γ g h
     ; try { refl }
     ; unfold prop.fmap,
     { rw [functor.map_comp] },
     { repeat { rw [functor.map_comp g h] }, },
     { rw ih_1, },
     { rw [ih_1,ih_2] },
+    { rw [functor.map_comp',ih_1] },
   end }
 
-structure prog :=
+structure prog : Type 2 :=
   (inv_lbl : Type)
   (inv : inv_lbl → prop var)
   (tr_lbl : Type)
@@ -104,35 +115,35 @@ structure prog :=
   (first : var → expr empty)
   (step : var → expr var)
 
-structure sequent :=
+structure sequent : Type 2 :=
   (lbl : Type)
   (var : Type)
   (asm : lbl → prop var)
   (goal : prop var)
 
-inductive primed
+inductive {u} primed (var : Type u) : Type u
   | primed : var → primed
   | unprimed : var → primed
 
 variable {var}
 
 @[inline]
-def post {f : Type → Type} [functor f] : f var → f (primed var) :=
+def {u u'} post {f : Type u → Type u'} {var : Type u} [functor f] : f var → f (primed var) :=
 functor.map primed.primed
 
 @[inline]
-def pre {f : Type → Type} [functor f] : f var → f (primed var) :=
+def {u u'} pre {f : Type u → Type u'} {var : Type u} [functor f] : f var → f (primed var) :=
 functor.map primed.unprimed
 
 def establish_inv (p : prog var) (l : p.inv_lbl) : sequent :=
   { lbl := var
   , var := var
-  , asm := λ v, prop.bin rel.eq (expr.var v) (from_empty <$> p.first v)
+  , asm := λ v, prop.bin rel.eq (expr.var v) (from_empty <$> (p.first v)) /- from_empty <$> p.first v -/
   , goal := p.inv l }
 
 def maintain_inv_asm (p : prog var) : p.inv_lbl ⊕ var → prop (primed var)
-  | (sum.inr x) := prop.bin rel.eq (post $ expr.var x) (pre $ p.step x)
-  | (sum.inl x) := pre $ p.inv x
+  | (sum.inr x) := prop.bin rel.eq (post (expr.var x)) (pre $ p.step x)
+  | (sum.inl x) := pre (p.inv x)
 
 def maintain_inv (p : prog var) (l : p.inv_lbl) : sequent :=
   { lbl := p.inv_lbl ⊕ var
@@ -189,13 +200,24 @@ def connective.meaning : connective → Prop → Prop → Prop
   | connective.imp p₀ p₁ := p₀ → p₁
   | connective.eqv p₀ p₁ := p₀ ↔ p₁
 
-def valid {var : Type} (s : state_t var) : prop var → Prop
-  | prop.true := true
-  | prop.false := false
-  | (prop.odd e) := odd (eval s e)
-  | (prop.bin op e₀ e₁) := rel.meaning op (eval s e₀) (eval s e₁)
-  | (prop.not e) := ¬ valid e
-  | (prop.cnt c p₀ p₁) := connective.meaning c (valid p₀) (valid p₁)
+def add (x : ℕ) (s : state_t var) : state_t (option var)
+  | none := x
+  | (some v) := s v
+
+lemma add_comp {var'} (x : ℕ)  (s : state_t var) (f : var' → var)
+: add x (s ∘ f) = add x s ∘ fmap f :=
+begin
+  apply funext, intro a, cases a ; refl,
+end
+
+def valid : ∀ {var : Type} (s : state_t var), prop var → Prop
+  | _ s prop.true := true
+  | _ s prop.false := false
+  | _ s (prop.odd e) := odd (eval s e)
+  | _ s (prop.bin op e₀ e₁) := rel.meaning op (eval s e₀) (eval s e₁)
+  | var s (prop.not e) := ¬ valid s e
+  | _ s (prop.cnt c p₀ p₁) := connective.meaning c (valid s p₀) (valid s p₁)
+  | _ s (prop.all e) := ∀ x, valid (add x s) e
 
 def holds (s : sequent) : Prop :=
 ∀ σ : state_t s.var, (∀ l, valid σ (s.asm l)) → valid σ s.goal
