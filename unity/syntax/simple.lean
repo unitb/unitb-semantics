@@ -107,6 +107,8 @@ instance functor_prop : functor prop :=
     { rw [functor.map_comp',ih_1] },
   end }
 
+open nat
+
 structure prog : Type 2 :=
   (inv_lbl : Type)
   (inv : inv_lbl → prop var)
@@ -277,7 +279,8 @@ by { unfold pre, rw [-eval_trade,pair_unprimed] }
 lemma valid_trade {var' : Type} (s : state_t var') (p : prop var) (f : var → var')
 : valid (s ∘ f) p = valid s (f <$> p) :=
 begin
-  induction p
+  revert var',
+  induction p ; intros var' s f
   ; try { refl }
   ; unfold post fmap functor.map prop.fmap valid
   ; repeat { rw [eval_trade _ _ f] },
@@ -285,6 +288,9 @@ begin
   { refl },
   { rw ih_1, refl },
   { rw [ih_1,ih_2], refl },
+  { rw [-iff_eq_eq],
+    apply forall_congr, intro x,
+    rw [add_comp,ih_1], refl, }
 end
 
 lemma valid_pair_post (s s' : state_t var) (p : prop var)
