@@ -22,29 +22,77 @@ inductive expr : Type
   | lit {} : ℕ → expr
   | oper : oper → expr → expr → expr
 
-def expr.fmap {α β : Type} (f : α → β) : expr α → expr β
+namespace expr
+
+def map {α β : Type} (f : α → β) : expr α → expr β
   | (expr.var v) := expr.var (f v)
   | (expr.lit x) := expr.lit x
-  | (expr.oper o e₀ e₁) := expr.oper o (expr.fmap e₀) (expr.fmap e₁)
+  | (expr.oper o e₀ e₁) := expr.oper o (map e₀) (map e₁)
+
+lemma id_map {α} (x : expr α) : map id x = x :=
+begin
+  induction x
+  ; unfold map,
+  { refl }, { refl },
+  { rw [ih_1,ih_2] },
+end
+
+lemma map_comp {α β γ : Type} (g : α → β) (h : β → γ) (x : expr α)
+: expr.map (h ∘ g) x = expr.map h (expr.map g x) :=
+begin
+  revert β γ g h,
+  induction x ; intros β γ g h
+  ; unfold map,
+  { refl }, { refl },
+  { rw [ih_1,ih_2] },
+end
+
+end expr
 
 instance : functor expr :=
-{ map := @expr.fmap
-, id_map :=
-  begin
-    intros,
-    induction x
-    ; unfold expr.fmap,
-    { refl }, { refl },
-    { rw [ih_1,ih_2] },
-  end
-, map_comp :=
-  begin
-    intros, revert β γ g h,
-    induction x ; intros β γ g h
-    ; unfold expr.fmap,
-    { refl }, { refl },
-    { rw [ih_1,ih_2] },
-  end }
+{ map := @expr.map
+, id_map := @expr.id_map
+, map_comp := @expr.map_comp }
+
+namespace expr
+
+def bind {α β : Type} : expr α → (α → expr β) → expr β
+  | (expr.var x) f := f x
+  | (expr.lit v) _ := expr.lit v
+  | (expr.oper o e₀ e₁) f := expr.oper o (bind e₀ f) (bind e₁ f)
+
+local infixl ` >>= ` := bind
+
+lemma pure_bind {α β : Type} (x : α) (f : α → expr β)
+: expr.var x >>= f = f x :=
+by refl
+
+lemma bind_pure_comp_eq_map {α β : Type} (f : α → β) (x : expr α)
+: x >>= expr.var ∘ f = f <$> x :=
+begin
+  induction x with v v op e₀ e₁ ih1 ih2 ; try { refl },
+  { unfold bind,
+    rw [ih1,ih2], refl }
+end
+
+lemma bind_assoc {α β γ : Type} (x : expr α) (f : α → expr β) (g : β → expr γ)
+: x >>= f >>= g = x >>= λ (x : α), f x >>= g :=
+begin
+  induction x with v v op e₀ e₁ ih1 ih2 ; try { refl },
+  { unfold bind,
+    rw [ih1,ih2], },
+end
+
+end expr
+
+instance : monad expr :=
+{ map := @expr.map
+, id_map := @expr.id_map
+, pure := @expr.var
+, bind := @expr.bind
+, pure_bind := @expr.pure_bind
+, bind_pure_comp_eq_map := @expr.bind_pure_comp_eq_map
+, bind_assoc := @expr.bind_assoc }
 
 inductive rel : Type
   | le : rel
