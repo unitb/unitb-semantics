@@ -4,11 +4,18 @@ import unity.logic
 import unity.models.simple
 
 import util.data.functor
+
+universe variables u₀ u₁ u₂
+variables {α : Type u₀} {β β' : Type u₁} {γ : Type u₂}
 variables var : Type
 
 def {u} from_empty {α : Type u} (x : empty) : α :=
 match x with
 end
+
+-- Todo:
+-- * Well-definedness
+-- * variables of different types
 
 namespace ast.simple
 
@@ -149,7 +156,53 @@ instance functor_prop : functor prop :=
     { rw [functor.map_comp',ih_1] },
   end }
 
+variables {var}
+
+def prop.and : prop var → prop var → prop var :=
+prop.cnt connective.and
+
+def prop.implies : prop var → prop var → prop var :=
+prop.cnt connective.imp
+
+variables (var)
+
+inductive proof (n : ℕ)
+  | ref : fin n → prop var → prop var → proof
+  | basis {} : prop var → prop var → proof
+  | trans : prop var → proof → proof → prop var → proof
+
 open nat
+
+def bump {var : Type} {n : ℕ} : proof var n → proof var (succ n)
+  | (proof.ref ⟨i,P⟩ p q) := (proof.ref ⟨succ i,succ_lt_succ P⟩ p q)
+  | (proof.basis p q) := (proof.basis p q)
+  | (proof.trans p P₀ P₁ q) := (proof.trans p (bump P₀) (bump P₁) q)
+
+
+inductive proof_list : ℕ → Type 2
+  | nil {} : proof_list 0
+  | cons : ∀ {n}, proof var n → proof_list n → proof_list (succ n)
+
+variable {var}
+
+def {u} proof_list.to_list' {α : Type u}
+: ∀ {n : ℕ}, proof_list var n → (∀ {n}, proof var n → proof_list var n → α) → list α
+  | .(0) proof_list.nil f := list.nil
+  | .(succ _) (@proof_list.cons .(var) n p ps) f := f p ps :: proof_list.to_list' ps @f
+
+def {u} proof_list.to_list {α : Type u} {n : ℕ}
+  (ls : proof_list var n)
+  (f : ∀ {n}, proof var n → α)
+: list α :=
+proof_list.to_list' ls (λ n p _, f p)
+
+def proof_list.nth : ∀ {n : ℕ}, proof_list var n → fin n → proof var n
+  | 0 proof_list.nil ⟨i,P⟩ := absurd P (not_lt_zero i)
+  | (succ .(_)) (@proof_list.cons .(var) n p ps) ⟨0,P⟩ := bump p
+  | (succ .(_)) (@proof_list.cons .(var) n p ps) ⟨(succ i),P⟩ :=
+    bump $ proof_list.nth ps ⟨i,lt_of_succ_lt_succ P⟩
+
+variable (var)
 
 structure prog : Type 2 :=
   (inv_lbl : Type)
@@ -158,6 +211,23 @@ structure prog : Type 2 :=
   (tr : tr_lbl → prop var)
   (first : var → expr empty)
   (step : var → expr var)
+  (liveness : Σ n, proof_list var n)
+
+structure property :=
+  (p : prop var)
+  (q : prop var)
+
+variable {var}
+
+def proof.prop_of {n} : proof var n → property var
+ | (proof.ref r p q) := ⟨p,q⟩
+ | (proof.basis p q) := ⟨p,q⟩
+ | (proof.trans p P₀ P₁ q) := ⟨p,q⟩
+
+def prog.properties (p : prog var) : list (property var) :=
+p.liveness.snd.to_list (@proof.prop_of var)
+
+variable (var)
 
 structure sequent : Type 2 :=
   (lbl : Type)
@@ -185,25 +255,66 @@ def establish_inv (p : prog var) (l : p.inv_lbl) : sequent :=
   , asm := λ v, prop.bin rel.eq (expr.var v) (from_empty <$> (p.first v)) /- from_empty <$> p.first v -/
   , goal := p.inv l }
 
-def maintain_inv_asm (p : prog var) : p.inv_lbl ⊕ var → prop (primed var)
-  | (sum.inr x) := prop.bin rel.eq (post (expr.var x)) (pre $ p.step x)
-  | (sum.inl x) := pre (p.inv x)
+def add (x : α) (s : β → α) : option β → α
+  | none := x
+  | (some v) := s v
+
+lemma add_comp (x : α)  (s : β → α) (f : β' → β)
+: add x (s ∘ f) = add x s ∘ fmap f :=
+begin
+  apply funext, intro a, cases a ; refl,
+end
+
+def union (x : α → γ) (y : β → γ) : α ⊕ β → γ
+ | (sum.inl i) := x i
+ | (sum.inr i) := y i
+
+def action_asm (p : prog var) (v : var) : prop (primed var) :=
+prop.bin rel.eq (post (expr.var v)) (pre $ p.step v)
+
+def inv_act_asm (p : prog var) : p.inv_lbl ⊕ var → prop (primed var) :=
+union (pre ∘ p.inv) (action_asm p)
 
 def maintain_inv (p : prog var) (l : p.inv_lbl) : sequent :=
   { lbl := p.inv_lbl ⊕ var
   , var := primed var
-  , asm := maintain_inv_asm p
+  , asm := inv_act_asm p
   , goal := post (p.inv l) }
 
-def transient_asm (p : prog var) (e : prop var) : option (p.inv_lbl ⊕ var) → prop (primed var)
-  | (some x) := maintain_inv_asm p x
-  | none := pre e
+
+def entails (pp : prog var) (p q : prop var) : sequent :=
+  { lbl := pp.inv_lbl
+  , var := _
+  , asm := pp.inv
+  , goal := prop.implies p q }
+
+def matches (pp : prog var) (prp : property var) (p q : prop var) : list sequent :=
+[entails pp p prp.p, entails pp prp.q q]
+
+def check_unless (pp : prog var) (p q : prop var) : sequent :=
+  { lbl := option (pp.inv_lbl ⊕ var)
+  , var := primed var
+  , asm := add (pre $ p) (inv_act_asm pp)
+  , goal := post q }
+
+def check_transient (pp : prog var) (p : prop var) : sequent :=
+  { lbl := option (pp.inv_lbl ⊕ var)
+  , var := primed var
+  , asm := add (pre $ p) (inv_act_asm pp)
+  , goal := post (prop.not p) }
+
+def check_proof (pp : prog var) {n} : proof var n → proof_list var n → list sequent
+  | (proof.ref r p q) ps := matches pp (ps.nth r).prop_of p q
+  | (proof.basis p q) ps := [check_unless pp p q, check_transient pp $ prop.and p (prop.not q)]
+  | (proof.trans p P₀ P₁ q) ps := [ entails pp p P₀.prop_of.p
+                                  , entails pp P₀.prop_of.q P₁.prop_of.p
+                                  , entails pp P₁.prop_of.q q ]
 
 def is_transient (p : prog var) (l : p.tr_lbl) : sequent :=
-  { lbl := option (p.inv_lbl ⊕ var)
-  , var := primed var
-  , asm := transient_asm p (p.tr l)
-  , goal := post (prop.not $ p.tr l) }
+check_transient p $ p.tr l
+
+def check_liveness (p : prog var) : list sequent :=
+list.join $ p.liveness.snd.to_list' (@check_proof var p)
 
 namespace semantics
 
@@ -244,16 +355,6 @@ def connective.meaning : connective → Prop → Prop → Prop
   | connective.imp p₀ p₁ := p₀ → p₁
   | connective.eqv p₀ p₁ := p₀ ↔ p₁
 
-def add (x : ℕ) (s : state_t var) : state_t (option var)
-  | none := x
-  | (some v) := s v
-
-lemma add_comp {var'} (x : ℕ)  (s : state_t var) (f : var' → var)
-: add x (s ∘ f) = add x s ∘ fmap f :=
-begin
-  apply funext, intro a, cases a ; refl,
-end
-
 def valid : ∀ {var : Type} (s : state_t var), prop var → Prop
   | _ s prop.true := true
   | _ s prop.false := false
@@ -284,7 +385,7 @@ begin
   induction e,
   { cases a },
   { refl },
-  { unfold functor.map expr.fmap eval,
+  { unfold functor.map expr.map eval,
     unfold functor.map at ih_1 ih_2,
     rw [ih_1,ih_2] },
 end
@@ -298,7 +399,7 @@ lemma eval_trade {var' : Type} (s : state_t var') (p : expr var) (f : var → va
 begin
   induction p
   ; try { refl }
-  ; unfold post fmap functor.map expr.fmap eval,
+  ; unfold post fmap functor.map expr.map eval,
   rw [ih_1,ih_2], refl
 end
 
@@ -383,10 +484,10 @@ begin
   apply h₁ l,
   clear l, intro l,
   cases l with l l
-  ; unfold maintain_inv_asm,
+  ; unfold inv_act_asm ast.simple.union,
   { rw valid_pair_pre,
     apply inv, },
-  { unfold valid,
+  { unfold valid action_asm,
     rw [eval_pair_post,eval_pair_pre],
     unfold rel.meaning,
     refl, }
@@ -400,28 +501,42 @@ def meaning' : simple.prog (state_t' p) :=
 
 def valid' (e : prop var) (s : state_t' p) : Prop := valid s.val e
 
-lemma transient_is_sound (l : p.tr_lbl)
-  (h : holds (is_transient p l))
-: unity.transient (meaning' p h₀ h₁) (valid' p (p.tr l)) :=
+lemma transient_is_sound (q : prop var)
+  (h : holds (check_transient p q))
+: unity.transient (meaning' p h₀ h₁) (valid' p q) :=
 begin
   unfold valid',
   intros σ h',
   unfold valid' meaning' simple.prog.step subtype.val,
   unfold valid' meaning' simple.prog.step subtype.val at h',
-  unfold is_transient holds sequent.var sequent.lbl sequent.asm sequent.goal at h,
+  unfold check_transient holds sequent.var sequent.lbl sequent.asm sequent.goal at h,
   rw -valid_pair_post σ.val,
   unfold post functor.map prop.fmap valid at h,
   apply h,
   intro l, cases l with l
-  ; unfold transient_asm,
+  ; unfold ast.simple.add,
   { rw valid_pair_pre, apply h' },
-  cases l with l v ; unfold maintain_inv_asm,
+  cases l with l v ; unfold inv_act_asm ast.simple.union action_asm,
   { rw valid_pair_pre, apply σ.property },
   { unfold valid rel.meaning,
     rw [eval_pair_post,eval_pair_pre],
     unfold eval, refl, }
 end
 
+lemma transient_is_sound' (l : p.tr_lbl)
+  (h : holds (is_transient p l))
+: unity.transient (meaning' p h₀ h₁) (valid' p (p.tr l)) :=
+transient_is_sound _ h₀ h₁ _ h
+
+variables h₂ : ∀ s, s ∈ check_liveness p → holds s
+variables pp : property var
+variables h₃ : pp ∈ p.properties
+
+include h₂ h₃
+
+lemma proof_is_sound
+: valid' p pp.p ↦ valid' p pp.q in meaning' p h₀ h₁ :=
+sorry
 end meaning
 
 end semantics
