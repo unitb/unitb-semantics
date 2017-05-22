@@ -73,7 +73,7 @@ def prop.fmap : ∀ {α : Type} {β : Type}, (α → β) → prop α → prop β
   | α β f (prop.bin r e₀ e₁) := prop.bin r (f <$> e₀) (f <$> e₁)
   | α β f (prop.not e) := prop.not $ prop.fmap f e
   | α β f (prop.cnt c p₀ p₁) := prop.cnt c (prop.fmap f p₀) (prop.fmap f p₁)
-  | α β f (prop.all e) := prop.all (prop.fmap (functor.map f) e)
+  | α β f (prop.all e) := prop.all (prop.fmap (fmap f) e)
 
 instance functor_prop : functor prop :=
 { map := @prop.fmap
