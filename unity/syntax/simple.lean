@@ -3,6 +3,7 @@ import unity.logic
 
 import unity.models.simple
 
+import util.data.functor
 variables var : Type
 
 def {u} from_empty {α : Type u} (x : empty) : α :=
@@ -20,13 +21,6 @@ inductive expr : Type
   | var : var → expr
   | lit {} : ℕ → expr
   | oper : oper → expr → expr → expr
-
-lemma functor.id_map' {f α} [functor f] : functor.map id = (id : f α → f α) :=
-by { apply funext, simp [functor.id_map] }
-
-lemma functor.map_comp' {F} {α β γ} [functor F] (f : α → β) (g : β → γ)
-: functor.map (g ∘ f) = (functor.map g ∘ functor.map f : F α → F γ) :=
-by { apply funext, intro, rw [functor.map_comp] }
 
 def expr.fmap {α β : Type} (f : α → β) : expr α → expr β
   | (expr.var v) := expr.var (f v)
