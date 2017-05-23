@@ -170,6 +170,7 @@ inductive proof (n : ℕ)
   | ref : fin n → prop var → prop var → proof
   | basis {} : prop var → prop var → proof
   | trans : prop var → proof → proof → prop var → proof
+  | mono : prop var → proof → prop var → proof
 
 open nat
 
@@ -177,6 +178,7 @@ def bump {var : Type} {n : ℕ} : proof var n → proof var (succ n)
   | (proof.ref ⟨i,P⟩ p q) := (proof.ref ⟨succ i,succ_lt_succ P⟩ p q)
   | (proof.basis p q) := (proof.basis p q)
   | (proof.trans p P₀ P₁ q) := (proof.trans p (bump P₀) (bump P₁) q)
+  | (proof.mono p P₀ q) := (proof.mono p (bump P₀) q)
 
 
 inductive proof_list : ℕ → Type 2
@@ -223,6 +225,7 @@ def proof.prop_of {n} : proof var n → property var
  | (proof.ref r p q) := ⟨p,q⟩
  | (proof.basis p q) := ⟨p,q⟩
  | (proof.trans p P₀ P₁ q) := ⟨p,q⟩
+ | (proof.mono p P₀ q) := ⟨p,q⟩
 
 def prog.properties (p : prog var) : list (property var) :=
 p.liveness.snd.to_list (@proof.prop_of var)
@@ -309,6 +312,9 @@ def check_proof (pp : prog var) {n} : proof var n → proof_list var n → list 
   | (proof.trans p P₀ P₁ q) ps := [ entails pp p P₀.prop_of.p
                                   , entails pp P₀.prop_of.q P₁.prop_of.p
                                   , entails pp P₁.prop_of.q q ]
+                               ++ check_proof P₀ ps ++ check_proof P₁ ps
+  | (proof.mono p P₀ q) ps := matches pp P₀.prop_of p q
+                           ++ check_proof P₀ ps
 
 def is_transient (p : prog var) (l : p.tr_lbl) : sequent :=
 check_transient p $ p.tr l

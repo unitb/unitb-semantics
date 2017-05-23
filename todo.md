@@ -31,8 +31,15 @@ Todo
 	* multiple coarse schedules
 	* spontaneous events
 	* state hiding
-	* pseudo code
 	* state variables
+
+# sub projects #
+
+	* verifier
+	    * typed variables
+	    * well-definedness
+		* defunctionalization of sequents
+	* pseudo code
 
 # cleanup #
 
