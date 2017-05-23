@@ -81,12 +81,23 @@ universe variable u
 parameter {α : Type}
 variable {s : prog α}
 variable {p : pred α}
-variable T₀ : transient s p
-include T₀
 variable τ : stream α
+variable (H : τ = ex s)
 
-lemma transient.semantics (H : τ = ex s) :
-([]<>-•p) τ :=
+include H
+
+lemma init_sem
+  (I₀ : init s p)
+: (•p) τ :=
+begin
+  unfold init system.init prog.init at I₀,
+  unfold temporal.init,
+  rw H, apply I₀,
+end
+
+lemma transient.semantics
+  (T₀ : transient s p)
+: ([]<>-•p) τ :=
 begin
   intros i,
   cases classical.em ((•p) (stream.drop i τ)) with hp hnp,
@@ -108,6 +119,7 @@ instance {α} : system_sem (prog α) :=
     ex := λ p τ, τ = ex p
   , safety := @ex.safety _
   , inhabited := λ p, ⟨ex p, rfl⟩
+  , init_sem := @init_sem _
   , transient_sem := @transient.semantics _ }
 
 end simple

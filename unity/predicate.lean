@@ -130,6 +130,11 @@ lemma p_or_p_imp_p_or {p p' q q' : pred' α} {τ}
 : ( p || q ) τ → ( p' || q' ) τ :=
 by apply or.imp hp hq
 
+lemma p_and_p_imp_p_and_right' {p q q' : pred' α}
+  (hq : q ⟹ q')
+: ( p && q ) ⟹ ( p && q' ) :=
+by { intro, apply and.imp id (hq _) }
+
 lemma p_or_p_imp_p_or_right' {p q q' : pred' α}
   (hq : q ⟹ q')
 : ( p || q ) ⟹ ( p || q' ) :=
@@ -170,6 +175,12 @@ end
 
 lemma p_and_over_or_left (p q r : pred' β)
 : p && (q || r) = (p && q) || (p && r) :=
+begin
+  apply funext, intro x, simp [distrib_left_and],
+end
+
+lemma p_and_over_or_right (p q r : pred' β)
+: (q || r) && p = (q && p) || (r && p) :=
 begin
   apply funext, intro x, simp [distrib_left_and],
 end
@@ -258,6 +269,62 @@ begin
   ; try { cases h' }
   ; assumption
 end
+
+lemma mutual_entails (p q : pred' β)
+  (h₀ : p ⟹ q)
+  (h₁ : q ⟹ p)
+: p = q :=
+begin
+  apply funext, intro,
+  rw -iff_eq_eq,
+  split,
+  { apply h₀ },
+  { apply h₁ },
+end
+
+lemma p_or_intro_left (p q : pred' β)
+: p ⟹ p || q :=
+sorry
+
+lemma p_or_intro_right (p q : pred' β)
+: q ⟹ p || q :=
+sorry
+
+lemma p_or_entails_of_entails {p q r : pred' β}
+  (h₀ : p ⟹ r)
+  (h₁ : q ⟹ r)
+: p || q ⟹ r :=
+sorry
+
+lemma entails_p_and_of_entails {p q r : pred' β}
+  (h₀ : p ⟹ q)
+  (h₁ : p ⟹ r)
+: p ⟹ q && r :=
+sorry
+
+lemma p_and_elim_left (p q : pred' β)
+: p && q ⟹ p :=
+sorry
+
+lemma p_and_elim_right (p q : pred' β)
+: p && q ⟹ q :=
+sorry
+
+@[refl]
+lemma entails_refl (p : pred' β)
+: p ⟹ p :=
+sorry
+
+lemma entails_trans (q : pred' β) {p r : pred' β}
+  (h₀ : p ⟹ q)
+  (h₁ : q ⟹ r)
+: p ⟹ r :=
+sorry
+
+lemma p_and_entails_p_and_left (p q x : pred' β)
+  (h : p ⟹ q)
+: p && x ⟹ q && x :=
+sorry
 
 lemma p_and_entails_p_and_right (p q x : pred' β)
   (h : p ⟹ q)

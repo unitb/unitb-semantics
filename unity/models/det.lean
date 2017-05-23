@@ -117,11 +117,22 @@ def run (s : prog lbl α) (τ : stream (option lbl)) : stream α
 section soundness
 
 variables {s : prog lbl α} {p : pred' α}
-variables (T₀ : prog.transient s p)
-include T₀
 variables (τ : stream α)
+variables h : ex s τ
+include h
 
-lemma transient.semantics (h : ex s τ)
+lemma init_sem
+  (I₀ : init s p)
+: (•p) τ :=
+begin
+  unfold init system.init prog.init at I₀,
+  unfold temporal.init,
+  rw h.init,
+  apply I₀
+end
+
+lemma transient.semantics
+  (T₀ : prog.transient s p)
 : ([]<>-•p) τ :=
 begin
   unfold prog.transient at T₀,
@@ -169,6 +180,7 @@ instance {α} [sched lbl] : system_sem (prog lbl α) :=
     ex := λ p τ, ex p τ
   , safety := @ex.safety _ _
   , inhabited := prog.witness
+  , init_sem := @init_sem _ _
   , transient_sem := @transient.semantics _ _ }
 
 end det

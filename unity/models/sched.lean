@@ -122,6 +122,7 @@ instance : unity.system_sem prog :=
     ex := prog.ex
   , safety := λ s, unity.system_sem.safety s.nondet
   , inhabited := λ s, unity.system_sem.inhabited s.nondet
+  , init_sem := λ s, @unity.system_sem.init_sem _ _ s.nondet
   , transient_sem := λ s, @unity.system_sem.transient_sem _ _ s.nondet }
 
 open unity

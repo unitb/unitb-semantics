@@ -80,7 +80,7 @@ lemma keep_history {τ : stream (unity.state s)} (i : ℕ)
 : approx i (map ch τ) = hist (τ i) :=
 begin
   induction i with i IH,
-  { note h' := system_sem.init_sem INIT τ h,
+  { note h' := system_sem.init_sem τ h INIT,
     unfold temporal.init function.comp at h',
     rw -h', refl },
   { rw [stream.approx_succ_eq_append,IH],

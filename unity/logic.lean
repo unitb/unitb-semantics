@@ -319,11 +319,13 @@ class system_sem (α : Type u) extends system α :=
   (ex : α → stream _ → Prop)
   (safety : ∀ s, ex s ⟹ saf_ex s)
   (inhabited : ∀s, ∃τ, ex s τ)
-  (init_sem : ∀ {s : α} {p : pred' _} (H : init s p) (τ : stream _),
+  (init_sem : ∀ {s : α} {p : pred' _} (τ : stream _),
          ex s τ →
+         init s p →
          (•p) τ)
-  (transient_sem : ∀ {s : α} {p : pred' _} (H : transient s p) (τ : stream _),
+  (transient_sem : ∀ {s : α} {p : pred' _} (τ : stream _),
          ex s τ →
+         transient s p →
          ([]<>-•p) τ)
 
 namespace system_sem
@@ -350,7 +352,7 @@ begin
   { intros i hp,
     note saf' := unless_sem' _ _ saf S (temporal.eventually_weaken _ hp),
     cases saf' with saf' saf',
-    { note T' := transient_sem T τ sem,
+    { note T' := transient_sem τ sem T,
       note T'' := (coincidence saf' (henceforth_drop i T')),
       apply eventually_entails_eventually _ _ (henceforth_str _ T''),
       intros τ',

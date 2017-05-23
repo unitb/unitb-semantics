@@ -234,11 +234,22 @@ section soundness
 open prog
 
 variables {s : prog} {p : pred' α}
-variables (T₀ : prog.transient s p)
-include T₀
 variables (τ : stream α)
+variables (h : ex s τ)
+include h
 
-lemma transient.semantics (h : ex s τ)
+lemma init_sem
+  (I₀ : init s p)
+: (•p) τ :=
+begin
+  unfold temporal.init,
+  unfold init prog.init at I₀,
+  apply I₀,
+  apply h.init,
+end
+
+lemma transient.semantics
+  (T₀ : prog.transient s p)
 : ([]<>-•p) τ :=
 begin
   cases (temporal.em' (•p) τ) with h_p ev_np,
@@ -429,6 +440,7 @@ instance : unity.system_sem prog :=
     ex := prog.ex
   , safety := @prog.ex.safety _
   , inhabited := prog.witness
+  , init_sem := @init_sem
   , transient_sem := @transient.semantics }
 
 open unity
