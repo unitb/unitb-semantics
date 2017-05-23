@@ -38,8 +38,8 @@ notation `⟦`:max act `⟧`:0 := action act
 
 lemma init_to_fun (p : pred' β) (τ : stream β) : (•p) τ = p (τ 0) := rfl
 
-def tl_leads_to (p q : pred' β) : cpred β :=
-[] (•p ⟶ <>•q)
+def tl_leads_to (p q : cpred β) : cpred β :=
+[] (p ⟶ <>q)
 
 infix ` ~> `:50 := tl_leads_to
 
@@ -678,6 +678,75 @@ begin
   rw h₄ at h₃,
   apply h₃,
 end
+
+section inf_often_induction'
+
+parameters {α' β' : Type}
+parameters {τ : stream α'} (V : α' → β') (p q : α' → Prop)
+parameters {lt : β' → β' → Prop}
+parameters (wf : well_founded lt)
+
+def le (x y : β') := lt x y ∨ x = y
+
+
+
+include wf
+
+-- set_option pp.notation false
+
+lemma inf_often_induction'
+  (S₀ : ∀ v, ([]<>•(eq v ∘ V)) τ → (<>[]•eq v ∘ V) τ ∨ ([]<>•(flip lt v ∘ V || q)) τ)
+  (P₁ : ∀ v, (•(p && eq v ∘ V) ~> •(flip lt v ∘ V || q)) τ)
+: ([]<>•p) τ → ([]<>•q) τ :=
+begin
+  assert Hex : ∀ (v : β'), ((•(p && eq v ∘ V) ~> (•q || []•-p))) τ,
+  { intro v,
+    apply well_founded.induction wf v _, clear v,
+    intros v IH,
+    note IH' := temporal.leads_to_disj_rng IH,
+    assert H : (∃∃ (i : β'), (λ _, (λ (y : β'), lt y v) i) && (λ (y : β'), •(p && eq y ∘ V)) i)
+             = •(flip lt v ∘ V && p),
+    { clear IH' IH S₀ P₁,
+      apply funext, intro τ,
+      simp, unfold init flip function.comp,
+      rw [exists_one_point_right (V $ τ 0)],
+      simp [eq_true_intro $ @rfl _ (V $ τ 0)],
+      intro,
+      apply implies.trans and.elim_right,
+      apply and.elim_right },
+    rw H at IH', clear IH H,
+    assert S₂ : ∀ (v : β'), ([]<>•flip lt v ∘ V) τ → (<>[]•flip lt v ∘ V) τ ∨ ([]<>•(flip lt v ∘ V || q)) τ,
+    { admit },
+    assert S₁ : ∀ (v : β'), (•eq v ∘ V  ~> ([]•eq v ∘ V) || ([]<>•(flip lt v ∘ V || q))) τ,
+    { admit }, clear S₀,
+    assert H₁ : (•(p && eq v ∘ V) ~> •(flip lt v ∘ V && p) || •q) τ, admit,
+--    assert H₂ : (•(flip lt v ∘ V && p) ~> •q) τ , admit,
+    note H₃ := temporal.leads_to_cancellation H₁ IH',
+--     note H₀ := @temporal.leads_to_trans _ (•(p && eq v ∘ V)) _ _ _ H₁ IH',
+--     clear S₀,
+--     assert H₃ : (•(p && eq v ∘ V) ~> •q || []•-p) τ, admit,
+-- --    apply temporal.leads_to_cancellation _ _, },
+    admit },
+  note H := @temporal.leads_to_disj _ _ (λ v, •(p && eq v ∘ V)) (•q || []•-p) τ Hex,
+  assert H' : (∃∃ (i : β'), (λ (v : β'), •(p && eq v ∘ V)) i) = •p,
+  { apply funext, intro τ, simp,
+    unfold init function.comp, simp,
+    rw [exists_one_point_right (V $ τ 0)], simp,
+    intro, apply and.elim_right },
+  unfold tl_leads_to at H,
+  rw [H',p_or_comm] at H,
+  intros h,
+  note H₁ := inf_often_of_leads_to H h,
+  rw [inf_often_p_or] at H₁,
+  cases H₁ with H₁ H₁,
+  { exfalso, revert h,
+    change (- []<>•p) τ,
+    rw [not_henceforth,not_eventually,not_init],
+    apply henceforth_str _ H₁ },
+  { apply H₁ },
+end
+
+end inf_often_induction'
 
 lemma inf_often_induction
   {τ : stream α} (f : α → β) (p q : α → Prop)

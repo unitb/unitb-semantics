@@ -15,9 +15,6 @@ section connectors
 
 open predicate
 
--- variable s : Type
--- def pred : Type := s → Prop
-
 class system (α : Type u) extends has_safety α : Type (u+1) :=
    (transient : α → pred' σ → Prop)
    (init : α → pred' σ → Prop)
@@ -70,7 +67,7 @@ end
 
 
 theorem leads_to.impl {α} [system α] (s : α) {p q : pred' (state α)}
-   (h : ∀ i, p i → q i)
+   (h : p ⟹ q)
    : p ↦ q in s :=
 begin
   apply leads_to.basis,
@@ -89,7 +86,7 @@ end
 open predicate
 
 theorem leads_to.weaken_lhs {α} [system α] {s : α} (q : pred' (state α)) {p r : pred' (state α)}
-    (H : ∀ i, p i → q i)
+    (H  : p ⟹ q)
     (P₀ : q  ↦ r in s)
     : p ↦ r in s :=
 begin
@@ -98,8 +95,9 @@ begin
   apply P₀
 end
 
-theorem leads_to.strengthen_rhs {α} [system α] {s : α} (q : pred' (state α)) {p r : pred' (state α)}
-    (H : ∀ i, q i → r i)
+theorem leads_to.strengthen_rhs {α} [system α] {s : α}
+    (q : pred' (state α)) {p r : pred' (state α)}
+    (H  : q ⟹ r)
     (P₀ : p  ↦ q in s)
     : p ↦ r in s :=
 begin
@@ -171,9 +169,6 @@ begin
   exact ⟨_,h⟩,
 end
 
--- print heq
-
-
 theorem leads_to.cancellation {α} [system α] {s : α} (q : pred' (state α)) {p r b : pred' (state α)}
     (P₀ : p ↦ q || b in s)
     (P₁ : q ↦ r in s)
@@ -187,28 +182,30 @@ end
 
 def rel α [system α] : Type := system.state α → system.state α → Prop
 
-theorem leads_to.induction {α} [system α] {s : α} {lt' : rel α} [wf : well_founded lt']
+theorem leads_to.induction' {α} {β : Type} [system α] {s : α} {lt' : β → β → Prop}
+    (wf : well_founded lt')
+    (V : state α → β)
     {p q : pred' (state α)}
-    (P : ∀ v, p && eq v  ↦ p && flip lt' v || q in s)
+    (P : ∀ v, p && (eq v ∘ V)  ↦ p && (flip lt' v ∘ V) || q in s)
   : p ↦ q in s :=
 begin
   pose lt := flip lt',
-  assert P' : (∃∃ v, p && eq v)  ↦ q in s,
-  { apply leads_to.disj, intro i,
-    pose PP := λ i, p && eq i  ↦  q in s,
+  assert P' : (∃∃ v, p && eq v ∘ V)  ↦ q in s,
+  { apply leads_to.disj β (λ v, p && eq v ∘ V), intro i,
+    pose PP := λ i, p && eq i ∘ V  ↦  q in s,
     change PP i,
     apply @well_founded.induction _ lt' wf PP,
     intros j IH,
     change leads_to _ _ _,
     apply leads_to.strengthen_rhs (q || q),
     { intro, simp, exact id },
-    apply leads_to.cancellation (p && lt j) (P _),
-    assert h' : (p && lt j) = (λ s, ∃v, lt j v ∧ p s ∧ v = s),
+    apply leads_to.cancellation (p && lt j ∘ V) (P _),
+    assert h' : (p && lt j ∘ V) = (λ s, ∃v, lt j v ∧ p s ∧ v = V s),
     { apply funext,
       intro x,
       rw -iff_eq_eq, split,
       { intros H₀, cases H₀ with H₀ H₁,
-        existsi x,
+        existsi V x,
         repeat { split, assumption }, refl },
       { intro h, apply exists.elim h,
         intros s h', cases h' with h₀ h₁, cases h₁, subst s,
@@ -216,14 +213,20 @@ begin
     rw h', clear h',
     apply leads_to.disj_rng,
     apply IH, },
-  { assert h : (∃∃ (v : state α), p && eq v) = p,
+  { assert h : (∃∃ (v : β), p && eq v ∘ V) = p,
     { apply funext,
-      intro x, rw -iff_eq_eq, split,
-      { intro h, cases h with x h, cases h with h, apply h },
-      { intro h, exact ⟨x,h,rfl⟩ } },
+      intro x, unfold function.comp,
+      simp, rw [exists_one_point_right (V x) _], simp,
+      { intro, apply and.right }, },
     rw h at P',
     apply P' }
 end
+
+theorem leads_to.induction {α} [system α] {s : α} {lt' : rel α} (wf : well_founded lt')
+    {p q : pred' (state α)}
+    (P : ∀ v, p && eq v  ↦ p && flip lt' v || q in s)
+  : p ↦ q in s :=
+leads_to.induction' wf id P
 
 theorem leads_to.PSP {α} [system α] {s : α} {p q r b : pred' (state α)}
     (P : p ↦ q in s)
@@ -276,12 +279,49 @@ begin
   { apply True_unless }
 end
 
+inductive often_imp_often {α} [system α] (s : α) : pred' (state α) → pred' (state α) → Prop
+  | trans : ∀ {p} q {r}, often_imp_often p q → often_imp_often q r → often_imp_often p r
+  | induct : ∀ (t : Type) (V : state α → t) (lt : t → t → Prop)
+         (wf : well_founded lt)
+         {p q}
+         (P : ∀ v, p && eq v ∘ V  ↦  flip lt v ∘ V || q  in  s)
+         (S : ∀ v, unless s (eq v ∘ V) (flip lt v ∘ V || q)),
+         often_imp_often p q
+
+section lemmas
+
+parameters {α : Type u} [system α] (s : α)
+
+lemma often_imp_often.basis {p q}
+          (h : p ↦ q in s)
+          : often_imp_often s p q :=
+begin
+  assert H : ∀ t t' (v : t) (f : t' → t), flip empty_relation v ∘ f = False,
+  { intros, refl },
+  assert H' : ∀ t' (v : unit) (f : t' → unit), eq v ∘ f = True,
+  { intros, apply funext, intro x,
+    unfold function.comp,
+    apply eq_true_intro (unit_eq v (f x)), },
+  apply often_imp_often.induct _ (λ _, ()) _ empty_wf
+  ; intro,
+  { rw [H,False_p_or],
+    apply leads_to.weaken_lhs _ _ h,
+    apply p_and_left, },
+  { rw [H'],
+    apply True_unless }
+end
+
+end lemmas
+
 open predicate
 
 class system_sem (α : Type u) extends system α :=
   (ex : α → stream _ → Prop)
   (safety : ∀ s, ex s ⟹ saf_ex s)
   (inhabited : ∀s, ∃τ, ex s τ)
+  (init_sem : ∀ {s : α} {p : pred' _} (H : init s p) (τ : stream _),
+         ex s τ →
+         (•p) τ)
   (transient_sem : ∀ {s : α} {p : pred' _} (H : transient s p) (τ : stream _),
          ex s τ →
          ([]<>-•p) τ)
@@ -289,15 +329,18 @@ class system_sem (α : Type u) extends system α :=
 namespace system_sem
 
 variables {α : Type u}
-variable [system_sem α]
 
 open temporal
+
+section
+
+variable [system_sem α]
 
 lemma leads_to_sem {s : α} {p q : pred' (state α)}
     (P : p ↦ q in s)
     (τ : stream _)
     (sem : ex s τ)
-: (p ~> q) τ :=
+: (•p ~> •q) τ :=
 begin
   assertv saf : saf_ex s τ := system_sem.safety s _ sem,
   induction P with p' q' T S
@@ -321,6 +364,36 @@ begin
   { intros i hp,
     cases hp with x hp,
     apply H₀ x i hp,  }
+end
+
+end
+
+section
+
+variable [system_sem α]
+
+lemma often_imp_often_sem'
+    {s : α}
+    (τ : stream _)
+     (sem : ex s τ)
+: ∀ {p q : pred' (state α)} (P : often_imp_often s p q),
+    ([]<>•p ⟶ []<>•q) τ :=
+  @often_imp_often.drec α _ s _
+      (take p q r P₀ P₁,
+       assume Lpq : ([]<>•p ⟶ []<>•q) τ,
+       assume Lqr : ([]<>•q ⟶ []<>•r) τ,
+       assume Hp : ([]<>•p) τ,
+       show ([]<>•r) τ, from Lqr (Lpq Hp))
+      begin
+        intros t V lt wf p q P₀ S₀,
+        apply inf_often_induction' V p q wf,
+        { intro v,
+          apply unless_sem_str _ _ (S₀ v),
+          apply system_sem.safety _ _ sem, },
+        { intro v,
+          apply leads_to_sem (P₀ v) _ sem, }
+      end
+
 end
 
 end system_sem
