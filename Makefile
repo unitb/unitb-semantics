@@ -2,9 +2,10 @@
 .PHONY: all root logic models refinement syntax clean lines
 
 LEAN_OPT =
+LEAN_PATH = $(shell pwd):/usr/local/bin/../lib/lean/library:$(shell printenv LEAN_PATH)
 
 all:
-	lean $(LEAN_OPT) --make > errors.txt
+	LEAN_PATH=$(LEAN_PATH) lean $(LEAN_OPT) --make > errors.txt
 
 root: logic models refinement
 
@@ -17,7 +18,7 @@ refinement: unity/models/refinement/resched_data_ref.olean unity/models/refineme
 syntax: unity/syntax/exists.olean unity/syntax/simple/machine.olean
 
 %.olean: %.lean $(shell lean $< --deps)
-	lean $(LEAN_OPT) $<
+	LEAN_PATH=$(LEAN_PATH) lean $(LEAN_OPT) $<
 
 clean:
 	/usr/bin/find . -name "*.olean" -delete

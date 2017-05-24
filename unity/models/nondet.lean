@@ -333,7 +333,7 @@ noncomputable def enabled (s : prog)
 : set (option s.lbl) :=
 { l | s.guard l (run' s es s.first_state) }
 
-open unity
+open unity has_mem
 
 lemma prog.run_succ  (s : prog) (τ : stream (option s.lbl)) (i : ℕ)
   [Π (x : option (s.lbl)) (σ : α), decidable (prog.guard s x σ)]
@@ -359,7 +359,7 @@ lemma prog.run_enabled  (s : prog) (τ : stream (option s.lbl)) (i : ℕ)
   (Hfine : prog.fine_sch_of s (τ i) (run s τ i))
 : (prog.event s (τ i)).step (run s τ i) Hcoarse Hfine (run s τ (succ i)) :=
 begin
-  definev Hguard : s.guard (τ i) (run s τ i) := ⟨Hcoarse,Hfine⟩,
+  pose Hguard : s.guard (τ i) (run s τ i) := ⟨Hcoarse,Hfine⟩,
   rw [s.run_succ],
   unfold run_one,
   rw [dif_pos Hguard],
@@ -374,7 +374,7 @@ begin
   assert _inst_1 : ∀ (x : option s.lbl) σ, decidable (s.guard x σ),
   { intros, apply classical.prop_decidable },
 
-  definev evts : list (option s.lbl) → set (option s.lbl) := enabled s,
+  pose evts : list (option s.lbl) → set (option s.lbl) := enabled s,
 
   apply exists_imp_exists' (run s) _ (sched.sched_str' evts),
   intros τ h,
@@ -385,8 +385,8 @@ begin
     intro i,
     simp [action_drop],
     unfold step has_safety.step is_step,
-    assertv Hc : (s.event none).coarse_sch (run s τ i) := trivial,
-    assertv Hf : (s.event none).fine_sch (run s τ i) := trivial,
+    note Hc : (s.event none).coarse_sch (run s τ i) := trivial,
+    note Hf : (s.event none).fine_sch (run s τ i) := trivial,
     destruct (τ i),
     { intros h,
       existsi (τ i),

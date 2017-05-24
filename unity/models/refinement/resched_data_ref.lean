@@ -187,7 +187,7 @@ begin
       rw [R.fine ec,option_cast_cast'],
       apply glued, apply Hc },
     { intro Hevt,
-      definev Tevt' : stream (option ma.lbl) := λ i, (Tevt mc Tc i).cast R.bij,
+      pose Tevt' : stream (option ma.lbl) := λ i, (Tevt mc Tc i).cast R.bij,
       apply events_to_states Tevt' (prog.step_of ma),
       intro i,
       apply (abs_step f ma g mc _ _ Hc i _).right,

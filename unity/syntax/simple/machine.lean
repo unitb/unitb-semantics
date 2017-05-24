@@ -90,11 +90,11 @@ variable {var}
 
 @[inline]
 def {u u'} post {f : Type u → Type u'} {var : Type u} [functor f] : f var → f (primed var) :=
-functor.map primed.primed
+has_map.map primed.primed
 
 @[inline]
 def {u u'} pre {f : Type u → Type u'} {var : Type u} [functor f] : f var → f (primed var) :=
-functor.map primed.unprimed
+has_map.map primed.unprimed
 
 def establish_inv (p : prog var) (l : p.inv_lbl) : sequent :=
   { lbl := var
@@ -229,8 +229,8 @@ begin
   induction e,
   { cases a },
   { refl },
-  { unfold functor.map expr.map eval,
-    unfold functor.map at ih_1 ih_2,
+  { unfold has_map.map expr.map eval,
+    unfold has_map.map at ih_1 ih_2,
     rw [ih_1,ih_2] },
 end
 
@@ -243,7 +243,7 @@ lemma eval_trade {var' : Type} (s : state_t var') (p : expr var) (f : var → va
 begin
   induction p
   ; try { refl }
-  ; unfold post fmap functor.map expr.map eval,
+  ; unfold post has_map.map expr.map eval,
   rw [ih_1,ih_2], refl
 end
 
@@ -269,7 +269,7 @@ begin
   revert var',
   induction p ; intros var' s f
   ; try { refl }
-  ; unfold post fmap functor.map prop.fmap valid
+  ; unfold post has_map.map prop.fmap valid
   ; repeat { rw [eval_trade _ _ f] },
   { refl },
   { refl },
@@ -355,7 +355,7 @@ begin
   unfold valid' meaning' simple.prog.step subtype.val at h',
   unfold check_transient holds sequent.var sequent.lbl sequent.asm sequent.goal at h,
   rw -valid_pair_post σ.val,
-  unfold post functor.map prop.fmap valid at h,
+  unfold post has_map.map prop.fmap valid at h,
   apply h,
   intro l, cases l with l
   ; unfold ast.simple.add,

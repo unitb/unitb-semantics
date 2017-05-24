@@ -237,10 +237,9 @@ begin
   { apply leads_to.basis,
     { apply system.transient_str _ _ t₀, intro i,
       simp, intro h,
-      cases h with h h', cases h with h₀ h₁,
-      split, apply h₀,
-      intro h₂, apply h', apply or.inl,
-      simp,
+      cases h with h h', cases h' with h₀ h₁,
+      split, assumption,
+      intro h₂, apply h₁, apply or.inr,
       split, assumption, assumption, },
     { assert H : unless s r (r || b),
       { apply impl_unless, intro, apply or.inl },
@@ -344,7 +343,7 @@ lemma leads_to_sem {s : α} {p q : pred' (state α)}
     (sem : ex s τ)
 : (•p ~> •q) τ :=
 begin
-  assertv saf : saf_ex s τ := system_sem.safety s _ sem,
+  note saf : saf_ex s τ := system_sem.safety s _ sem,
   induction P with p' q' T S
         p q r P₀ P₁ H₀ H₁
         X p q P₀ H₀ x y z,

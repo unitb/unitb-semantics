@@ -260,7 +260,7 @@ end variant
 lemma sched'
 : ∃ τ : stream lbl, fair (req_of requests τ) τ :=
 begin
-  definev τ : stream lbl := λ i, (state requests i).last,
+  pose τ : stream lbl := λ i, (state requests i).last,
   existsi τ,
   apply fair.mk,
   { intro i,
@@ -284,7 +284,7 @@ begin
     rw [ state_fst requests,-function.comp.assoc,-function.comp.assoc
        , -inf_often_trace_init_trading] at h,
     rw -inf_often_trace_init_trading,
-    definev VAR : state_t  → ℕ := (λs, (s.queue.g l).val),
+    pose VAR : state_t  → ℕ := (λs, (s.queue.g l).val),
     apply inf_often_induction VAR _ _ lt_wf h,
     apply variant },
 end

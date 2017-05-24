@@ -887,10 +887,10 @@ begin
   assert Q' : ∀ v, [](•EQ v ⟶ <>([]•LT v || •q) || []•EQ v) $ τ, admit,
   assert P : ∀ v, •(p && EQ v)  ~>  •(p && LT v || q) $ τ,
   { intros v i Hp,
-    assertv Hp' : (•EQ v) (stream.drop i τ) := sorry,
-    assertv H₂ : ([]<>⟦λ (s s' : α), p s' ∧ (q s' ∨ lt (f s') (f s))⟧) τ := sorry,
+    note Hp' : (•EQ v) (stream.drop i τ) := sorry,
+    note H₂ : ([]<>⟦λ (s s' : α), p s' ∧ (q s' ∨ lt (f s') (f s))⟧) τ := sorry,
     note Q' := Q' v _ Hp',
-    assertv Q'' : (<>[]•LT v) (stream.drop i τ)
+    note Q'' : (<>[]•LT v) (stream.drop i τ)
             ∨ (<>•q) (stream.drop i τ)
             ∨ ([]•EQ v) (stream.drop i τ) := sorry,
     clear Q' Q Q' Hp,
@@ -911,7 +911,7 @@ begin
       apply eventually_entails_eventually _ _ (Q'' _),
       admit } },
   apply inf_often_of_leads_to _ h₀,
-  assertv inst : decidable_pred p := λ _, classical.prop_decidable _,
+  note inst : decidable_pred p := λ _, classical.prop_decidable _,
   apply temporal.induction _ _ _ wf P,
 end
 

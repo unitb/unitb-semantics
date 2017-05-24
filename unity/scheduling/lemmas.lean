@@ -10,7 +10,7 @@ namespace scheduling
 
 variables {lbl : Type}
 
-open stream temporal
+open stream temporal has_mem
 
 lemma sched.sched_str {lbl : Type} [s : sched lbl] [nonempty lbl]
   (r : list lbl → set lbl)

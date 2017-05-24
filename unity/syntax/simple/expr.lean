@@ -128,7 +128,7 @@ def prop.fmap : ∀ {α : Type} {β : Type}, (α → β) → prop α → prop β
   | α β f (prop.bin r e₀ e₁) := prop.bin r (f <$> e₀) (f <$> e₁)
   | α β f (prop.not e) := prop.not $ prop.fmap f e
   | α β f (prop.cnt c p₀ p₁) := prop.cnt c (prop.fmap f p₀) (prop.fmap f p₁)
-  | α β f (prop.all e) := prop.all (prop.fmap (fmap f) e)
+  | α β f (prop.all e) := prop.all (prop.fmap (has_map.map f) e)
 
 instance functor_prop : functor prop :=
 { map := @prop.fmap
@@ -177,7 +177,7 @@ def add (x : α) (s : β → α) : option β → α
   | (some v) := s v
 
 lemma add_comp (x : α)  (s : β → α) (f : β' → β)
-: add x (s ∘ f) = add x s ∘ fmap f :=
+: add x (s ∘ f) = add x s ∘ has_map.map f :=
 begin
   apply funext, intro a, cases a ; refl,
 end
