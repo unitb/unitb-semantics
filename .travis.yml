@@ -51,7 +51,7 @@ before_install:
 - pushd $HOME/lean
 - ls .git || (git init && git remote add origin https://github.com/leanprover/lean.git)
 - git fetch origin
-- git checkout 9535a14e94c776da86e869edf17c904f2a7fea2e
+- git checkout 3f5bbfa0cf10e03aadab9418a47cff056158a7aa
 - mkdir -p build
 - cd build
 - if [[ $TCMALLOC != ON ]]; then TCMALLOC=OFF; fi
