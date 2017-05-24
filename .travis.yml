@@ -12,7 +12,6 @@ addons:
     - cmake
     - libgmp-dev
     - libgoogle-perftools-dev
-    - g++-4.9
 cache:
   apt: true
   directories:
@@ -29,6 +28,7 @@ matrix:
         sources: *1
         packages:
         - *2
+        - g++-4.9
         - clang-3.4
     env: CMAKE_CXX_COMPILER=clang++-3.4 CMAKE_BUILD_TYPE=Release TCMALLOC=ON
   - os: linux
