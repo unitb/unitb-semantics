@@ -13,7 +13,6 @@ addons:
     - libgmp-dev
     - libgoogle-perftools-dev
     - g++-4.9
-    - clang-3.4
 cache:
   apt: true
   directories:
@@ -25,6 +24,12 @@ matrix:
   #   env: CMAKE_CXX_COMPILER=g++-4.9 CMAKE_BUILD_TYPE=Release TARGET=build/lean-3.1.1-linux.tar.gz
   #     UPLOAD=ON STATIC=ON
   - os: linux
+    addons: &4
+      apt:
+        sources: *1
+        packages:
+        - *2
+        - clang-3.4
     env: CMAKE_CXX_COMPILER=clang++-3.4 CMAKE_BUILD_TYPE=Release TCMALLOC=ON
   - os: linux
     addons: &3
@@ -42,6 +47,7 @@ matrix:
     addons: *3
     env: CMAKE_CXX_COMPILER=g++-6 CMAKE_BUILD_TYPE=Release MULTI_THREAD=OFF
   - os: osx
+    addons: &4
     env: CMAKE_CXX_COMPILER=clang++ CMAKE_BUILD_TYPE=Release TARGET=build/lean-3.1.1-darwin.zip
       UPLOAD=ON PACKAGE=TRUE
 before_install:
