@@ -316,11 +316,68 @@ def check_proof (pp : prog var) {n} : proof var n → proof_list var n → list 
   | (proof.mono p P₀ q) ps := matches pp P₀.prop_of p q
                            ++ check_proof P₀ ps
 
+def check_proof' (pp : prog var) : proof var 0 → list sequent
+  | (proof.ref r p q) := r.elim0
+  | (proof.basis p q) := [check_unless pp p q, check_transient pp $ prop.and p (prop.not q)]
+  | (proof.trans p P₀ P₁ q) := [ entails pp p P₀.prop_of.p
+                               , entails pp P₀.prop_of.q P₁.prop_of.p
+                               , entails pp P₁.prop_of.q q ]
+                            ++ check_proof' P₀ ++ check_proof' P₁
+  | (proof.mono p P₀ q) := matches pp P₀.prop_of p q
+                        ++ check_proof' P₀
+
 def is_transient (p : prog var) (l : p.tr_lbl) : sequent :=
 check_transient p $ p.tr l
 
 def check_liveness (p : prog var) : list sequent :=
 list.join $ p.liveness.snd.to_list' (@check_proof var p)
+
+def flat_proof {n : ℕ} (t : fin n → proof var 0) : proof var n → proof var 0
+  | (proof.ref r p q) := proof.mono p (t r) q
+  | (proof.basis p q) := proof.basis p q
+  | (proof.trans p P₀ P₁ q) := proof.trans p (flat_proof P₀) (flat_proof P₁) q
+  | (proof.mono p P₀ q) := proof.mono p (flat_proof P₀) q
+
+def flat_proof_list : ∀ {n}, proof_list var n → fin n → proof var 0
+ | .(_) proof_list.nil i := fin.elim0 i
+ | (succ .(n)) (@proof_list.cons .(_) n p ps) i :=
+     let t := flat_proof_list ps in
+     match i with
+      | ⟨0,_⟩ :=  flat_proof t p
+      | ⟨succ i,P⟩ := t ⟨i,lt_of_succ_lt_succ P⟩
+     end
+
+def flat_proof_list' {n} (ps : proof_list var n) : list (proof var 0) :=
+array.to_list { data := flat_proof_list ps }
+
+lemma flat_proof_list_cons {n : ℕ}
+  (p : proof var n)
+  (ps : proof_list var n)
+:   flat_proof_list' (proof_list.cons p ps)
+  = flat_proof (flat_proof_list ps) p :: flat_proof_list' ps :=
+begin
+  unfold flat_proof_list' array.to_list array.rev_iterate,
+  admit
+end
+
+def check_liveness_flat (p : prog var) : list sequent :=
+list.join $ list.map (@check_proof' var p) (flat_proof_list' p.liveness.snd)
+
+lemma mem_check_liveness_iff_mem_check_liveness_flat
+  (s : sequent)
+  (p : prog var)
+: s ∈ check_liveness p ↔ s ∈ check_liveness_flat p :=
+begin
+  unfold check_liveness check_liveness_flat,
+  generalize (p.liveness) k,
+  intro k, cases k with n ps,
+  unfold sigma.snd,
+  induction ps with k p ps IH,
+  { refl, },
+  { unfold proof_list.to_list' flat_proof_list' array.to_list
+           array.rev_iterate array.rev_iterate_aux,
+    admit, }
+end
 
 namespace semantics
 
