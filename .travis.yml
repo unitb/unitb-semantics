@@ -62,6 +62,7 @@ before_install:
   ../src || exit
 - make -j2 || exit
 - export PATH=$HOME/lean/bin:$PATH
+- export LEAN_PATH=/home/travis/lean/bin/../lib/lean/library
 - popd
 script:
 - lean -v || echo "success"
