@@ -45,11 +45,16 @@ matrix:
     env: CMAKE_CXX_COMPILER=g++-6 CMAKE_BUILD_TYPE=Release
   - os: linux
     addons: *3
+    env: CMAKE_CXX_COMPILER=g++-6 CMAKE_BUILD_TYPE=Release LATEST=true
+  - os: linux
+    addons: *3
     env: CMAKE_CXX_COMPILER=g++-6 CMAKE_BUILD_TYPE=Release MULTI_THREAD=OFF
   - os: osx
     addons: &4
     env: CMAKE_CXX_COMPILER=clang++ CMAKE_BUILD_TYPE=Release TARGET=build/lean-3.1.1-darwin.zip
       UPLOAD=ON PACKAGE=TRUE
+allow_failures:
+  - env: CMAKE_CXX_COMPILER=g++-6 CMAKE_BUILD_TYPE=Release LATEST=true
 before_install:
 - if [[ $TRAVIS_OS_NAME == osx ]]; then brew update && brew install gcc && brew install
   gmp; fi
@@ -57,7 +62,13 @@ before_install:
 - pushd $HOME/lean
 - ls .git || (git init && git remote add origin https://github.com/leanprover/lean.git)
 - git fetch origin
-- git checkout 6ad9e3ed1ec6328af12162302ae8616e2c154988
+- |
+   if [[ $LATEST == true ]]
+   then
+     git pull origin master
+   else
+     git checkout 6ad9e3ed1ec6328af12162302ae8616e2c154988
+   fi
 - mkdir -p build
 - cd build
 - if [[ $TCMALLOC != ON ]]; then TCMALLOC=OFF; fi
