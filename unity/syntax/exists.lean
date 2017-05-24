@@ -1,7 +1,7 @@
 
 import data.set
 
-import unity.syntax.simple
+import unity.syntax.simple.expr
 
 import util.data.traversable
 
@@ -373,7 +373,7 @@ def meaning : existential v → ast.simple.semantics.state_t v → Prop
 variables lv : Type
 variables cs : set (prop (lv ⊕ v))
 variables s : ast.simple.semantics.state_t v
-#check @quot
+
 lemma partition_maintains_meaning
 : meaning ({ lv := lv, clauses := cs}) s ↔
 (∀ c, c ∈ quot cs rel ∧ meaning ({ lv := _, clauses := c}) s) :=
