@@ -67,6 +67,7 @@ script:
 - lean -v || echo "success"
 - lean --path
 - export LEAN_PATH=`pwd`:$HOME/travis/lean/bin/../lib/lean/library:$HOME/travis/lean/bin/../library
+- echo $LEAN_PATH
 - lean --make
 notifications:
   slack:
