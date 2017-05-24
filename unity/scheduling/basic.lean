@@ -143,11 +143,10 @@ structure scheduler :=
  (F : s)
  (ch : unity.state s → lbl)
  (hist : unity.state s → list lbl)
- (req := λ σ, r (hist σ))
  (INIT : system.init F (eq [ ] ∘ hist))
  (STEP : unity.co' F (λ σ σ', hist σ' = hist σ ++ [ch σ]))
- (INV  : ∀ σ, req σ = ∅ ∨ ch σ ∈ req σ)
- (PROG : ∀ l, often_imp_often F (mem l ∘ req) (eq l ∘ ch))
+ (INV  : ∀ σ, r (hist σ) = ∅ ∨ ch σ ∈ r (hist σ))
+ (PROG : ∀ l, often_imp_often F (mem l ∘ r ∘ hist) (eq l ∘ ch))
 
 lemma scheduling
   (sch : scheduler r)
