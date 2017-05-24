@@ -66,8 +66,8 @@ before_install:
 script:
 - lean -v || echo "success"
 - lean --path
-- export LEAN_PATH=/home/travis/lean/bin/../lib/lean/library:/home/travis/lean/bin/../library
-- make
+- export LEAN_PATH=`pwd`/home/travis/lean/bin/../lib/lean/library:/home/travis/lean/bin/../library
+- lean --make
 notifications:
   slack:
     rooms:
