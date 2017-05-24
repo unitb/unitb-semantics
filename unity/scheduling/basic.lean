@@ -15,6 +15,8 @@ section
 
 parameters {lbl : Type}
 
+open has_mem
+
 structure fair (req : stream (set lbl)) (τ : stream lbl) : Prop :=
   (valid : ∀ i, req i = ∅ ∨ τ i ∈ req i)
   (fair : ∀ l, ([]<>•mem l) req → ([]<>•eq l) τ)
@@ -56,7 +58,7 @@ namespace unity
 
 section
 
-open unity
+open unity has_mem
 
 parameters {lbl : Type}
 parameters {s : Type u}
@@ -130,7 +132,7 @@ end
 
 end
 
-open unity
+open unity has_mem
 
 variable {lbl : Type}
 variable r : list lbl → set lbl

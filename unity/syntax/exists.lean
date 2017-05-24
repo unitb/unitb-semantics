@@ -39,7 +39,7 @@ instance sum_functor {α : Type u₀} : functor (sum α) :=
 end ast.simple
 
 def existential.map {α β : Type} (f : α → β) : existential α → existential β
-  | ⟨n,cs⟩ := ⟨n,fmap (fmap f) <$> cs⟩
+  | ⟨n,cs⟩ := ⟨n,has_map.map (has_map.map f) <$> cs⟩
 
 lemma existential.id_map {α : Type} (x : existential α)
 : existential.map id x = x :=
@@ -55,8 +55,8 @@ begin
   cases x with n cs,
   unfold existential.map,
   rw [functor.map_comp' g h
-     ,functor.map_comp' (fmap g) (fmap h)
-     ,functor.map_comp (fmap $ fmap g) (fmap $ fmap h)],
+     ,functor.map_comp' (has_map.map g) (has_map.map h)
+     ,functor.map_comp (has_map.map $ has_map.map g) (has_map.map $ has_map.map h)],
 end
 
 instance : functor existential :=
@@ -214,7 +214,7 @@ lemma mem_fmap {α' : Type u₀} {x : α} {s : set α} (f : α → α')
   (h : x ∈ s)
 : f x ∈ f <$> s :=
 begin
-  unfold functor.map set.image set_of,
+  unfold has_map.map set.image set_of,
   apply Exists.intro x,
   exact ⟨h,rfl⟩
 end
@@ -264,7 +264,7 @@ lemma mem_union (x : α) (s₀ s₁ : set α)
 by refl
 
 lemma mem_sep (x : α) (s : set α) (p : α → Prop)
-: x ∈ sep p s ↔ x ∈ s ∧ p x :=
+: x ∈ has_sep.sep p s ↔ x ∈ s ∧ p x :=
 by refl
 
 lemma mem_part_of {s : set α} (r : α → α → Prop) {i : α}
