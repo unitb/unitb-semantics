@@ -65,7 +65,8 @@ before_install:
 - popd
 script:
 - lean -v || echo "success"
-- lean --make
+- lean --path
+- make
 notifications:
   slack:
     rooms:

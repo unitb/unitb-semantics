@@ -2,7 +2,7 @@
 .PHONY: all root logic models refinement syntax clean lines
 
 LEAN_OPT =
-LEAN_PATH = $(shell pwd):/usr/local/bin/../lib/lean/library
+LEAN_PATH = $(shell pwd):/usr/local/bin/../lib/lean/library:$(shell printenv LEAN_PATH)
 
 all:
 	LEAN_PATH=$(LEAN_PATH) lean $(LEAN_OPT) --make > errors.txt
