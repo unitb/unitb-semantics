@@ -1,8 +1,10 @@
 
 .PHONY: all root logic models refinement syntax clean lines
 
+LEAN_OPT = 
+
 all:
-	lean --make > errors.txt
+	lean $(LEAN_OPT) --make > errors.txt
 
 root: logic models refinement
 
@@ -15,7 +17,7 @@ refinement: unity/models/refinement/resched_data_ref.olean unity/models/refineme
 syntax: unity/syntax/exists.olean unity/syntax/simple.olean
 
 %.olean: %.lean $(shell lean $< --deps)
-	lean $<
+	lean $(LEAN_OPT) $<
 
 clean:
 	/usr/bin/find . -name "*.olean" -delete

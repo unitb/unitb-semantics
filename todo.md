@@ -12,6 +12,8 @@ Todo
 	* generalize transient_rule (from unity.models.nondet) and put in
       type class so that it becomes a requirement that other models
       can subscribe to
+	* models
+	  * in nondet, push the reference to liveness out of transient
 	* refinement
 	  * ~~schedules~~
 	  * ~~simulation~~
@@ -40,6 +42,7 @@ Todo
 	    * well-definedness
 		* defunctionalization of sequents
 	* pseudo code
+	* Event-B liveness semantics
 
 # cleanup #
 

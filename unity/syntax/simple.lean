@@ -171,6 +171,8 @@ inductive proof (n : ℕ)
   | basis {} : prop var → prop var → proof
   | trans : prop var → proof → proof → prop var → proof
   | mono : prop var → proof → prop var → proof
+--  | cancellation : prop var → proof → proof → prop var → proof
+--  | psp : prop var → proof → prop var → proof
 
 open nat
 
@@ -600,6 +602,29 @@ include h₂ h₃
 lemma proof_is_sound
 : valid' p pp.p ↦ valid' p pp.q in meaning' p h₀ h₁ :=
 sorry
+-- begin
+-- --  destruct p,
+-- --  intros inv_lbl inv tr_lbl tr first step liveness Hp,
+-- --  pose liveness := p.liveness.snd,
+-- --  assert Hliveness : p.liveness.snd = liveness, refl,
+-- --  destruct p.liveness,
+-- --  intros n liveness Hliveness,
+-- --  assert Hliveness : p.liveness.snd = liveness,
+-- --  unfold prog.properties prog.liveness proof_list.to_list sigma.snd at h₃,
+-- --  rw [Hliveness] at h₃,
+--   induction (p.liveness.snd) with k l ls,
+--   { unfold proof_list.to_list' at h₃,
+--     cases h₃, },
+--   cases h₃ with HH HH,
+--   { simp at HH,
+--     unfold check_liveness at h₂,
+--     induction l with r PP QQ,
+--     {  },
+--     {  },
+--     {  }, },
+--   {  },
+-- end
+
 end meaning
 
 end semantics
