@@ -43,8 +43,8 @@ matrix:
   - os: linux
     addons: *3
     env: CMAKE_CXX_COMPILER=g++-6 CMAKE_BUILD_TYPE=Release
-  - os: linux
-    addons: *3
+  - addons: *3
+    os: linux
     env: CMAKE_CXX_COMPILER=g++-6 CMAKE_BUILD_TYPE=Release LATEST=true
   - os: linux
     addons: *3
@@ -53,7 +53,7 @@ matrix:
     addons: &4
     env: CMAKE_CXX_COMPILER=clang++ CMAKE_BUILD_TYPE=Release TARGET=build/lean-3.1.1-darwin.zip
       UPLOAD=ON PACKAGE=TRUE
-allow_failures:
+  allow_failures:
   - env: CMAKE_CXX_COMPILER=g++-6 CMAKE_BUILD_TYPE=Release LATEST=true
 before_install:
 - if [[ $TRAVIS_OS_NAME == osx ]]; then brew update && brew install gcc && brew install
