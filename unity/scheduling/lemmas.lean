@@ -1,5 +1,5 @@
 import unity.scheduling.basic
-import unity.scheduling.finite
+import unity.scheduling.finite2
 import unity.scheduling.infinite
 
 import unity.temporal
@@ -17,7 +17,10 @@ lemma sched.sched_str {lbl : Type} [s : sched lbl] [nonempty lbl]
 : ∃ τ : stream lbl, fair (req_of r τ) τ :=
 begin
   cases s with _fin _inf,
-  { apply finite.sched' ; apply pos_of_finite  ; apply_instance },
+  { assert h : pos_finite lbl,
+    { apply pos_of_finite ; apply_instance },
+    apply unity.scheduling r (scheduling.finite.scheduler_spec r),
+    apply_instance },
   { apply infinite.sched' ; apply_instance },
 end
 

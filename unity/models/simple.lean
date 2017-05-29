@@ -57,6 +57,42 @@ instance prog_is_system {α} : system (prog α) :=
   , transient_str := prog.transient_str
   }
 
+lemma unless_step {α : Type}
+  {init : α}
+  {step : α → α}
+  {p q : α → Prop}
+  (h : ∀ σ, p σ → ¬ q σ → p (step σ) ∨ q (step σ))
+: unless (prog.mk init step) p q :=
+begin
+  unfold unless,
+  intros σ σ' S,
+  note h' := h σ, clear h,
+  unfold unity.step has_safety.step is_step prog.step at S,
+  rw S,
+  intros h,
+  cases h,
+  apply h' ; assumption,
+end
+
+lemma leads_to_step {α : Type}
+  (init : α)
+  (step : α → α)
+  (p q : α → Prop)
+  (h : ∀ σ, p σ → ¬ q σ → q (step σ))
+: p ↦ q in prog.mk init step :=
+begin
+  apply leads_to.basis,
+  { unfold transient system.transient prog.transient prog.step,
+    intros σ h,
+    cases h with h₀ h₁,
+    note h' := h _ h₀ h₁,
+    simp [not_and_iff_not_or_not,not_not_iff_self],
+    left, apply h', },
+  { apply unless_step,
+    intros σ hp hnq,
+    right, apply h _ hp hnq, }
+end
+
 open nat
 
 def ex {α} (s : prog α) : stream α
