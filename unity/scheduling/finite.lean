@@ -40,7 +40,7 @@ begin
   rw perm.rotate_right_g_max,
   unfold first,
   apply minimum_mem {x : fin (succ (pos_finite.pred_count lbl)) | l.f x ∈ req},
-  note h' := exists_mem_of_ne_empty _ h,
+  note h' := exists_mem_of_ne_empty h,
   cases h' with x h',
   apply (@set.ne_empty_of_mem _ _ $ l.g x),
   rw [mem_set_of,bijection.g_inv],
