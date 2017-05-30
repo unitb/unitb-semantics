@@ -20,7 +20,7 @@ parameter [pos_finite lbl]
 noncomputable def first (req : set lbl)
   (l : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
 : fin $ succ $ pos_finite.pred_count lbl :=
-minimum { x | l.f x ∈ req }
+has_minimum.minimum { x | l.f x ∈ req }
 
 noncomputable def select (req : set lbl)
   (l : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
@@ -39,7 +39,7 @@ begin
   unfold function.comp,
   rw perm.rotate_right_g_max,
   unfold first,
-  apply minimum_mem {x : fin (succ (pos_finite.pred_count lbl)) | l.f x ∈ req},
+  apply @minimum_mem _ _ {x : fin (succ (pos_finite.pred_count lbl)) | l.f x ∈ req},
   note h' := exists_mem_of_ne_empty h,
   cases h' with x h',
   apply (@set.ne_empty_of_mem _ _ $ l.g x),
