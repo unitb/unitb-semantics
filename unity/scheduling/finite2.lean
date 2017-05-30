@@ -28,7 +28,7 @@ parameter requests : list lbl → set lbl
 noncomputable def first (req : set lbl)
   (l : rrobin lbl)
 : index_t lbl :=
-minimum { x | l.f x ∈ req }
+(↓ x, l.f x ∈ req )
 
 noncomputable def sch.current (r : set lbl) (queue : rrobin lbl) : lbl :=
 queue.f (first r queue)
@@ -43,7 +43,7 @@ lemma first_mem {req : set lbl}
   (h : req ≠ ∅)
 : l.f (first req l) ∈ req :=
 begin
-  unfold first, apply minimum_mem { x | l.f x ∈ req },
+  unfold first, apply @minimum_mem _ _ { x | l.f x ∈ req },
   cases exists_mem_of_ne_empty h with x h,
   apply @set.ne_empty_of_mem _ _ (l.g x),
   change l.f (l.g x) ∈ req,
