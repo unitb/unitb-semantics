@@ -32,17 +32,17 @@ def program.action_of (s : program lbl α) (e : option lbl) (σ σ' : α) : Prop
 s^.take_step e σ = σ'
 
 def is_step (s : program lbl α) (σ σ' : α) : Prop :=
-∃ ev, program.action_of s ev σ σ'
+∃ ev, s.action_of ev σ σ'
 
 def program.falsify (s : program lbl α) (ev : option lbl) (p : pred α) : Prop
 := ∀ σ, p σ → ¬ (p (s^.take_step ev σ))
 
 def program.transient (s : program lbl α) (p : pred α) : Prop
-:= ∃ ev, program.falsify s ev p
+:= ∃ ev, s.falsify ev p
 
 def program.falsify_action (s : program lbl α) (p : pred α) (ev : option lbl)
   (h : s.falsify ev p)
-: •p ⟹ ( ⟦ program.action_of s ev ⟧ ⟶ ⟦ λ _, - p ⟧ ) :=
+: •p ⟹ ( ⟦ s.action_of ev ⟧ ⟶ ⟦ λ _, - p ⟧ ) :=
 begin
   unfold program.transient at h,
   intros τ H₀ H₁,
@@ -55,20 +55,21 @@ end
 
 lemma program.falsify.negate
    {s : program lbl α} {act : option lbl} {p : pred' α}
-:  program.falsify s act p
+:  s.falsify act p
 →  •p && ⟦ s^.action_of act ⟧ ⟹ <>-•p :=
 begin
   intros FALSE τ H,
   assert GOAL : ⟦ λ _, - p ⟧ τ,
   { cases H with H₀ H₁,
-    apply program.falsify_action s p act FALSE
+    apply s.falsify_action p act FALSE
     ; assumption },
   unfold temporal.eventually,
   existsi 1,
   apply GOAL
 end
 
-lemma program.transient_false (s : program lbl α) : program.transient s False :=
+lemma program.transient_false (s : program lbl α) 
+: s.transient False :=
 begin
   unfold program.transient False,
   existsi @none lbl,
@@ -78,8 +79,8 @@ end
 
 lemma program.transient_str (s : program lbl α) (p q : α → Prop)
   (h : ∀ (i : α), p i → q i)
-  (T₀ : program.transient s q)
-: program.transient s p :=
+  (T₀ : s.transient q)
+: s.transient p :=
 begin
   unfold program.transient,
   cases T₀ with ev T₁,
@@ -110,8 +111,8 @@ open unity
 open nat
 
 def run (s : program lbl α) (τ : stream (option lbl)) : stream α
-  | 0 := program.first s
-  | (succ n) := program.take_step s (τ n) (run n)
+  | 0 := s.first
+  | (succ n) := s.take_step (τ n) (run n)
 
 
 section soundness
@@ -132,7 +133,7 @@ begin
 end
 
 lemma transient.semantics
-  (T₀ : program.transient s p)
+  (T₀ : s.transient p)
 : ([]<>-•p) τ :=
 begin
   unfold program.transient at T₀,

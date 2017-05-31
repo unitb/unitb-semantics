@@ -68,7 +68,7 @@ open temporal
 
 lemma program.falsify.negate
    {s : program} {act : option s.lbl} {p : pred' α}
-   (F : program.falsify s act p)
+   (F : s.falsify act p)
 :  •p && ⟦ s^.step_of act ⟧ ⟹ <>-•p :=
 @nondet.program.falsify.negate _ s.nondet act p F
 
@@ -86,7 +86,7 @@ theorem program.transient_false : transient s False :=
 nondet.program.transient_false _
 
 def program.transient_str (s : program) {p q : α → Prop}
-: (∀ (i : α), p i → q i) → program.transient s q → program.transient s p :=
+: (∀ (i : α), p i → q i) → s.transient q → s.transient p :=
 nondet.program.transient_str _
 
 end theorems

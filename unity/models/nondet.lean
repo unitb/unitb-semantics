@@ -151,14 +151,14 @@ structure program.ex (s : program) (τ : stream α) : Prop :=
 
 structure program.falsify (s : program) (act : option s.lbl) (p : pred' α) : Prop :=
   (enable : p ⟹ s^.coarse_sch_of act)
-  (schedule : program.ex s ⟹ (<>[]•p ⟶ []<>• s^.fine_sch_of act) )
+  (schedule : s.ex ⟹ (<>[]•p ⟶ []<>• s^.fine_sch_of act) )
   (negate' : ⦃ •p ⟶ ⟦ s^.step_of act ⟧ ⟶ ⊙-•p ⦄)
 
 open temporal
 
 lemma program.falsify.negate
    {s : program} {act : option s.lbl} {p : pred}
-:  program.falsify s act p
+:  s.falsify act p
 →  •p && ⟦ s^.step_of act ⟧ ⟹ <>-•p :=
 begin
   intros h₀ τ h₁,
@@ -169,7 +169,7 @@ begin
 end
 
 def program.transient (s : program) (p : pred' α) : Prop :=
-∃ (act : option s.lbl), program.falsify s act p
+∃ (act : option s.lbl), s.falsify act p
 
 section theorems
 
@@ -190,9 +190,10 @@ begin
   { intros σ h₀ h₁, cases h₀ with h₂ }
 end
 
-def program.transient_str : ∀ (s : program) {p q : α → Prop}, (∀ (i : α), p i → q i) → program.transient s q → program.transient s p :=
+def program.transient_str (s : program) {p q : α → Prop}
+  (h : p ⟹ q)
+: s.transient q → s.transient p :=
 begin
-  intros s p q h,
   unfold transient,
   apply exists_imp_exists,
   intros e h',
@@ -251,7 +252,7 @@ begin
 end
 
 lemma transient.semantics
-  (T₀ : program.transient s p)
+  (T₀ : s.transient p)
 : ([]<>-•p) τ :=
 begin
   cases (temporal.em' (•p) τ) with h_p ev_np,
@@ -338,7 +339,7 @@ noncomputable def enabled (s : program)
 open unity has_mem
 
 lemma program.run_succ  (s : program) (τ : stream (option s.lbl)) (i : ℕ)
-  [Π (x : option (s.lbl)) (σ : α), decidable (program.guard s x σ)]
+  [Π (x : option (s.lbl)) (σ : α), decidable (s.guard x σ)]
 : (run s τ (succ i)) = run_one s (τ i) (run s τ i) :=
 begin
   unfold run,
@@ -346,8 +347,8 @@ begin
 end
 
 lemma program.run_skip  (s : program) (τ : stream (option s.lbl)) (i : ℕ)
-  [Π (x : option (s.lbl)) (σ : α), decidable (program.guard s x σ)]
-  (Hguard : ¬ program.guard s (τ i) (run s τ i))
+  [Π (x : option (s.lbl)) (σ : α), decidable (s.guard x σ)]
+  (Hguard : ¬ s.guard (τ i) (run s τ i))
 : (run s τ (succ i)) = run s τ i :=
 begin
   rw [s.run_succ],
@@ -356,10 +357,10 @@ begin
 end
 
 lemma program.run_enabled  (s : program) (τ : stream (option s.lbl)) (i : ℕ)
-  [Π (x : option (s.lbl)) (σ : α), decidable (program.guard s x σ)]
-  (Hcoarse : program.coarse_sch_of s (τ i) (run s τ i))
-  (Hfine : program.fine_sch_of s (τ i) (run s τ i))
-: (program.event s (τ i)).step (run s τ i) Hcoarse Hfine (run s τ (succ i)) :=
+  [Π (x : option (s.lbl)) (σ : α), decidable (s.guard x σ)]
+  (Hcoarse : s.coarse_sch_of (τ i) (run s τ i))
+  (Hfine : s.fine_sch_of (τ i) (run s τ i))
+: (s.event (τ i)).step (run s τ i) Hcoarse Hfine (run s τ (succ i)) :=
 begin
   pose Hguard : s.guard (τ i) (run s τ i) := ⟨Hcoarse,Hfine⟩,
   rw [s.run_succ],
@@ -370,7 +371,7 @@ begin
 end
 
 lemma program.witness (s : program)
-: ∃ (τ : stream α), program.ex s τ :=
+: ∃ (τ : stream α), s.ex τ :=
 begin
   note _inst := s.lbl_is_sched,
   assert _inst_1 : ∀ (x : option s.lbl) σ, decidable (s.guard x σ),
@@ -448,7 +449,7 @@ instance : unity.system_sem program :=
 open unity
 
 def unless_except (s : program) (p q : pred' α) (evts : set event) : Prop :=
-unless' s p q (λ σ σ', ∃ e, e ∈ evts ∧ event.step_of e σ σ')
+unless' s p q (λ σ σ', ∃ e, e ∈ evts ∧ e.step_of σ σ')
 
 theorem unless_except_rule {s : program} {p q : pred' α} (exp : set event)
   (ACT : ∀ (e : s.lbl) σ Hc Hf σ',

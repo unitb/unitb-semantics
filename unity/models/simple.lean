@@ -27,7 +27,8 @@ def program.transient {α} (s : program α) (p : pred α) : Prop
 def program.unless {α} (s : program α) (p q : pred α) : Prop
 := ∀ σ, p σ ∧ ¬q σ → p (s^.step σ) ∨ q (s^.step σ)
 
-lemma program.transient_false {α} (s : program α) : program.transient s False :=
+lemma program.transient_false {α} (s : program α)
+: s.transient False :=
 begin
   unfold program.transient False,
   intros σ h,
@@ -36,8 +37,8 @@ end
 
 lemma program.transient_str {α} (s : program α) (p q : α → Prop)
   (h : ∀ (i : α), p i → q i)
-  (T₀ : program.transient s q)
-: program.transient s p :=
+  (T₀ : s.transient q)
+: s.transient p :=
 begin
   unfold program.transient,
   intros σ h',
