@@ -21,9 +21,9 @@ variables {α β σ : Type}
 
 structure refined
        (f : α → σ)
-       (ma : @prog α)
+       (ma : program α)
        (g : β → σ)
-       (mc : @prog β) :=
+       (mc : program β) :=
   (glue : α → β → Prop)
   (obs_cons : ∀ a c, glue a c → f a = g c)
   (bij : mc.lbl = ma.lbl)
@@ -52,14 +52,14 @@ parameters {α β σ : Type}
 
 parameters
        (f : α → σ)
-       (ma : @prog α)
+       (ma : program α)
        (g : β → σ)
-       (mc : @prog β)
+       (mc : program β)
 
 parameter R : refined f ma g mc
 
-parameter [nonempty (unity.state (@prog α))]
-parameter Tc : stream (unity.state (@prog β))
+parameter [nonempty (unity.state (program α))]
+parameter Tc : stream (unity.state (program β))
 parameter Hc : system_sem.ex mc Tc
 
 open nat
@@ -92,7 +92,7 @@ end
 
 omit Hc
 
-noncomputable def Ta : stream (unity.state (@prog α))
+noncomputable def Ta : stream (unity.state (program α))
   | 0 := classical.epsilon (λ a, R.glue a (Tc 0) ∧ ma^.first a)
   | (succ n) := classical.epsilon (λ a, R.glue a (Tc (succ n)) ∧ ma.step_of ((Tevt n).cast R.bij) (Ta n) a)
 
@@ -162,7 +162,7 @@ begin
   intros Tc Hc,
   existsi (Ta _ ma _ mc R Tc),
   split,
-  apply prog.ex.mk ,
+  apply program.ex.mk ,
   { apply (init_simmed _ _ _ _ _ _ Hc).right },
   { intro i,
     unfold action step has_safety.step stream.drop,
@@ -188,7 +188,7 @@ begin
       apply glued, apply Hc },
     { intro Hevt,
       pose Tevt' : stream (option ma.lbl) := λ i, (Tevt mc Tc i).cast R.bij,
-      apply events_to_states Tevt' (prog.step_of ma),
+      apply events_to_states Tevt' (program.step_of ma),
       intro i,
       apply (abs_step f ma g mc _ _ Hc i _).right,
       { apply glued, apply Hc },
@@ -196,7 +196,7 @@ begin
       { unfold function.comp, revert  Tevt', simp [option_cast'_cast],
         apply fair_sched_of_is_fair',
         unfold Tevts ,
-        pose F := λ σ σ', {e : option (mc.lbl) | prog.step_of mc e σ σ'},
+        pose F := λ σ σ', {e : option (mc.lbl) | program.step_of mc e σ σ'},
         rw -inf_often_trace_action_trading Tc F,
         apply henceforth_entails_henceforth _ _ Hevt,
         apply eventually_entails_eventually,

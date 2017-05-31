@@ -78,7 +78,7 @@ noncomputable def sch.step : sch_state → sch_state
      , inv := sch.select_inv _ _
      }
 
-noncomputable def scheduler : prog sch_state :=
+noncomputable def scheduler : program sch_state :=
   { first := sch.first
   , step  := sch.step }
 
@@ -169,7 +169,7 @@ end
 lemma INIT
 : system.init scheduler (eq list.nil ∘ sch_state.hist) :=
 begin
-  unfold system.init prog.init function.comp scheduler,
+  unfold system.init program.init function.comp scheduler,
   refl,
 end
 
@@ -183,7 +183,7 @@ begin
   unfold step has_safety.step is_step,
   intros H,
   rw H,
-  unfold function.comp scheduler prog.step subtype.val sch.step,
+  unfold function.comp scheduler program.step subtype.val sch.step,
   cases σ, unfold subtype.val,
   unfold sch.step sch_state.hist,
   refl,
@@ -211,7 +211,7 @@ variable (r : list lbl → set lbl)
 
 noncomputable def scheduler_spec
 : @scheduling.unity.scheduler lbl r :=
-  { s := prog $ sch_state r
+  { s := program $ sch_state r
   , sem := _
   , F := @scheduler _ _ r
   , ch := next r

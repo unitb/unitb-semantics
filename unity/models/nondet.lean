@@ -23,7 +23,7 @@ structure event : Type :=
   (step : ∀ s, coarse_sch s → fine_sch s → α → Prop)
   (fis : ∀ s CS FS, ∃ s', step s CS FS s')
 
-structure prog : Type 2 :=
+structure program : Type 2 :=
   (lbl : Type)
   (lbl_is_sched : scheduling.sched lbl)
   (first : α → Prop)
@@ -41,48 +41,48 @@ def skip : event :=
 , step := λ s _ _ s', s = s'
 , fis := take s _ _, ⟨s,rfl⟩ }
 
-def prog.event (s : prog) : option s.lbl → event
+def program.event (s : program) : option s.lbl → event
   | none := skip
   | (some e) := s^.event' e
 
-def prog.init (s : prog) (p : pred) : Prop
+def program.init (s : program) (p : pred) : Prop
 := s^.first ⟹ p
 
-def prog.guard  (s : prog) (e : option s.lbl) : α → Prop :=
+def program.guard  (s : program) (e : option s.lbl) : α → Prop :=
 (s^.event e)^.coarse_sch && (s^.event e)^.fine_sch
 
-def prog.coarse_sch_of (s : prog) (act : option s.lbl) : α → Prop :=
+def program.coarse_sch_of (s : program) (act : option s.lbl) : α → Prop :=
 (s.event act).coarse_sch
 
 @[simp]
-lemma prog.coarse_sch_of_none (s : prog)
+lemma program.coarse_sch_of_none (s : program)
 : s.coarse_sch_of none = True :=
 by refl
 
-def prog.fine_sch_of (s : prog) (act : option s.lbl) : α → Prop :=
+def program.fine_sch_of (s : program) (act : option s.lbl) : α → Prop :=
 (s.event act).fine_sch
 
 @[simp]
-lemma prog.fine_sch_of_none (s : prog)
+lemma program.fine_sch_of_none (s : program)
 : s.fine_sch_of none = True :=
 by refl
 
-def prog.take_step (s : prog)
+def program.take_step (s : program)
 : ∀ (e : option s.lbl) (σ : α), s^.coarse_sch_of e σ → s^.fine_sch_of e σ → α → Prop
   | none σ _ _ := λ σ', σ = σ'
   | (some e) σ Hc Hf := (s^.event e)^.step σ Hc Hf
 
-def prog.step_of (s : prog) (act : option s.lbl) : α → α → Prop :=
+def program.step_of (s : program) (act : option s.lbl) : α → α → Prop :=
 (s.event act).step_of
 
-def is_step (s : prog) (σ σ' : α) : Prop :=
+def is_step (s : program) (σ σ' : α) : Prop :=
 ∃ ev, s.step_of ev σ σ'
 
 open temporal
 
-lemma step_of_none  (s : prog) : s.step_of none = eq :=
+lemma step_of_none  (s : program) : s.step_of none = eq :=
 begin
-  unfold prog.step_of prog.event skip,
+  unfold program.step_of program.event skip,
   apply funext, intro σ,
   apply funext, intro σ',
   unfold event.step_of,
@@ -91,7 +91,7 @@ begin
   simp [exists_true],
 end
 
-lemma is_step_exists_event  (s : prog)
+lemma is_step_exists_event  (s : program)
  : temporal.action (is_step s) = (⟦ eq ⟧ || ∃∃ ev : s.lbl, ⟦ (s.event' ev).step_of ⟧) :=
 begin
   simp [exists_action,or_action],
@@ -106,7 +106,7 @@ begin
     refl }
 end
 
-lemma is_step_exists_event'  (s : prog)
+lemma is_step_exists_event'  (s : program)
  : temporal.action (is_step s) = (∃∃ ev : option s.lbl, ⟦ s.step_of ev ⟧) :=
 begin
   simp [exists_action,or_action],
@@ -117,7 +117,7 @@ begin
   simp [exists_option],
 end
 
-lemma is_step_inst' (s : prog) (ev : option s.lbl)
+lemma is_step_inst' (s : program) (ev : option s.lbl)
 : ⟦ s.step_of ev ⟧ ⟹ ⟦ is_step s ⟧ :=
 begin
   rw is_step_exists_event',
@@ -129,7 +129,7 @@ def pair  (σ σ' : α) : stream α
   | 0 := σ
   | (nat.succ i) := σ'
 
-lemma is_step_inst (s : prog) (ev : option s.lbl) (σ σ' : α)
+lemma is_step_inst (s : program) (ev : option s.lbl) (σ σ' : α)
   (h : s.step_of ev σ σ')
 : is_step s σ σ' :=
 begin
@@ -138,27 +138,27 @@ begin
   apply h
 end
 
-instance : unity.has_safety prog :=
+instance : unity.has_safety program :=
   { σ := α
   , step := is_step }
 
-structure prog.ex (s : prog) (τ : stream α) : Prop :=
+structure program.ex (s : program) (τ : stream α) : Prop :=
     (init : s^.first (τ 0))
     (safety : unity.saf_ex s τ)
     (liveness : ∀ e, (<>[]• s^.coarse_sch_of e) τ →
                      ([]<>• s^.fine_sch_of e) τ →
                      ([]<> ⟦ s.step_of e ⟧) τ)
 
-structure prog.falsify (s : prog) (act : option s.lbl) (p : pred' α) : Prop :=
+structure program.falsify (s : program) (act : option s.lbl) (p : pred' α) : Prop :=
   (enable : p ⟹ s^.coarse_sch_of act)
-  (schedule : prog.ex s ⟹ (<>[]•p ⟶ []<>• s^.fine_sch_of act) )
+  (schedule : program.ex s ⟹ (<>[]•p ⟶ []<>• s^.fine_sch_of act) )
   (negate' : ⦃ •p ⟶ ⟦ s^.step_of act ⟧ ⟶ ⊙-•p ⦄)
 
 open temporal
 
-lemma prog.falsify.negate
-   {s : prog} {act : option s.lbl} {p : pred}
-:  prog.falsify s act p
+lemma program.falsify.negate
+   {s : program} {act : option s.lbl} {p : pred}
+:  program.falsify s act p
 →  •p && ⟦ s^.step_of act ⟧ ⟹ <>-•p :=
 begin
   intros h₀ τ h₁,
@@ -168,19 +168,19 @@ begin
   apply h₂,
 end
 
-def prog.transient (s : prog) (p : pred' α) : Prop :=
-∃ (act : option s.lbl), prog.falsify s act p
+def program.transient (s : program) (p : pred' α) : Prop :=
+∃ (act : option s.lbl), program.falsify s act p
 
 section theorems
 
-variable (s : prog)
+variable (s : program)
 
-open prog
+open program
 open event
 
-theorem prog.transient_false : transient s False :=
+theorem program.transient_false : transient s False :=
 begin
-  unfold prog.transient,
+  unfold program.transient,
   existsi none,
   apply falsify.mk,
   { intros σ h, cases h },
@@ -190,7 +190,7 @@ begin
   { intros σ h₀ h₁, cases h₀ with h₂ }
 end
 
-def prog.transient_str : ∀ (s : prog) {p q : α → Prop}, (∀ (i : α), p i → q i) → prog.transient s q → prog.transient s p :=
+def program.transient_str : ∀ (s : program) {p q : α → Prop}, (∀ (i : α), p i → q i) → program.transient s q → program.transient s p :=
 begin
   intros s p q h,
   unfold transient,
@@ -223,19 +223,19 @@ end
 
 end theorems
 
-instance prog_is_system : unity.system prog :=
+instance prog_is_system : unity.system program :=
 { σ := α
-, transient := @prog.transient
+, transient := program.transient
 , step := is_step
-, init   := prog.init
-, transient_false := prog.transient_false
-, transient_str := prog.transient_str }
+, init   := program.init
+, transient_false := program.transient_false
+, transient_str := program.transient_str }
 
 section soundness
 
-open prog
+open program
 
-variables {s : prog} {p : pred' α}
+variables {s : program} {p : pred' α}
 variables (τ : stream α)
 variables (h : ex s τ)
 include h
@@ -245,17 +245,17 @@ lemma init_sem
 : (•p) τ :=
 begin
   unfold temporal.init,
-  unfold init prog.init at I₀,
+  unfold init program.init at I₀,
   apply I₀,
   apply h.init,
 end
 
 lemma transient.semantics
-  (T₀ : prog.transient s p)
+  (T₀ : program.transient s p)
 : ([]<>-•p) τ :=
 begin
   cases (temporal.em' (•p) τ) with h_p ev_np,
-  { unfold prog.transient at T₀,
+  { unfold program.transient at T₀,
     cases T₀ with ev T₀,
     assert Hc : (<>[]•s.coarse_sch_of ev) τ,
     { apply eventually_entails_eventually _ _ h_p,
@@ -276,25 +276,25 @@ end soundness
 
 open scheduling nat list
 
-noncomputable def run_one  (p : prog)
+noncomputable def run_one  (p : program)
   [∀ (x : option p.lbl) σ, decidable (p.guard x σ)]
   (e : option p.lbl) (s : α) : α :=
 if h : p.guard e s
 then classical.some ((p.event e).fis s h.left h.right)
 else s
 
-noncomputable def run' (p : prog)
+noncomputable def run' (p : program)
   [∀ (x : option p.lbl) σ, decidable (p.guard x σ)]
 : list (option p.lbl) → α → α
   | nil s := s
   | (cons e es) s := run' es $ run_one p e s
 
-lemma run_cons (p : prog) (xs : list (option p.lbl)) (x : option p.lbl)
+lemma run_cons (p : program) (xs : list (option p.lbl)) (x : option p.lbl)
   [∀ (x : option p.lbl) σ, decidable (p.guard x σ)]
 : run' p (x :: xs) = run' p xs ∘ run_one p x :=
 by refl
 
-lemma run_append (p : prog) (xs ys : list (option p.lbl))
+lemma run_append (p : program) (xs ys : list (option p.lbl))
   [∀ (x : option p.lbl) σ, decidable (p.guard x σ)]
 : run' p (xs ++ ys) = run' p ys ∘ run' p xs :=
 begin
@@ -309,7 +309,7 @@ begin
     rw [IH], }
 end
 
-lemma run_concat_eq_comp (p : prog) (xs : list (option p.lbl)) (x : option p.lbl)
+lemma run_concat_eq_comp (p : program) (xs : list (option p.lbl)) (x : option p.lbl)
   [∀ (x : option p.lbl) σ, decidable (p.guard x σ)]
 : run' p (concat xs x) = run_one p x ∘ run' p xs :=
 begin
@@ -317,19 +317,19 @@ begin
   refl,
 end
 
-lemma run_concat (p : prog) (xs : list (option p.lbl)) (x : option p.lbl) (σ : α)
+lemma run_concat (p : program) (xs : list (option p.lbl)) (x : option p.lbl) (σ : α)
   [∀ (x : option p.lbl) σ, decidable (p.guard x σ)]
 : run' p (concat xs x) σ = run_one p x (run' p xs σ) :=
 by rw run_concat_eq_comp
 
-noncomputable def prog.first_state (s : prog) := (classical.some s.first_fis)
+noncomputable def program.first_state (s : program) := (classical.some s.first_fis)
 
-noncomputable def run (s : prog)  [∀ (x : option s.lbl) σ, decidable (s.guard x σ)]
+noncomputable def run (s : program)  [∀ (x : option s.lbl) σ, decidable (s.guard x σ)]
   (τ : stream (option s.lbl))
 : stream α :=
 λ i, run' s (stream.approx i τ) s.first_state
 
-noncomputable def enabled (s : prog)
+noncomputable def enabled (s : program)
   [∀ (x : option s.lbl) σ, decidable (s.guard x σ)]
   (es : list (option s.lbl))
 : set (option s.lbl) :=
@@ -337,17 +337,17 @@ noncomputable def enabled (s : prog)
 
 open unity has_mem
 
-lemma prog.run_succ  (s : prog) (τ : stream (option s.lbl)) (i : ℕ)
-  [Π (x : option (s.lbl)) (σ : α), decidable (prog.guard s x σ)]
+lemma program.run_succ  (s : program) (τ : stream (option s.lbl)) (i : ℕ)
+  [Π (x : option (s.lbl)) (σ : α), decidable (program.guard s x σ)]
 : (run s τ (succ i)) = run_one s (τ i) (run s τ i) :=
 begin
   unfold run,
   rw [stream.approx_succ_eq_concat,run_concat],
 end
 
-lemma prog.run_skip  (s : prog) (τ : stream (option s.lbl)) (i : ℕ)
-  [Π (x : option (s.lbl)) (σ : α), decidable (prog.guard s x σ)]
-  (Hguard : ¬ prog.guard s (τ i) (run s τ i))
+lemma program.run_skip  (s : program) (τ : stream (option s.lbl)) (i : ℕ)
+  [Π (x : option (s.lbl)) (σ : α), decidable (program.guard s x σ)]
+  (Hguard : ¬ program.guard s (τ i) (run s τ i))
 : (run s τ (succ i)) = run s τ i :=
 begin
   rw [s.run_succ],
@@ -355,11 +355,11 @@ begin
   rw dif_neg Hguard,
 end
 
-lemma prog.run_enabled  (s : prog) (τ : stream (option s.lbl)) (i : ℕ)
-  [Π (x : option (s.lbl)) (σ : α), decidable (prog.guard s x σ)]
-  (Hcoarse : prog.coarse_sch_of s (τ i) (run s τ i))
-  (Hfine : prog.fine_sch_of s (τ i) (run s τ i))
-: (prog.event s (τ i)).step (run s τ i) Hcoarse Hfine (run s τ (succ i)) :=
+lemma program.run_enabled  (s : program) (τ : stream (option s.lbl)) (i : ℕ)
+  [Π (x : option (s.lbl)) (σ : α), decidable (program.guard s x σ)]
+  (Hcoarse : program.coarse_sch_of s (τ i) (run s τ i))
+  (Hfine : program.fine_sch_of s (τ i) (run s τ i))
+: (program.event s (τ i)).step (run s τ i) Hcoarse Hfine (run s τ (succ i)) :=
 begin
   pose Hguard : s.guard (τ i) (run s τ i) := ⟨Hcoarse,Hfine⟩,
   rw [s.run_succ],
@@ -369,8 +369,8 @@ begin
   apply h,
 end
 
-lemma prog.witness (s : prog)
-: ∃ (τ : stream α), prog.ex s τ :=
+lemma program.witness (s : program)
+: ∃ (τ : stream α), program.ex s τ :=
 begin
   note _inst := s.lbl_is_sched,
   assert _inst_1 : ∀ (x : option s.lbl) σ, decidable (s.guard x σ),
@@ -431,26 +431,26 @@ begin
     unfold eventually, existsi j,
     rw He,
     rw [stream.drop_drop,action_drop],
-    unfold prog.step_of event.step_of,
+    unfold program.step_of event.step_of,
     existsi Hguard.left,existsi Hguard.right,
     apply s.run_enabled },
 end
 
--- instance {α} [sched lbl] : system_sem (prog lbl) :=
-instance : unity.system_sem prog :=
-  { (_ : unity.system prog) with
-    ex := prog.ex
-  , safety := @prog.ex.safety _
-  , inhabited := prog.witness
+-- instance {α} [sched lbl] : system_sem (program lbl) :=
+instance : unity.system_sem program :=
+  { (_ : unity.system program) with
+    ex := program.ex
+  , safety := @program.ex.safety _
+  , inhabited := program.witness
   , init_sem := @init_sem
   , transient_sem := @transient.semantics }
 
 open unity
 
-def unless_except (s : prog) (p q : pred' α) (evts : set event) : Prop :=
+def unless_except (s : program) (p q : pred' α) (evts : set event) : Prop :=
 unless' s p q (λ σ σ', ∃ e, e ∈ evts ∧ event.step_of e σ σ')
 
-theorem unless_except_rule {s : prog} {p q : pred' α} (exp : set event)
+theorem unless_except_rule {s : program} {p q : pred' α} (exp : set event)
   (ACT : ∀ (e : s.lbl) σ Hc Hf σ',
         ¬ s.event' e ∈ exp
       → (s.event' e).step σ Hc Hf σ'
@@ -461,24 +461,24 @@ begin
   cases H with Hp Hq,
   unfold step has_safety.step is_step at STEP,
   cases STEP with e STEP,
-  unfold prog.step_of event.step_of at STEP,
+  unfold program.step_of event.step_of at STEP,
   cases STEP with Hc STEP,
   cases STEP with Hf STEP,
   cases e with e,
-  { unfold prog.event skip event.step at STEP,
+  { unfold program.event skip event.step at STEP,
     subst σ',
     left, apply Hp },
   { apply ACT e _ Hc Hf _ _ STEP Hp Hq,
     intro Hin,
     apply EXP,
     clear ACT EXP,
-    unfold prog.step_of event.step_of prog.event,
+    unfold program.step_of event.step_of program.event,
     existsi s.event' e, split, apply Hin,
     existsi Hc, existsi Hf,
     apply STEP }
 end
 
-theorem unless_rule {s : prog} {p q : pred' α}
+theorem unless_rule {s : program} {p q : pred' α}
   (ACT : ∀ (e : s.lbl) σ Hc Hf σ', (s.event' e).step σ Hc Hf σ' → p σ → ¬ q σ → p σ' ∨ q σ')
 : unless s p q :=
 begin
@@ -505,13 +505,13 @@ begin
   apply congr_arg _ Heq,
 end
 
-theorem transient_rule {s : prog} {p : pred' α} (ev : option s.lbl)
+theorem transient_rule {s : program} {p : pred' α} (ev : option s.lbl)
    (EN : p ⟹ s.coarse_sch_of ev)
    (FLW : leads_to s (p && s.coarse_sch_of ev) (s.fine_sch_of ev))
    (NEG : ∀ σ σ', p σ → s.step_of ev σ σ' → ¬p σ')
 : s.transient p :=
 begin
-  unfold prog.transient,
+  unfold program.transient,
   existsi ev,
   apply falsify.mk,
     -- enablement

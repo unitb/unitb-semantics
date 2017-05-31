@@ -14,20 +14,20 @@ section defs
 
 variables {α β : Type}
 
-structure evt_ref (lbl : Type) (mc : @prog α) (ea : @event α) (ecs : lbl → @event α) : Type :=
+structure evt_ref (lbl : Type) (mc : program α) (ea : event α) (ecs : lbl → event α) : Type :=
   (witness : lbl → α → Prop)
   (witness_fis : ⦃ ∃∃ e, witness e ⦄)
   (delay : ∀ ec, witness ec && ea.coarse_sch && ea.fine_sch ↦ witness ec && (ecs ec).coarse_sch in mc)
   (stable : ∀ ec, unless_except mc (witness ec && (ecs ec).coarse_sch) (-ea.coarse_sch) { e | ∃ l, ecs l = e })
   (resched : ∀ ec, ea.coarse_sch && ea.fine_sch && witness ec ↦ (ecs ec).fine_sch in mc)
 
-structure refined (ma mc : @prog α) : Type :=
+structure refined (ma mc : program α) : Type :=
   (sim_init : mc^.first ⟹ ma^.first)
   (abs : option mc.lbl → option ma.lbl)
   (evt_sim : ∀ ec, ⟦ mc.step_of ec ⟧ ⟹ ⟦ ma.step_of (abs ec) ⟧)
   (events : ∀ ae, evt_ref { ec // abs ec = ae } mc (ma.event ae) (λ ec, mc.event ec.val) )
 
-lemma refined.sim {ma mc : @prog α}
+lemma refined.sim {ma mc : program α}
   (R : refined ma mc)
 : ⟦ is_step mc ⟧ ⟹ ⟦ is_step ma ⟧ :=
 begin
@@ -37,7 +37,7 @@ begin
   intros H,
   cases H with ce H,
   existsi (R.abs ce),
-  unfold prog.event, unfold prog.event at H,
+  unfold program.event, unfold program.event at H,
   apply R.evt_sim _ _ H,
 end
 
@@ -47,8 +47,8 @@ section soundness
 
 parameters {α β : Type}
 
-parameter (ma : @prog α)
-parameter (mc : @prog α)
+parameter (ma : program α)
+parameter (mc : program α)
 
 open temporal
 
@@ -61,8 +61,8 @@ section schedules
 parameter e : option ma.lbl
 def imp_lbl := { ec : option mc.lbl // R.abs ec = e }
 
-def AC := (prog.event ma e).coarse_sch
-def AF := (prog.event ma e).fine_sch
+def AC := (program.event ma e).coarse_sch
+def AF := (program.event ma e).fine_sch
 def W (e' : imp_lbl) := (R.events e).witness e'
 def CC (e' : option mc.lbl) := mc.coarse_sch_of e'
 def CF (e' : option mc.lbl) := mc.fine_sch_of e'
@@ -102,7 +102,7 @@ begin
       intros ec H,
       cases H with e' H,
       cases H with H₀ H₁,
-      unfold prog.step_of,
+      unfold program.step_of,
       rw H₁, apply H₀, },
     note H' := leads_to.gen_disj' (R.events e).delay,
     apply inf_often_of_leads_to (system_sem.leads_to_sem H' _ M₁),
@@ -146,7 +146,7 @@ include R
 
 theorem soundness : system_sem.ex ma τ :=
 begin
-  apply nondet.prog.ex.mk,
+  apply nondet.program.ex.mk,
   { apply R.sim_init,
     apply M₁.init },
   { intro i,
@@ -154,7 +154,7 @@ begin
     apply M₁.safety },
   { intros e COARSE₀ FINE₀,
     apply assume_neg _, intro ACT,
-    assert COARSE₁ :  (<>[](•AC ma e && -⟦prog.step_of ma e⟧)) τ,
+    assert COARSE₁ :  (<>[](•AC ma e && -⟦program.step_of ma e⟧)) τ,
     { rw [p_not_eq_not,not_henceforth,not_eventually] at ACT,
       apply stable_and_of_stable_of_stable COARSE₀ ACT },
     clear COARSE₀ ACT,

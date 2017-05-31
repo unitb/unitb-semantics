@@ -30,13 +30,13 @@ def event.nondet (e : event) : nondet.event α :=
   , step := λ s Hc Hf s', e.step s Hc Hf = s'
   , fis := λ s Hc Hf, ⟨_,rfl⟩ }
 
-structure prog : Type 2 :=
+structure program : Type 2 :=
   (lbl : Type)
   (lbl_is_sched : scheduling.sched lbl)
   (first : α)
   (event' : lbl → event)
 
-def prog.nondet (p : prog) : @nondet.prog α :=
+def program.nondet (p : program) : @nondet.program α :=
   { lbl := p.lbl
   , lbl_is_sched := p.lbl_is_sched
   , first := λ s, s = p.first
@@ -45,63 +45,63 @@ def prog.nondet (p : prog) : @nondet.prog α :=
 
 open temporal
 
-def prog.coarse_sch_of (s : prog) (act : option s.lbl)
+def program.coarse_sch_of (s : program) (act : option s.lbl)
 : α → Prop :=
-nondet.prog.coarse_sch_of s.nondet act
+nondet.program.coarse_sch_of s.nondet act
 
-def prog.fine_sch_of (s : prog) (act : option s.lbl) : α → Prop :=
-nondet.prog.fine_sch_of s.nondet act
+def program.fine_sch_of (s : program) (act : option s.lbl) : α → Prop :=
+nondet.program.fine_sch_of s.nondet act
 
-def prog.step_of (s : prog) (act : option s.lbl) : α → α → Prop :=
+def program.step_of (s : program) (act : option s.lbl) : α → α → Prop :=
 s.nondet.step_of act
 
-def is_step (s : prog) : α → α → Prop :=
+def is_step (s : program) : α → α → Prop :=
 nondet.is_step s.nondet
 
-def prog.ex (s : prog) (τ : stream α) : Prop :=
-nondet.prog.ex (s.nondet) τ
+def program.ex (s : program) (τ : stream α) : Prop :=
+nondet.program.ex (s.nondet) τ
 
-def prog.falsify (s : prog) (act : option s.lbl) (p : pred' α) : Prop :=
-nondet.prog.falsify s.nondet act p
+def program.falsify (s : program) (act : option s.lbl) (p : pred' α) : Prop :=
+nondet.program.falsify s.nondet act p
 
 open temporal
 
-lemma prog.falsify.negate
-   {s : prog} {act : option s.lbl} {p : pred' α}
-   (F : prog.falsify s act p)
+lemma program.falsify.negate
+   {s : program} {act : option s.lbl} {p : pred' α}
+   (F : program.falsify s act p)
 :  •p && ⟦ s^.step_of act ⟧ ⟹ <>-•p :=
-@nondet.prog.falsify.negate _ s.nondet act p F
+@nondet.program.falsify.negate _ s.nondet act p F
 
-def prog.transient (s : prog) : pred' α → Prop :=
-nondet.prog.transient s.nondet
+def program.transient (s : program) : pred' α → Prop :=
+nondet.program.transient s.nondet
 
 section theorems
 
-variable (s : prog)
+variable (s : program)
 
-open prog
+open program
 open event
 
-theorem prog.transient_false : transient s False :=
-nondet.prog.transient_false _
+theorem program.transient_false : transient s False :=
+nondet.program.transient_false _
 
-def prog.transient_str (s : prog) {p q : α → Prop}
-: (∀ (i : α), p i → q i) → prog.transient s q → prog.transient s p :=
-nondet.prog.transient_str _
+def program.transient_str (s : program) {p q : α → Prop}
+: (∀ (i : α), p i → q i) → program.transient s q → program.transient s p :=
+nondet.program.transient_str _
 
 end theorems
 
-instance prog_is_system : unity.system prog :=
+instance prog_is_system : unity.system program :=
 { σ := _
 , transient := _
 , step := is_step
-, init   := nondet.prog.init ∘ prog.nondet
-, transient_false := prog.transient_false
-, transient_str := prog.transient_str }
+, init   := nondet.program.init ∘ program.nondet
+, transient_false := program.transient_false
+, transient_str := program.transient_str }
 
 open unity
 
-lemma leads_to.nondet (s : prog) {p q : pred' α}
+lemma leads_to.nondet (s : program) {p q : pred' α}
    (h : leads_to s p q)
 : leads_to s.nondet p q :=
 begin
@@ -118,10 +118,10 @@ begin
     apply P' }
 end
 
--- instance {α} [sched lbl] : system_sem (prog lbl) :=
-instance : unity.system_sem prog :=
-  { (_ : unity.system prog) with
-    ex := prog.ex
+-- instance {α} [sched lbl] : system_sem (program lbl) :=
+instance : unity.system_sem program :=
+  { (_ : unity.system program) with
+    ex := program.ex
   , safety := λ s, unity.system_sem.safety s.nondet
   , inhabited := λ s, unity.system_sem.inhabited s.nondet
   , init_sem := λ s, @unity.system_sem.init_sem _ _ s.nondet
@@ -129,7 +129,7 @@ instance : unity.system_sem prog :=
 
 open unity
 
-theorem transient_rule {s : prog} {p : pred' α} (ev : option s.lbl)
+theorem transient_rule {s : program} {p : pred' α} (ev : option s.lbl)
    (EN : p ⟹ s.coarse_sch_of ev)
    (FLW : leads_to s (p && s.coarse_sch_of ev) (s.fine_sch_of ev))
    (NEG : ∀ σ σ', p σ → s.step_of ev σ σ' → ¬p σ')

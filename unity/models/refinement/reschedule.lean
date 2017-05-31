@@ -12,7 +12,7 @@ open unity
 
 variables {α : Type}
 
-structure evt_ref (mc : @prog α) (ea ec : @event α) : Prop :=
+structure evt_ref (mc : program α) (ea ec : event α) : Prop :=
   (sim : ⟦ ec.step_of ⟧ ⟹ ⟦ ea.step_of ⟧)
   (delay : ea.coarse_sch && ea.fine_sch ↦ ec.coarse_sch in mc)
   (stable : unless mc ec.coarse_sch (-ea.coarse_sch))
@@ -20,7 +20,7 @@ structure evt_ref (mc : @prog α) (ea ec : @event α) : Prop :=
 
 open temporal
 
-structure refined (ma mc : @prog α) : Prop :=
+structure refined (ma mc : program α) : Prop :=
   (bij : mc.lbl = ma.lbl)
   (sim_init : mc^.first ⟹ ma^.first)
   (sim' : ∀ e, ⟦ mc.step_of e ⟧ ⟹ action (ma.step_of (e.cast bij) ))
@@ -28,7 +28,7 @@ structure refined (ma mc : @prog α) : Prop :=
   (stable : ∀ e, unless mc (mc^.coarse_sch_of e) (-ma^.coarse_sch_of (e.cast bij)))
   (resched : ∀ e, ma^.coarse_sch_of e && ma^.fine_sch_of e ↦ mc^.fine_sch_of (e.cast' bij) in mc)
 
-lemma refined.sim {m₀ m₁ : @prog α} (R : refined m₀ m₁)
+lemma refined.sim {m₀ m₁ : program α} (R : refined m₀ m₁)
 : ⟦ is_step m₁ ⟧ ⟹ ⟦ is_step m₀ ⟧ :=
 begin
   simp [is_step_exists_event,R.bij],
@@ -43,7 +43,7 @@ begin
   apply H',
 end
 
-lemma event_refinement {ma mc : @prog α}
+lemma event_refinement {ma mc : program α}
    (BIJ : mc.lbl = ma.lbl)
    (INIT : mc^.first ⟹ ma^.first)
    (EVT : ∀ e, evt_ref mc (ma.event' e) (mc.event' $ cast BIJ.symm e))
@@ -54,7 +54,7 @@ begin
   { intro e,
     cases e with e,
     { simp [cast_none,step_of_none] },
-    { unfold prog.step_of prog.event,
+    { unfold program.step_of program.event,
       simp [cast_some],
       note H := (EVT $ cast BIJ e).sim,
       simp [cast_cast] at H,
@@ -62,7 +62,7 @@ begin
   all_goals
     { intro e,
       cases e with e,
-      simp [ prog.coarse_sch_of_none,prog.fine_sch_of_none,cast_none'],
+      simp [ program.coarse_sch_of_none,program.fine_sch_of_none,cast_none'],
       try { apply True_leads_to_True },
       try { apply True_unless } },
   { simp [cast_some'],
@@ -75,14 +75,14 @@ begin
     apply (EVT e).resched },
 end
 
-variables  (ma mc : @prog α)
+variables  (ma mc : program α)
 
 open temporal
 
 theorem soundness : refined ma mc → unity.refinement.refined ma mc :=
 begin
   intros R τ M₁,
-  apply nondet.prog.ex.mk,
+  apply nondet.program.ex.mk,
   { apply R.sim_init,
     apply M₁.init },
   { intro i,
@@ -90,23 +90,23 @@ begin
     apply M₁.safety },
   { intros e COARSE₀ FINE₀,
     pose e' := e.cast' R.bij,
-    assert CF_SCH : ([]<>•(prog.coarse_sch_of ma e && prog.fine_sch_of ma e)) τ,
+    assert CF_SCH : ([]<>•(program.coarse_sch_of ma e && program.fine_sch_of ma e)) τ,
     { apply coincidence,
       apply COARSE₀,
       apply FINE₀, },
-    assert COARSE₁ : (<>[]•prog.coarse_sch_of mc e') τ,
-    { assert COARSE₂ : ([]<>•prog.coarse_sch_of mc e') τ,
+    assert COARSE₁ : (<>[]•program.coarse_sch_of mc e') τ,
+    { assert COARSE₂ : ([]<>•program.coarse_sch_of mc e') τ,
       { apply inf_often_of_leads_to (system_sem.leads_to_sem (R.delay e) _ M₁),
         apply CF_SCH },
       note UNLESS := unless_sem_str _ M₁.safety (R.stable e') COARSE₂,
       cases UNLESS with UNLESS H,
       { apply UNLESS },
-      { assert H' : (-<>[]•prog.coarse_sch_of ma e) τ,
+      { assert H' : (-<>[]•program.coarse_sch_of ma e) τ,
         { rw [not_eventually,not_henceforth,not_init],
           simp [option_cast_cast'] at H,
           apply H },
         cases H' COARSE₀, } },
-    assert FINE₁ : ([]<>•prog.fine_sch_of mc e') τ,
+    assert FINE₁ : ([]<>•program.fine_sch_of mc e') τ,
     { apply inf_often_of_leads_to (system_sem.leads_to_sem (R.resched _) _ M₁),
       apply CF_SCH, },
     apply henceforth_entails_henceforth _ _ (M₁.liveness _ COARSE₁ FINE₁),

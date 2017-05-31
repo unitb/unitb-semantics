@@ -56,7 +56,7 @@ def proof_list.nth : ∀ {n : ℕ}, proof_list var n → fin n → proof var n
 
 variable (var)
 
-structure prog : Type 2 :=
+structure program : Type 2 :=
   (inv_lbl : Type)
   (inv : inv_lbl → prop var)
   (tr_lbl : Type)
@@ -77,7 +77,7 @@ def proof.prop_of {n} : proof var n → property var
  | (proof.trans p P₀ P₁ q) := ⟨p,q⟩
  | (proof.mono p P₀ q) := ⟨p,q⟩
 
-def prog.properties (p : prog var) : list (property var) :=
+def program.properties (p : program var) : list (property var) :=
 p.liveness.snd.to_list (@proof.prop_of var)
 
 variable (var)
@@ -96,47 +96,47 @@ has_map.map primed.primed
 def {u u'} pre {f : Type u → Type u'} {var : Type u} [functor f] : f var → f (primed var) :=
 has_map.map primed.unprimed
 
-def establish_inv (p : prog var) (l : p.inv_lbl) : sequent :=
+def establish_inv (p : program var) (l : p.inv_lbl) : sequent :=
   { lbl := var
   , var := var
   , asm := λ v, prop.bin rel.eq (expr.var v) (from_empty <$> (p.first v)) /- from_empty <$> p.first v -/
   , goal := p.inv l }
 
-def action_asm (p : prog var) (v : var) : prop (primed var) :=
+def action_asm (p : program var) (v : var) : prop (primed var) :=
 prop.bin rel.eq (post (expr.var v)) (pre $ p.step v)
 
-def inv_act_asm (p : prog var) : p.inv_lbl ⊕ var → prop (primed var) :=
+def inv_act_asm (p : program var) : p.inv_lbl ⊕ var → prop (primed var) :=
 union (pre ∘ p.inv) (action_asm p)
 
-def maintain_inv (p : prog var) (l : p.inv_lbl) : sequent :=
+def maintain_inv (p : program var) (l : p.inv_lbl) : sequent :=
   { lbl := p.inv_lbl ⊕ var
   , var := primed var
   , asm := inv_act_asm p
   , goal := post (p.inv l) }
 
 
-def entails (pp : prog var) (p q : prop var) : sequent :=
+def entails (pp : program var) (p q : prop var) : sequent :=
   { lbl := pp.inv_lbl
   , var := _
   , asm := pp.inv
   , goal := prop.implies p q }
 
-def matches (pp : prog var) (prp : property var) (p q : prop var) : list sequent :=
+def matches (pp : program var) (prp : property var) (p q : prop var) : list sequent :=
 [entails pp p prp.p, entails pp prp.q q]
 
-def check_unless (pp : prog var) (p q : prop var) : sequent :=
+def check_unless (pp : program var) (p q : prop var) : sequent :=
   { lbl := option (pp.inv_lbl ⊕ var)
   , var := primed var
   , asm := add (pre $ p) (inv_act_asm pp)
   , goal := post q }
 
-def check_transient (pp : prog var) (p : prop var) : sequent :=
+def check_transient (pp : program var) (p : prop var) : sequent :=
   { lbl := option (pp.inv_lbl ⊕ var)
   , var := primed var
   , asm := add (pre $ p) (inv_act_asm pp)
   , goal := post (prop.not p) }
 
-def check_proof (pp : prog var) {n} : proof var n → proof_list var n → list sequent
+def check_proof (pp : program var) {n} : proof var n → proof_list var n → list sequent
   | (proof.ref r p q) ps := matches pp (ps.nth r).prop_of p q
   | (proof.basis p q) ps := [check_unless pp p q, check_transient pp $ prop.and p (prop.not q)]
   | (proof.trans p P₀ P₁ q) ps := [ entails pp p P₀.prop_of.p
@@ -146,7 +146,7 @@ def check_proof (pp : prog var) {n} : proof var n → proof_list var n → list 
   | (proof.mono p P₀ q) ps := matches pp P₀.prop_of p q
                            ++ check_proof P₀ ps
 
-def check_proof' (pp : prog var) : proof var 0 → list sequent
+def check_proof' (pp : program var) : proof var 0 → list sequent
   | (proof.ref r p q) := r.elim0
   | (proof.basis p q) := [check_unless pp p q, check_transient pp $ prop.and p (prop.not q)]
   | (proof.trans p P₀ P₁ q) := [ entails pp p P₀.prop_of.p
@@ -156,10 +156,10 @@ def check_proof' (pp : prog var) : proof var 0 → list sequent
   | (proof.mono p P₀ q) := matches pp P₀.prop_of p q
                         ++ check_proof' P₀
 
-def is_transient (p : prog var) (l : p.tr_lbl) : sequent :=
+def is_transient (p : program var) (l : p.tr_lbl) : sequent :=
 check_transient p $ p.tr l
 
-def check_liveness (p : prog var) : list sequent :=
+def check_liveness (p : program var) : list sequent :=
 list.join $ p.liveness.snd.to_list' (@check_proof var p)
 
 def flat_proof {n : ℕ} (t : fin n → proof var 0) : proof var n → proof var 0
@@ -190,12 +190,12 @@ begin
   admit
 end
 
-def check_liveness_flat (p : prog var) : list sequent :=
+def check_liveness_flat (p : program var) : list sequent :=
 list.join $ list.map (@check_proof' var p) (flat_proof_list' p.liveness.snd)
 
 lemma mem_check_liveness_iff_mem_check_liveness_flat
   (s : sequent)
-  (p : prog var)
+  (p : program var)
 : s ∈ check_liveness p ↔ s ∈ check_liveness_flat p :=
 begin
   unfold check_liveness check_liveness_flat,
@@ -211,17 +211,17 @@ end
 
 namespace semantics
 
-def meaning_first (p : ast.simple.prog var) : state_t var :=
+def meaning_first (p : ast.simple.program var) : state_t var :=
 λ v, eval empty_s (p.first v)
 
-def meaning_next (p : ast.simple.prog var) (s : state_t var) : state_t var :=
+def meaning_next (p : ast.simple.program var) (s : state_t var) : state_t var :=
 λ v, eval s (p.step v)
 
-def meaning (p : ast.simple.prog var) : simple.prog (state_t var) :=
+def meaning (p : ast.simple.program var) : simple.program (state_t var) :=
   { first := meaning_first p
   , step  := meaning_next p }
 
-def state_t' (p : ast.simple.prog var) := { s : state_t var // ∀ l, valid s (p.inv l) }
+def state_t' (p : ast.simple.program var) := { s : state_t var // ∀ l, valid s (p.inv l) }
 
 lemma eval_from_empty (e : expr empty) (s : state_t var)
 : eval s (from_empty <$> e) = eval empty_s e :=
@@ -290,7 +290,7 @@ by { unfold pre, rw [-valid_trade,pair_unprimed] }
 
 section meaning
 
-variable (p : ast.simple.prog var)
+variable (p : ast.simple.program var)
 variables h₀ : ∀ l, holds (establish_inv p l)
 variables h₁ : ∀ l, holds (maintain_inv p l)
 
@@ -339,7 +339,7 @@ end
 
 end meaning_next_valid
 
-def meaning' : simple.prog (state_t' p) :=
+def meaning' : simple.program (state_t' p) :=
   { first := ⟨meaning_first p,meaning_first_valid p h₀⟩
   , step := λ s, ⟨meaning_next p s.val, meaning_next_valid p h₁ s.val s.property⟩  }
 
@@ -351,8 +351,8 @@ lemma transient_is_sound (q : prop var)
 begin
   unfold valid',
   intros σ h',
-  unfold valid' meaning' simple.prog.step subtype.val,
-  unfold valid' meaning' simple.prog.step subtype.val at h',
+  unfold valid' meaning' simple.program.step subtype.val,
+  unfold valid' meaning' simple.program.step subtype.val at h',
   unfold check_transient holds sequent.var sequent.lbl sequent.asm sequent.goal at h,
   rw -valid_pair_post σ.val,
   unfold post has_map.map prop.fmap valid at h,
@@ -389,7 +389,7 @@ sorry
 -- --  destruct p.liveness,
 -- --  intros n liveness Hliveness,
 -- --  assert Hliveness : p.liveness.snd = liveness,
--- --  unfold prog.properties prog.liveness proof_list.to_list sigma.snd at h₃,
+-- --  unfold program.properties program.liveness proof_list.to_list sigma.snd at h₃,
 -- --  rw [Hliveness] at h₃,
 --   induction (p.liveness.snd) with k l ls,
 --   { unfold proof_list.to_list' at h₃,

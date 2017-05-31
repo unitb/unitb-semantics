@@ -10,7 +10,7 @@ namespace simple
 open unity
 open predicate
 
-structure prog (α : Type) : Type :=
+structure program (α : Type) : Type :=
   (first : α)
   (step : α → α)
 
@@ -18,43 +18,43 @@ def pred α := α → Prop
 
 def False {α} : pred α := λ_, false
 
-def prog.init {α} (s : prog α) (p : pred α) : Prop
+def program.init {α} (s : program α) (p : pred α) : Prop
 := p (s^.first)
 
-def prog.transient {α} (s : prog α) (p : pred α) : Prop
+def program.transient {α} (s : program α) (p : pred α) : Prop
 := ∀ σ, p σ → ¬ (p (s^.step σ))
 
-def prog.unless {α} (s : prog α) (p q : pred α) : Prop
+def program.unless {α} (s : program α) (p q : pred α) : Prop
 := ∀ σ, p σ ∧ ¬q σ → p (s^.step σ) ∨ q (s^.step σ)
 
-lemma prog.transient_false {α} (s : prog α) : prog.transient s False :=
+lemma program.transient_false {α} (s : program α) : program.transient s False :=
 begin
-  unfold prog.transient False,
+  unfold program.transient False,
   intros σ h,
   cases h
 end
 
-lemma prog.transient_str {α} (s : prog α) (p q : α → Prop)
+lemma program.transient_str {α} (s : program α) (p q : α → Prop)
   (h : ∀ (i : α), p i → q i)
-  (T₀ : prog.transient s q)
-: prog.transient s p :=
+  (T₀ : program.transient s q)
+: program.transient s p :=
 begin
-  unfold prog.transient,
+  unfold program.transient,
   intros σ h',
   note h'' := T₀ σ (h _ h'),
   intro h₂, apply h'',
   apply h _ h₂
 end
 
-def is_step {α} (s : prog α) (σ σ' : α) : Prop := σ' = s.step σ
+def is_step {α} (s : program α) (σ σ' : α) : Prop := σ' = s.step σ
 
-instance prog_is_system {α} : system (prog α) :=
+instance prog_is_system {α} : system (program α) :=
   { σ := α
   , step := is_step
-  , init := prog.init
-  , transient := prog.transient
-  , transient_false := prog.transient_false
-  , transient_str := prog.transient_str
+  , init := program.init
+  , transient := program.transient
+  , transient_false := program.transient_false
+  , transient_str := program.transient_str
   }
 
 lemma unless_step {α : Type}
@@ -62,12 +62,12 @@ lemma unless_step {α : Type}
   {step : α → α}
   {p q : α → Prop}
   (h : ∀ σ, p σ → ¬ q σ → p (step σ) ∨ q (step σ))
-: unless (prog.mk init step) p q :=
+: unless (program.mk init step) p q :=
 begin
   unfold unless,
   intros σ σ' S,
   note h' := h σ, clear h,
-  unfold unity.step has_safety.step is_step prog.step at S,
+  unfold unity.step has_safety.step is_step program.step at S,
   rw S,
   intros h,
   cases h,
@@ -79,10 +79,10 @@ lemma leads_to_step {α : Type}
   (step : α → α)
   (p q : α → Prop)
   (h : ∀ σ, p σ → ¬ q σ → q (step σ))
-: p ↦ q in prog.mk init step :=
+: p ↦ q in program.mk init step :=
 begin
   apply leads_to.basis,
-  { unfold transient system.transient prog.transient prog.step,
+  { unfold transient system.transient program.transient program.step,
     intros σ h,
     cases h with h₀ h₁,
     note h' := h _ h₀ h₁,
@@ -95,11 +95,11 @@ end
 
 open nat
 
-def ex {α} (s : prog α) : stream α
+def ex {α} (s : program α) : stream α
   | 0 := s^.first
   | (succ n) := s^.step $ ex n
 
-lemma ex.safety {α} {s : prog α} (τ : stream α)
+lemma ex.safety {α} {s : program α} (τ : stream α)
   (h : τ = ex s)
 : ∀ i, ⟦ is_step s ⟧ (τ.drop i) :=
 begin
@@ -115,7 +115,7 @@ section semantics
 universe variable u
 
 parameter {α : Type}
-variable {s : prog α}
+variable {s : program α}
 variable {p : pred α}
 variable τ : stream α
 variable (H : τ = ex s)
@@ -126,7 +126,7 @@ lemma init_sem
   (I₀ : init s p)
 : (•p) τ :=
 begin
-  unfold init system.init prog.init at I₀,
+  unfold init system.init program.init at I₀,
   unfold temporal.init,
   rw H, apply I₀,
 end
@@ -137,7 +137,7 @@ lemma transient.semantics
 begin
   intros i,
   cases classical.em ((•p) (stream.drop i τ)) with hp hnp,
-  { unfold transient system.transient prog.transient at T₀,
+  { unfold transient system.transient program.transient at T₀,
     unfold temporal.eventually, existsi 1,
     subst τ,
     simp [temporal.not_init,stream.drop_drop],
@@ -150,8 +150,8 @@ end
 
 end semantics
 
-instance {α} : system_sem (prog α) :=
-  { (_ : system (prog α)) with
+instance {α} : system_sem (program α) :=
+  { (_ : system (program α)) with
     ex := λ p τ, τ = ex p
   , safety := @ex.safety _
   , inhabited := λ p, ⟨ex p, rfl⟩
