@@ -449,7 +449,7 @@ instance : unity.system_sem program :=
 open unity
 
 def unless_except (s : program) (p q : pred' α) (evts : set event) : Prop :=
-unless' s p q (λ σ σ', ∃ e, e ∈ evts ∧ e.step_of σ σ')
+unless' s p q (λ σ σ', ∃ e : event, e ∈ evts ∧ e.step_of σ σ')
 
 theorem unless_except_rule {s : program} {p q : pred' α} (exp : set event)
   (ACT : ∀ (e : s.lbl) σ Hc Hf σ',
