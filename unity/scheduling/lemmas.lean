@@ -17,10 +17,7 @@ lemma sched.sched_str {lbl : Type} [s : sched lbl] [nonempty lbl]
 : ∃ τ : stream lbl, fair (req_of r τ) τ :=
 begin
   cases s with _fin _inf,
-  { assert h : pos_finite lbl,
-    { apply pos_of_finite ; apply_instance },
-    apply unity.scheduling r (scheduling.finite.scheduler_spec r),
-    apply_instance },
+  { apply finite.sched' ; apply_instance },
   { apply infinite.sched' ; apply_instance },
 end
 

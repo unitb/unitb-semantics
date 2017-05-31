@@ -139,7 +139,16 @@ end
 lemma not_mem_req {s : sch_state} {l : lbl}
   (h : first (sch_state.req s) s.queue > s.queue.g l)
 : l ∉ s.req :=
-sorry
+begin
+  intro h',
+  revert h,
+  apply not_lt_of_ge,
+  unfold first,
+  apply minimum_le,
+  unfold mem set.mem,
+  rw bijection.g_inv,
+  apply h'
+end
 
 lemma le_rank_of_lt_first {s : sch_state} {l : lbl}
   (Hgt : s.queue.g l < first (sch_state.req s) s.queue)
@@ -311,6 +320,9 @@ noncomputable instance : unity.system_sem ((scheduler_spec r).s) :=
 lemma sched' {lbl : Type} [s : infinite lbl] [nonempty lbl]
   (r : list lbl → set lbl)
 : ∃ τ : stream lbl, fair (req_of r τ) τ :=
-sorry
+begin
+  apply unity.scheduling r (scheduling.infinite.scheduler_spec r),
+  apply_instance
+end
 
 end scheduling.infinite

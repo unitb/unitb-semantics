@@ -224,4 +224,16 @@ noncomputable def scheduler_spec
 noncomputable instance : unity.system_sem ((scheduler_spec r).s) :=
 (scheduler_spec r).sem
 
+open scheduling
+
+lemma sched' {lbl : Type} [s : finite lbl] [nonempty lbl]
+  (r : list lbl → set lbl)
+: ∃ τ : stream lbl, fair (req_of r τ) τ :=
+begin
+  assert h : pos_finite lbl,
+  { apply pos_of_finite ; apply_instance },
+  apply unity.scheduling r (scheduling.finite.scheduler_spec r),
+  apply_instance
+end
+
 end scheduling.finite
