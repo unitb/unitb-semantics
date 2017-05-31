@@ -59,8 +59,8 @@ end
 
 noncomputable def shift (s : sch_state)
 : rrobin lbl :=
-if h : first s.req s.queue < s.q_len
-then s.queue ∘ bijection.rotate_right' (first s.req s.queue) s.q_len h
+if h : first s.req s.queue < succ s.q_len
+then s.queue ∘ bijection.rotate_right' (first s.req s.queue) (succ s.q_len) h
 else s.queue
 
 lemma sch.select_inv
@@ -98,11 +98,11 @@ sch.current s.req s.queue
 def rank (l : lbl) (s : sch_state) : ℕ := s.queue.g l + (s.queue.g l - s.q_len)
 
 lemma pending_not_move (s : sch_state) (l : lbl)
-  (h : s.q_len ≤ (s.queue).g l)
+  (h : succ s.q_len ≤ s.queue.g l)
 : ((sch.step s).queue).g l = s.queue.g l :=
 begin
   unfold sch.step sch_state.queue shift,
-  cases decidable.em (first s.req (s.queue) < s.q_len) with h' h',
+  cases decidable.em (first s.req s.queue < succ s.q_len) with h' h',
   { rw [dif_pos h',comp_g],
     unfold comp,
     rw bijection.rotate_right'_g_eq_of_ge_j _ h' h, },
@@ -110,14 +110,14 @@ begin
 end
 
 lemma shift_down (s : sch_state) (l : lbl)
-  (h₀ : first s.req s.queue < (s.queue).g l)
-  (h₁ : (s.queue).g l < s.q_len)
+  (h₀ : first s.req s.queue < s.queue.g l)
+  (h₁ : s.queue.g l < succ s.q_len)
 : succ (((sch.step s).queue).g l) = s.queue.g l :=
 begin
   unfold sch.step sch_state.queue shift,
-  note h : first s.req (s.queue) < s.q_len := lt_trans h₀ h₁,
+  note h : first s.req s.queue < succ s.q_len := lt_trans h₀ h₁,
   rw [dif_pos h,comp_g], unfold comp,
-  rw bijection.succ_rotate_right'_g_eq_self ((s.queue).g l) _ h₀ h₁,
+  rw bijection.succ_rotate_right'_g_eq_self (s.queue.g l) _ h₀ h₁,
 end
 
 lemma q_len_inc (s : sch_state)
@@ -125,15 +125,68 @@ lemma q_len_inc (s : sch_state)
 by { rw -add_one_eq_succ, refl }
 
 lemma not_req_not_move (s : sch_state) (l : lbl)
-  (h : (s.queue).g l < first s.req s.queue)
-: ((sch.step s).queue).g l = s.queue.g l :=
+  (h : s.queue.g l < first s.req s.queue)
+: (sch.step s).queue.g l = s.queue.g l :=
 begin
   unfold sch.step sch_state.queue shift,
-  cases decidable.em (first s.req (s.queue) < s.q_len) with h' h',
+  cases decidable.em (first s.req s.queue < succ s.q_len) with h' h',
   { rw [dif_pos h',comp_g],
     unfold comp,
     rw [bijection.rotate_right'_g_eq_of_lt_i _ _ h], },
   { rw [dif_neg h'] },
+end
+
+lemma not_mem_req {s : sch_state} {l : lbl}
+  (h : first (sch_state.req s) s.queue > s.queue.g l)
+: l ∉ s.req :=
+sorry
+
+lemma le_rank_of_lt_first {s : sch_state} {l : lbl}
+  (Hgt : s.queue.g l < first (sch_state.req s) s.queue)
+: rank l (sch.step s) ≤ rank l s :=
+begin
+  unfold rank,
+  cases le_or_gt (s.queue.g l) (s.q_len) with h h,
+  { note h' : s.queue.g l ≤ succ s.q_len := le_succ_of_le h,
+    rw [not_req_not_move _ _ _ Hgt,q_len_inc
+       ,sub_eq_zero_of_le h,sub_eq_zero_of_le h'] },
+  { rw [pending_not_move _ _ _ h,q_len_inc],
+    apply add_le_add_left,
+    apply nat.sub_le_sub_left,
+    apply le_succ, },
+end
+
+lemma lt_rank_of_gt_first {s : sch_state} {l : lbl}
+  (Hlt : first (sch_state.req s) (s.queue) < (s.queue).g l)
+: rank l (sch.step s) < rank l s :=
+begin
+  unfold rank,
+  cases le_or_gt s.q_len (first s.req s.queue) with h h,
+    -- h : s.q_len ≤ first (sch_state.req s) (s.queue)
+  { note h' : s.q_len < s.queue.g l := lt_of_le_of_lt h Hlt,
+    rw [pending_not_move _ _ _ h'],
+    unfold sch.step sch_state.q_len,
+    rw [add_one_eq_succ,-nat.add_sub_assoc h'
+       ,-nat.add_sub_assoc $ le_of_lt h'
+       ,sub_succ],
+    apply pred_lt_self_of_pos,
+    apply nat.sub_pos_of_lt,
+    apply lt_of_lt_of_le h',
+    apply le_add_left },
+    -- h : s.q_len > first (sch_state.req s) (s.queue)
+  { cases lt_or_ge (s.queue.g l) (succ s.q_len) with Hlt_len Hge_len,
+      -- Hlt_len : (s.queue).g l < succ (s.q_len)
+    { rw [-shift_down _ s _ Hlt Hlt_len,q_len_inc],
+      { apply add_lt_add_of_lt_of_le,
+        { apply lt_succ_self },
+        { apply nat.sub_le_sub
+          ; apply le_succ, } }, },
+      -- Hge_len : (s.queue).g l ≥ succ (s.q_len)
+    { unfold gt at h,
+      rw [pending_not_move _ _ _ Hge_len,q_len_inc],
+      { apply add_lt_add_left,
+        apply nat.sub_lt_sub_left Hge_len,
+        apply lt_succ_self, }, } }
 end
 
 lemma eq_next_or_rank_eq_or_rank_lt {s : sch_state} {l : lbl} (v : ℕ)
@@ -141,7 +194,28 @@ lemma eq_next_or_rank_eq_or_rank_lt {s : sch_state} {l : lbl} (v : ℕ)
 : l = next s ∨
   ( l ∉ req s ∧ rank l (sch.step s) = v ) ∨
   rank l (sch.step s) < v :=
-sorry
+begin
+  rw or_iff_not_imp,
+  rw [eq_comm],
+  intro Hnnext,
+  unfold next sch.current at Hnnext,
+  rw bijection.inverse at Hnnext,
+  cases lt_or_gt_of_ne Hnnext with Hlt Hgt,
+    -- Hlt : first (sch_state.req s) s.queue < s.queue.g l
+  { right,
+    rw h,
+    apply lt_rank_of_gt_first _ Hlt },
+    -- Hgt : s.queue.g l < first (sch_state.req s) s.queue
+  { clear Hnnext, unfold gt at Hgt,
+    subst v,
+    cases lt_or_eq_of_le (le_rank_of_lt_first _ Hgt) with Hlt Heq,
+    { right, apply Hlt },
+    { left,
+      split,
+      { apply not_mem_req _ Hgt },
+      { apply Heq, }, } },
+end
+
 lemma fair_schedule_step  (l : lbl) (v : ℕ)
 :  mem l ∘ req && (eq v ∘ rank l) ↦ (flip has_lt.lt v ∘ rank l) || eq l ∘ next in scheduler :=
 begin
