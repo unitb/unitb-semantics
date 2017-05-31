@@ -12,7 +12,7 @@ section nondet
 
 open predicate
 
-parameter {α : Type}
+parameter α : Type
 
 @[reducible]
 def pred := α → Prop
@@ -23,15 +23,17 @@ structure event : Type :=
   (step : ∀ s, coarse_sch s → fine_sch s → α → Prop)
   (fis : ∀ s CS FS, ∃ s', step s CS FS s')
 
-def event.step_of (e : event) (σ σ' : α) : Prop :=
-∃ Hc Hf, e.step σ Hc Hf σ'
-
 structure prog : Type 2 :=
   (lbl : Type)
   (lbl_is_sched : scheduling.sched lbl)
   (first : α → Prop)
   (first_fis : ∃ s, first s)
   (event' : lbl → event)
+
+parameter {α}
+
+def event.step_of (e : event) (σ σ' : α) : Prop :=
+∃ Hc Hf, e.step σ Hc Hf σ'
 
 def skip : event :=
 { coarse_sch := True

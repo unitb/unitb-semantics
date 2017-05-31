@@ -13,7 +13,7 @@ section schedules
 
 open predicate
 
-parameter {α : Type}
+parameter α : Type
 
 def pred := α → Prop
 
@@ -22,7 +22,9 @@ structure event : Type :=
   (fine_sch : pred)
   (step : ∀ s, coarse_sch s → fine_sch s → α)
 
-def event.nondet (e : event) : nondet.event :=
+parameter {α}
+
+def event.nondet (e : event) : nondet.event α :=
   { coarse_sch := e.coarse_sch
   , fine_sch := e.fine_sch
   , step := λ s Hc Hf s', e.step s Hc Hf = s'
