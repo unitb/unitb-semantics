@@ -350,16 +350,16 @@ lemma transient_is_sound (q : prop var)
 : unity.transient (meaning' p h₀ h₁) (valid' p q) :=
 begin
   unfold valid',
-  intros σ h',
+  intros σ h₀ h₁,
   unfold valid' meaning' simple.program.step subtype.val,
-  unfold valid' meaning' simple.program.step subtype.val at h',
+  unfold valid' meaning' simple.program.step subtype.val at h₀,
   unfold check_transient holds sequent.var sequent.lbl sequent.asm sequent.goal at h,
   rw -valid_pair_post σ.val,
   unfold post has_map.map prop.fmap valid at h,
   apply h,
   intro l, cases l with l
   ; unfold ast.simple.add,
-  { rw valid_pair_pre, apply h' },
+  { rw valid_pair_pre, apply h₁ },
   cases l with l v ; unfold inv_act_asm ast.simple.union action_asm,
   { rw valid_pair_pre, apply σ.property },
   { unfold valid rel.meaning,
