@@ -145,7 +145,7 @@ end
 @[refl]
 lemma entails_refl (p : pred' β)
 : p ⟹ p :=
-sorry
+take _, id
 
 lemma p_or_p_imp_p_or' {p p' q q' : pred' α}
   (hp : p ⟹ p')
@@ -238,9 +238,34 @@ begin
   apply funext, intro x, simp [distrib_left_and],
 end
 
+lemma mutual_entails {p q : pred' β}
+  (h₀ : p ⟹ q)
+  (h₁ : q ⟹ p)
+: p = q :=
+begin
+  apply funext, intro,
+  rw -iff_eq_eq,
+  split,
+  { apply h₀ },
+  { apply h₁ },
+end
+
+@[simp]
+lemma False_entails (p : pred' β)
+: False ⟹ p :=
+take x, false.elim
+
+lemma p_and_p_not_self (p : pred' β)
+: p && -p = False :=
+begin
+  apply mutual_entails _ (False_entails _),
+  intros x P,
+  apply P.right P.left
+end
+
 lemma p_and_p_or_p_not_self (p q : pred' β)
 : p && (q || -p) = p && q :=
-sorry
+by simp [p_and_over_or_left,p_and_p_not_self]
 
 lemma p_not_and_self (p : pred' β)
 : -p && p = False :=
@@ -327,99 +352,88 @@ begin
   ; assumption
 end
 
-lemma mutual_entails (p q : pred' β)
-  (h₀ : p ⟹ q)
-  (h₁ : q ⟹ p)
-: p = q :=
-begin
-  apply funext, intro,
-  rw -iff_eq_eq,
-  split,
-  { apply h₀ },
-  { apply h₁ },
-end
-
 @[simp]
 lemma p_or_intro_left (p q : pred' β)
 : p ⟹ p || q :=
-sorry
+take _, or.intro_left _
 
 @[simp]
 lemma p_or_intro_right (p q : pred' β)
 : q ⟹ p || q :=
-sorry
+take _, or.intro_right _
 
 lemma p_or_entails_of_entails {p q r : pred' β}
   (h₀ : p ⟹ r)
   (h₁ : q ⟹ r)
 : p || q ⟹ r :=
-sorry
+take _, or.rec (h₀ _) (h₁ _)
 
 lemma entails_p_or_of_entails_left {p q r : pred' β}
   (h₀ : p ⟹ q)
 : p ⟹ q || r :=
-sorry
+take x, (or.intro_left _) ∘ (h₀ x)
 
 lemma entails_p_or_of_entails_right {p q r : pred' β}
   (h₀ : p ⟹ r)
 : p ⟹ q || r :=
-sorry
+take x, (or.intro_right _) ∘ (h₀ x)
 
 lemma entails_p_and_of_entails {p q r : pred' β}
   (h₀ : p ⟹ q)
   (h₁ : p ⟹ r)
 : p ⟹ q && r :=
-sorry
+take x Hp, ⟨h₀ _ Hp,h₁ _ Hp⟩
 
 lemma p_and_entails_of_entails_left {p q r : pred' β}
   (h₁ : p ⟹ r)
 : p && q ⟹ r :=
-sorry
+take x Hp, h₁ _ Hp.left
 
 lemma p_and_entails_of_entails_right {p q r : pred' β}
   (h₁ : q ⟹ r)
 : p && q ⟹ r :=
-sorry
+take x Hp, h₁ _ Hp.right
 
 @[simp]
 lemma p_and_elim_left (p q : pred' β)
 : p && q ⟹ p :=
-sorry
+take x, and.left
 
 @[simp]
 lemma p_and_elim_right (p q : pred' β)
 : p && q ⟹ q :=
-sorry
+take x, and.right
 
+@[trans]
 lemma entails_trans (q : pred' β) {p r : pred' β}
   (h₀ : p ⟹ q)
   (h₁ : q ⟹ r)
 : p ⟹ r :=
-sorry
+take x, h₁ x ∘ h₀ x
 
 lemma p_and_entails_p_and_left (p q x : pred' β)
   (h : p ⟹ q)
 : p && x ⟹ q && x :=
-sorry
+take x, and.imp_left (h x)
 
 lemma p_and_entails_p_and_right {p q : pred' β} (x : pred' β)
   (h : p ⟹ q)
 : x && p ⟹ x && q :=
-sorry
+take x, and.imp_right (h x)
 
 lemma p_not_entails_p_not_right {p q : pred' β}
   (h : q ⟹ p)
 : - p ⟹ - q :=
-sorry
+take x, contrapos (h x)
 
 lemma entails_of_eq (p q : pred' β)
   (h : p = q)
 : p ⟹ q :=
-sorry
+by simp [h]
 
 lemma p_and_entails_p_or (p q : pred' β)
 : p && q ⟹ p || q :=
-sorry
+take x, or.intro_left _ ∘ and.left
 
 lemma True_p_imp (p : pred' β)
 : True ⟶ p = p :=
@@ -580,3 +594,7 @@ begin
 end
 
 end predicate
+
+-- TODO:
+--   * switch definition of pred' to a record to strengthen encapsulation
+--   * use τ ⊧ []φ instead of ([]φ) τ
