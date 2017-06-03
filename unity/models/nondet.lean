@@ -142,34 +142,28 @@ instance : unity.has_safety program :=
   { σ := α
   , step := is_step }
 
-structure program.ex (s : program) (τ : stream α) : Prop :=
-    (init : s^.first (τ 0))
-    (safety : unity.saf_ex s τ)
-    (liveness : ∀ e, (<>[]• s^.coarse_sch_of e) τ →
-                     ([]<>• s^.fine_sch_of e) τ →
-                     ([]<> ⟦ s.step_of e ⟧) τ)
+structure program.falsify (s : program) (act : option s.lbl) (p q : pred' α) : Prop :=
+  (enable : q ⟹ s^.coarse_sch_of act)
+  (schedule : p ⟹ s^.fine_sch_of act)
+  (negate' : ⦃ •q ⟶ ⟦ s^.step_of act ⟧ ⟶ ⊙-•q ⦄)
 
-structure program.falsify (s : program) (act : option s.lbl) (p : pred' α) : Prop :=
-  (enable : p ⟹ s^.coarse_sch_of act)
-  (schedule : s.ex ⟹ (<>[]•p ⟶ []<>• s^.fine_sch_of act) )
-  (negate' : ⦃ •p ⟶ ⟦ s^.step_of act ⟧ ⟶ ⊙-•p ⦄)
+def program.transient (s : program) (p q : pred' α) : Prop :=
+∃ (act : option s.lbl), s.falsify act p q
 
 open temporal
 
 lemma program.falsify.negate
-   {s : program} {act : option s.lbl} {p : pred}
-:  s.falsify act p
-→  •p && ⟦ s^.step_of act ⟧ ⟹ <>-•p :=
+   {s : program} {act : option s.lbl} {p q : pred}
+:  s.falsify act p q
+→  •q && ⟦ s^.step_of act ⟧ ⟹ <>-•q :=
 begin
   intros h₀ τ h₁,
-  note h₂ := h₀.negate' _ h₁^.left h₁^.right,
+  note h₂ := h₀.negate' _ h₁.left h₁.right,
   unfold eventually p_not init,
   existsi 1,
   apply h₂,
 end
 
-def program.transient (s : program) (p : pred' α) : Prop :=
-∃ (act : option s.lbl), s.falsify act p
 
 section theorems
 
@@ -178,48 +172,36 @@ variable (s : program)
 open program
 open event
 
-theorem program.transient_false : transient s False :=
+theorem program.transient_false {p : pred}
+: transient s p False :=
 begin
   unfold program.transient,
   existsi none,
   apply falsify.mk,
-  { intros σ h, cases h },
-  { intros τ i h₀ h₁,
-    simp at h₀,
-    cases h₀, },
-  { intros σ h₀ h₁, cases h₀ with h₂ }
+  { intros σ h, apply trivial },
+  { intros τ i,
+    apply trivial, },
+  { intros σ h₀ h₁, cases h₀ },
 end
 
-def program.transient_str (s : program) {p q : α → Prop}
-  (h : p ⟹ q)
-: s.transient q → s.transient p :=
+def program.transient_antimono (s : program) {p q p' q' : pred}
+  (hp : p' ⟹ p)
+  (hq : q' ⟹ q)
+: s.transient p q → s.transient p' q' :=
 begin
   unfold transient,
   apply exists_imp_exists,
   intros e h',
   apply falsify.mk,
-  { apply forall_imp_forall _ h'.enable,
-    intro x,
-    apply imp_imp_imp_left,
-    apply h },
-  { apply forall_imp_forall _ h'.schedule,
-    intro τ,
-    apply forall_imp_forall _,
-    intro j,
-    apply p_imp_p_imp_p_imp_left _,
-    apply eventually_entails_eventually,
-    apply henceforth_entails_henceforth,
-    apply init_entails_init,
-    apply h },
-  { apply forall_imp_forall _ h'.negate',
-    intro τ,
-    apply imp_mono _ _,
-    { apply h },
-    apply imp_imp_imp_right _,
-    apply next_imp_next _ _,
-    apply entail_contrapos,
-    apply init_entails_init,
-    apply h }
+  { apply entails_trans _ hq h'.enable, },
+  { apply entails_trans _ hp h'.schedule, },
+  { note hp' := init_entails_init hp,
+    note hq' := init_entails_init hq,
+    apply ew_imp_ew _ h'.negate',
+    apply p_imp_entails_p_imp hq' _,
+    apply p_imp_entails_p_imp_right _,
+    apply next_imp_next _ ,
+    apply p_not_entails_p_not_right hq', }
 end
 
 end theorems
@@ -229,14 +211,21 @@ instance prog_is_system : unity.system program :=
 , transient := program.transient
 , step := is_step
 , init   := program.init
-, transient_false := program.transient_false
-, transient_str := program.transient_str }
+, transient_false := λ s p, program.transient_false s
+, transient_antimono := program.transient_antimono }
 
 section soundness
 
+structure program.ex (s : program) (τ : stream α) : Prop :=
+    (init : s^.first (τ 0))
+    (safety : unity.saf_ex s τ)
+    (liveness : ∀ e, (<>[]• s^.coarse_sch_of e) τ →
+                     ([]<>•s.fine_sch_of e) τ →
+                     ([]<>⟦ s.step_of e ⟧) τ)
+
 open program
 
-variables {s : program} {p : pred' α}
+variables {s : program} {p q : pred' α}
 variables (τ : stream α)
 variables (h : ex s τ)
 include h
@@ -252,25 +241,26 @@ begin
 end
 
 lemma transient.semantics
-  (T₀ : s.transient p)
-: ([]<>-•p) τ :=
+  (T₀ : s.transient p q)
+: ([]<>•p) τ → ([]<>-•q) τ :=
 begin
-  cases (temporal.em' (•p) τ) with h_p ev_np,
+  cases (temporal.em' (•q) τ) with h_q ev_nq,
   { unfold program.transient at T₀,
     cases T₀ with ev T₀,
     assert Hc : (<>[]•s.coarse_sch_of ev) τ,
-    { apply eventually_entails_eventually _ _ h_p,
-      apply henceforth_entails_henceforth _ ,
-      apply init_entails_init _ ,
+    { apply stable_entails_stable' _ _ h_q,
       apply T₀.enable },
+    intro Hp,
     assert Hf : ([]<>•s.fine_sch_of ev) τ,
-    { apply T₀.schedule _ h h_p, },
-    note act := coincidence h_p (h.liveness ev Hc Hf),
+    { apply inf_often_entails_inf_often' _ _ Hp,
+      apply T₀.schedule, },
+    note live := h.liveness ev Hc Hf,
+    note act := coincidence h_q (h.liveness ev Hc Hf),
     rw [-eventually_eventually],
-    apply henceforth_entails_henceforth _ _ act,
-    apply eventually_entails_eventually _ ,
-    apply T₀.negate },
-  { apply ev_np },
+    apply inf_often_entails_inf_often _ _ act,
+    apply entails_imp_entails_left _ T₀.negate,
+    refl, },
+  { intro, apply ev_nq },
 end
 
 end soundness
@@ -334,7 +324,7 @@ noncomputable def enabled (s : program)
   [∀ (x : option s.lbl) σ, decidable (s.guard x σ)]
   (es : list (option s.lbl))
 : set (option s.lbl) :=
-{ l | s.guard l (run' s es s.first_state) }
+{ l | s.guard l $ run' s es s.first_state }
 
 open unity has_mem
 
@@ -407,7 +397,7 @@ begin
         existsi Hguard.left, existsi Hguard.right,
         apply s.run_enabled, } }, },
   { apply forall_imp_forall _ h,
-    intros e Heq Hc Hf i,
+    intros e Heq Hc Hf,
     assert inf_evts : ([]<>•mem e) (req_of evts τ),
     { clear Heq h,
       note Hg := coincidence Hc Hf,
@@ -416,25 +406,32 @@ begin
       change (([]<>•mem e) (λ (i : ℕ), {l : option (s.lbl) | s.guard l (run s τ i)})),
       change (([]<>•mem e) ((λ (σ : α), {l : option (s.lbl) | s.guard l σ}) ∘ (run s τ))),
       rw -inf_often_trace_init_trading,
-      apply Hg, },
-    cases (Heq inf_evts i) with j Heq,
-    rw [stream.drop_drop,init_drop,stream.fst_zip',stream.snd_zip'] at Heq,
-    cases Heq with He Hguard,
-    rename Hguard Hguard',
-    assert Hguard : s.guard (τ (j + i)) (run s τ (j + i)),
-    { subst e,
-      rw [or.comm,or_iff_not_imp] at Hguard',
-      apply Hguard',
-      apply @set.ne_empty_of_mem _ _ none,
-      change true ∧ true,
-      simp, },
-    clear Hguard',
-    unfold eventually, existsi j,
-    rw He,
-    rw [stream.drop_drop,action_drop],
-    unfold program.step_of event.step_of,
-    existsi Hguard.left,existsi Hguard.right,
-    apply s.run_enabled },
+      apply inf_often_entails_inf_often _ _ Hg,
+      apply entails_p_and_of_entails,
+      { apply p_and_elim_left },
+      { apply p_and_elim_right } },
+    note Heq := Heq inf_evts,
+    admit,
+    -- -- cases (Heq inf_evts i) with j Heq,
+    -- -- rw [stream.drop_drop,init_drop,stream.fst_zip',stream.snd_zip'] at Heq,
+    -- cases Heq with He Hguard,
+    -- rename Hguard Hguard',
+    -- assert Hguard : s.guard (τ (j + i)) (run s τ (j + i)),
+    -- { subst e,
+    --   rw [or.comm,or_iff_not_imp] at Hguard',
+    --   apply Hguard',
+    --   apply @set.ne_empty_of_mem _ _ none,
+    --   change true ∧ true,
+    --   simp, },
+    -- clear Hguard',
+    -- unfold eventually, existsi j,
+    -- rw He,
+    -- rw [stream.drop_drop,p_and_to_fun,action_drop,init_drop],
+    -- unfold program.step_of event.step_of,
+    -- split, { admit },
+    -- existsi Hguard.left,existsi Hguard.right,
+    -- apply s.run_enabled },
+  }
 end
 
 -- instance {α} [sched lbl] : system_sem (program lbl) :=
@@ -506,30 +503,31 @@ begin
   apply congr_arg _ Heq,
 end
 
-theorem transient_rule {s : program} {p : pred' α} (ev : option s.lbl)
-   (EN : p ⟹ s.coarse_sch_of ev)
-   (FLW : leads_to s (p && s.coarse_sch_of ev) (s.fine_sch_of ev))
-   (NEG : ∀ σ σ', p σ → s.step_of ev σ σ' → ¬p σ')
-: s.transient p :=
+theorem ensure_rule {s : program} {p q : pred' α} (ev : option s.lbl)
+   (EN : p && -q ⟹ s.coarse_sch_of ev)
+   (FLW : p && -q && s.coarse_sch_of ev  ↦  s.fine_sch_of ev || q in s)
+   (NEG : ∀ σ σ', ¬ q σ → s.step_of ev σ σ' → q σ')
+   (STABLE: unless s p q )
+: p ↦ q in s :=
 begin
-  unfold program.transient,
+  apply @leads_to.basis' _ _ s _ _ (s.fine_sch_of ev) _ STABLE,
+  { apply leads_to.weaken_lhs _ _ FLW,
+    apply entails_p_and_of_entails,
+    { refl },
+    { apply EN } },
+  unfold transient' system.transient program.transient,
   existsi ev,
   apply falsify.mk,
     -- enablement
   { apply EN },
     -- follow
-  { intros τ sem H,
-    apply inf_often_of_leads_to (system_sem.leads_to_sem FLW _ sem),
-    note H' := inf_often_of_stable _ H,
-    apply henceforth_entails_henceforth _ _ H',
-    apply eventually_entails_eventually _ ,
-    apply init_entails_init _ ,
-    intros σ Hp,
-    apply and.intro Hp,
-    apply EN _ Hp },
+  { refl },
     -- negation
-  { intros σ Hp Hact,
-    apply NEG _ _ Hp Hact }
+  { intros σ Hf Hact,
+    note H := NEG (σ 0) (σ 1) Hf.right Hact,
+    revert H,
+    simp [not_init,next_init,not_and_iff_not_or_not,not_not_iff_self],
+    apply or.intro_left }
 end
 
 end nondet

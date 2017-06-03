@@ -61,6 +61,11 @@ begin
   apply h
 end
 
+lemma eventually_of_next {p : cpred β} {τ}
+  (H : ⊙p $ τ)
+: <>p $ τ :=
+sorry
+
 lemma henceforth_str {p : cpred β} :
   ([]p ⟹ p) :=
 begin
@@ -490,20 +495,18 @@ begin
     rw [p_not_eq_not,not_henceforth,not_eventually] at h₁,
     note h₂ := coincidence h₁ h₀,
     rw p_not_and_self_or at h₂,
-    apply henceforth_entails_henceforth _ _ h₂,
-    apply eventually_entails_eventually,
+    apply inf_often_entails_inf_often _ _ h₂,
     apply λ _, and.right, },
   intro h, cases h with h h
-  ; apply henceforth_entails_henceforth _ _ h
-  ; apply eventually_entails_eventually
+  ; apply inf_often_entails_inf_often _ _ h
   ; intro,
   { apply or.intro_left },
   { apply or.intro_right },
 end
 
-lemma next_imp_next {p q : cpred β} (τ) (h : p ⟹ q)
-: (⊙ p ⟶ ⊙ q) τ :=
-h _
+lemma next_imp_next {p q : cpred β} (h : p ⟹ q)
+: ⊙ p ⟹ ⊙ q :=
+take τ, h _
 
 lemma entail_contrapos {p q : pred' β} : p ⟹ q → (-q) ⟹ -p :=
 begin
@@ -702,6 +705,16 @@ begin
   simp [stream.drop_drop,action_drop,init_drop],
 end
 
+protected theorem leads_to_of_inf_often {α} (p q : cpred α) {τ : stream α}
+  (H : ([]<>q) τ)
+: p ~> q $ τ :=
+begin
+  apply henceforth_entails_henceforth _ _ H,
+  unfold p_entails,
+  rw [-p_and_p_imp],
+  apply p_and_elim_left
+end
+
 protected theorem leads_to_strengthen_rhs {α} (q : cpred α) {p r : cpred α} {τ : stream α}
     (H : q ⟹ r)
     (P₀ : p ~> q $ τ)
@@ -897,8 +910,7 @@ begin
     cases Q'' with Q'' Q'',
     { note Q'' := coincidence Q'' (henceforth_drop _ h₀),
       apply henceforth_str,
-      apply henceforth_entails_henceforth _ _ Q'',
-      apply eventually_entails_eventually,
+      apply inf_often_entails_inf_often _ _ Q'',
       rw p_and_comm,
       intro, apply or.intro_left },
     cases Q'' with Q'' Q'',

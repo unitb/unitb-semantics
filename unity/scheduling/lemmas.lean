@@ -8,20 +8,22 @@ import util.data.stream
 
 namespace scheduling
 
-variables {lbl : Type}
 
 open stream temporal has_mem
 
-lemma sched.sched_str {lbl : Type} [s : sched lbl] [nonempty lbl]
+variables  {lbl : Type}
+variables [sched lbl] [nonempty lbl]
+
+lemma sched.sched_str
   (r : list lbl → set lbl)
 : ∃ τ : stream lbl, fair (req_of r τ) τ :=
 begin
-  cases s with _fin _inf,
+  cases _inst_1 with _fin _inf,
   { apply finite.sched' ; apply_instance },
   { apply infinite.sched' ; apply_instance },
 end
 
-lemma sched.sched_str' {lbl : Type} [s : sched lbl] [nonempty lbl]
+lemma sched.sched_str'
   (r : list lbl → set lbl)
 : ∃ τ : stream lbl,
   ∀ (l : lbl),
@@ -48,21 +50,26 @@ begin
     apply h.fair _ h' },
 end
 
-noncomputable def fair_sched_of [nonempty lbl] [sched lbl] (req : list lbl → set lbl)
+
+noncomputable def fair_sched_of (req : list lbl → set lbl)
 : stream lbl :=
 classical.some (sched.sched_str req)
 
-noncomputable def fair_sched (lbl : Type) [nonempty lbl] [sched lbl] : stream lbl :=
+variables lbl
+
+noncomputable def fair_sched : stream lbl :=
 fair_sched_of (λ _ _, true)
 
-noncomputable def fair_sched_of' [nonempty lbl] [sched lbl] (req : stream (set lbl))
+variables {lbl}
+
+noncomputable def fair_sched_of' (req : stream (set lbl))
 : stream lbl := fair_sched_of (req ∘ list.length)
 
-lemma fair_sched_of_spec {lbl : Type} [nonempty lbl] [sched lbl] (r : list lbl → set lbl)
+lemma fair_sched_of_spec (r : list lbl → set lbl)
 : fair (req_of r (fair_sched_of r)) (fair_sched_of r) :=
 by apply classical.some_spec (sched.sched_str r)
 
-lemma fair_sched_of_spec' {lbl : Type} [nonempty lbl] [sched lbl] (r : stream (set lbl))
+lemma fair_sched_of_spec' (r : stream (set lbl))
 : fair r (fair_sched_of' r) :=
 begin
   note H :=  fair_sched_of_spec (r ∘ list.length),
@@ -70,13 +77,13 @@ begin
   apply H,
 end
 
-lemma fair_sched_of_is_fair  {lbl : Type} [nonempty lbl] [sched lbl]
+lemma fair_sched_of_is_fair
   (r : list lbl → set lbl)
   (l : lbl)
 : ([]<>•mem l) (req_of r (fair_sched_of r)) → ([]<>•eq l) (fair_sched_of r) :=
 (fair_sched_of_spec r).fair l
 
-lemma fair_sched_of_is_fair'  {lbl : Type} [nonempty lbl] [sched lbl]
+lemma fair_sched_of_is_fair'
   (r : stream (set lbl))
   (l : lbl)
 : ([]<>•mem l) r → ([]<>•eq l) (fair_sched_of' r) :=
@@ -87,8 +94,7 @@ begin
   apply fair_sched_of_is_fair (r ∘ list.length) l H,
 end
 
-
-lemma fair_sched_is_fair  {lbl : Type} [nonempty lbl] [sched lbl] (l : lbl)
+lemma fair_sched_is_fair (l : lbl)
 : ([]<>•eq l) (fair_sched lbl) :=
 begin
   apply (fair_sched_of_spec _).fair l,

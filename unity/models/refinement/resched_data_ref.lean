@@ -12,8 +12,7 @@ namespace hidden_state
 
 universe variable u
 
-open nondet
-open temporal
+open nondet temporal predicate
 
 section defs
 
@@ -169,8 +168,9 @@ begin
     simp [add_one_eq_succ],
     apply simmed _ _ _ _ _ _ Hc,
     apply_instance },
-  { intro ea,
-    apply imp_mono _ _ (Hc.liveness $ ea.cast' R.bij),
+  { intros ea,
+    pose ec := (option.cast' ea (R.bij)),
+    apply imp_mono _ _ (Hc.liveness ec),
     { apply iff.mp,
       apply exists_congr, intro i,
       apply forall_congr, intro j,
@@ -183,9 +183,9 @@ begin
       apply forall_congr, intro j,
       apply exists_congr, intro i,
       unfold temporal.init stream.drop,
-      pose ec := (option.cast' ea (R.bij)),
-      rw [R.fine ec,option_cast_cast'],
-      apply glued, apply Hc },
+      note HHH:= R.fine ec _ _ (glued _ _ g mc R Tc Hc $ 0 + i + j),
+      repeat { rw [p_and_to_fun,init_to_fun,init_to_fun] },
+      rw [HHH,option_cast_cast'] },
     { intro Hevt,
       pose Tevt' : stream (option ma.lbl) := λ i, (Tevt mc Tc i).cast R.bij,
       apply events_to_states Tevt' (program.step_of ma),
@@ -198,8 +198,7 @@ begin
         unfold Tevts ,
         pose F := λ σ σ', {e : option (mc.lbl) | program.step_of mc e σ σ'},
         rw -inf_often_trace_action_trading Tc F,
-        apply henceforth_entails_henceforth _ _ Hevt,
-        apply eventually_entails_eventually,
+        apply inf_often_entails_inf_often _ _ Hevt,
         apply action_entails_action, intros s s',
         apply id, },
       { apply option_cast_injective } }, },

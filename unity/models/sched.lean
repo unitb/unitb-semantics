@@ -61,18 +61,18 @@ nondet.is_step s.nondet
 def program.ex (s : program) (τ : stream α) : Prop :=
 nondet.program.ex (s.nondet) τ
 
-def program.falsify (s : program) (act : option s.lbl) (p : pred' α) : Prop :=
-nondet.program.falsify s.nondet act p
+def program.falsify (s : program) (act : option s.lbl) (p q : pred' α) : Prop :=
+nondet.program.falsify s.nondet act p q
 
 open temporal
 
 lemma program.falsify.negate
-   {s : program} {act : option s.lbl} {p : pred' α}
-   (F : s.falsify act p)
-:  •p && ⟦ s^.step_of act ⟧ ⟹ <>-•p :=
-@nondet.program.falsify.negate _ s.nondet act p F
+   {s : program} {act : option s.lbl} {p q : pred' α}
+   (F : s.falsify act p q)
+:  •q && ⟦ s^.step_of act ⟧ ⟹ <>-•q :=
+@nondet.program.falsify.negate _ s.nondet act p q F
 
-def program.transient (s : program) : pred' α → Prop :=
+def program.transient (s : program) : pred' α → pred' α → Prop :=
 nondet.program.transient s.nondet
 
 section theorems
@@ -82,12 +82,14 @@ variable (s : program)
 open program
 open event
 
-theorem program.transient_false : transient s False :=
+theorem program.transient_false (p : pred' α) : transient s p False :=
 nondet.program.transient_false _
 
-def program.transient_str (s : program) {p q : α → Prop}
-: (∀ (i : α), p i → q i) → s.transient q → s.transient p :=
-nondet.program.transient_str _
+def program.transient_antimono (s : program) {p q p' q' : α → Prop}
+  (hp : p' ⟹ p)
+  (hq : q' ⟹ q)
+: s.transient p q → s.transient p' q' :=
+nondet.program.transient_antimono _ hp hq
 
 end theorems
 
@@ -97,7 +99,7 @@ instance prog_is_system : unity.system program :=
 , step := is_step
 , init   := nondet.program.init ∘ program.nondet
 , transient_false := program.transient_false
-, transient_str := program.transient_str }
+, transient_antimono := program.transient_antimono }
 
 open unity
 
@@ -105,17 +107,9 @@ lemma leads_to.nondet (s : program) {p q : pred' α}
    (h : leads_to s p q)
 : leads_to s.nondet p q :=
 begin
-  induction h with
-      p q T S
-      p q r P₀ Q₀ P₁ Q₁
-      X p q P P'
-      XX YY ZZ,
-  { apply leads_to.basis,
-    apply T,
-    apply S },
-  { apply leads_to.trans _ P₁ Q₁ },
-  { apply leads_to.disj X,
-    apply P' }
+  apply leads_to.subst _ s s.nondet _ _ h,
+  { intros p q, apply id },
+  { intros p q, apply id },
 end
 
 -- instance {α} [sched lbl] : system_sem (program lbl) :=
@@ -129,12 +123,13 @@ instance : unity.system_sem program :=
 
 open unity
 
-theorem transient_rule {s : program} {p : pred' α} (ev : option s.lbl)
-   (EN : p ⟹ s.coarse_sch_of ev)
-   (FLW : leads_to s (p && s.coarse_sch_of ev) (s.fine_sch_of ev))
-   (NEG : ∀ σ σ', p σ → s.step_of ev σ σ' → ¬p σ')
-: s.transient p :=
-@nondet.transient_rule _ s.nondet p ev EN (leads_to.nondet _ FLW) NEG
+theorem transient_rule {s : program} {p q : pred' α} (ev : option s.lbl)
+   (EN : p && -q ⟹ s.coarse_sch_of ev)
+   (FLW : (p && -q && s.coarse_sch_of ev) ↦ s.fine_sch_of ev || q in s)
+   (NEG : ∀ σ σ', ¬ q σ → s.step_of ev σ σ' → q σ')
+   (STABLE : unless (program.nondet s) p q)
+: p ↦ q in s.nondet :=
+@nondet.ensure_rule _ s.nondet p q ev EN (leads_to.nondet _ FLW) NEG STABLE
 
 end schedules
 

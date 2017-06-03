@@ -73,7 +73,7 @@ begin
   apply h _ _ act hpnq
 end
 
-lemma impl_unless {p q : pred' σ} (h : ∀ i, p i → q i) : unless s p q :=
+lemma impl_unless {p q : pred' σ} (h : p ⟹ q) : unless s p q :=
 begin
   intros σ σ' h₀ h₁,
   cases h₁ with h₁ h₂,
@@ -81,7 +81,7 @@ begin
 end
 
 lemma unless_weak_rhs {p q r : pred' σ}
-         (h : ∀ i, q i → r i)
+         (h : q ⟹ r)
          (P₀ : unless s p q)
          : unless s p r :=
 begin
@@ -129,6 +129,19 @@ begin
     exact ⟨P₀,P₁⟩ },
   { apply or.inr (or.inr _),
     exact ⟨P₀,P₁⟩ },
+end
+
+theorem unless_conj {p₀ q₀ p₁ q₁ : pred' (state α)}
+  (h₀ : unless s p₀ q₀)
+  (h₁ : unless s p₁ q₁)
+: unless s (p₀ && p₁) (q₀ || q₁) :=
+begin
+  apply unless_weak_rhs _ _ (unless_conj_gen _ h₀ h₁),
+  apply p_or_entails_of_entails,
+  apply p_or_p_imp_p_or',
+  { apply p_and_elim_left },
+  { apply p_and_elim_right },
+  { apply p_and_entails_p_or },
 end
 
 lemma unless_disj_gen {p₀ q₀ p₁ q₁ : pred' σ}
