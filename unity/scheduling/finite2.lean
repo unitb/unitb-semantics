@@ -23,7 +23,7 @@ section
 
 parameter {lbl : Type}
 parameter [pos_finite lbl]
-parameter requests : list lbl → set lbl
+parameter t : scheduling.unity.target_mch lbl
 
 noncomputable def first (req : set lbl)
   (l : rrobin lbl)
@@ -33,10 +33,10 @@ noncomputable def first (req : set lbl)
 noncomputable def sch.current (r : set lbl) (queue : rrobin lbl) : lbl :=
 queue.f (first r queue)
 
-structure sch_state :=
-  (hist : list lbl)
+structure sch_state : Type :=
+  (target : t.σ)
   (queue : rrobin lbl)
-  (inv : requests hist = ∅ ∨ sch.current (requests hist) queue ∈ requests hist)
+  (inv : sch.current (t.req target) queue ∈ t.req target)
 
 lemma first_mem {req : set lbl}
   (l : rrobin lbl)
@@ -56,25 +56,23 @@ noncomputable def select (req : set lbl)
 l ∘ rev (perm.rotate_right (first req l))
 
 lemma sch.select_inv
-  (req : set lbl)
+  (s : t.σ)
   (q : rrobin lbl)
-:   req = ∅
-  ∨ sch.current req q ∈ req :=
+: sch.current (t.req s) q ∈ t.req s :=
 begin
-  rw or_iff_not_imp, intro h,
   unfold select sch.current,
-  apply first_mem _ h,
+  apply first_mem _ (t.req_nemp s),
 end
 
 def sch.first : sch_state :=
-{ hist := [ ]
+{ target := t.s₀
 , queue := rev (finite.to_nat _)
 , inv := sch.select_inv _ _ }
 
 noncomputable def sch.step : sch_state → sch_state
- | (sch_state.mk hist queue P) :=
-     { hist := hist ++ [sch.current (requests hist) queue]
-     , queue := select (requests hist) queue
+ | (sch_state.mk target queue P) :=
+     { target := t.next (sch.current (t.req target) queue) target
+     , queue := select (t.req target) queue
      , inv := sch.select_inv _ _
      }
 
@@ -85,10 +83,10 @@ noncomputable def scheduler : program sch_state :=
 open sch_state unity subtype has_mem
 
 def req (s : sch_state) : set lbl :=
-requests s.hist
+t.req s.target
 
 noncomputable def next (s : sch_state) : lbl :=
-sch.current (requests s.hist) s.queue
+sch.current (req s) s.queue
 
 def rank (l : lbl) (s : sch_state) : ℕ := (s.queue.g l).val
 
@@ -98,12 +96,12 @@ lemma eq_next_or_rank_eq_or_rank_lt {s : sch_state} {l : lbl} (v : ℕ)
   ( l ∉ req s ∧ rank l (sch.step s) = v ) ∨
   rank l (sch.step s) < v :=
 begin
-  unfold sch.current select sch.step rank next sch_state.queue sch_state.hist req,
-  pose hist'  := (sch.step _ s).hist,
+  unfold sch.current select sch.step rank next sch_state.queue sch_state.target req,
+  pose target'  := (sch.step _ s).target,
   pose queue' := (sch.step _ s).queue,
   cases s,
-  unfold sch.step sch_state.queue sch_state.hist,
-  cases classical.em (queue.g l = first (requests hist) queue) with Heq Hne,
+  unfold sch.step sch_state.queue sch_state.target,
+  cases classical.em (queue.g l = first (t.req target) queue) with Heq Hne,
   { left,
     unfold comp, symmetry,
     rw [bijection.inverse],
@@ -113,7 +111,7 @@ begin
   { right,left,
     split,
     { intro h₀,
-      assert h₁ : queue.g l ∈ { x | queue.f x ∈ requests hist },
+      assert h₁ : queue.g l ∈ { x | queue.f x ∈ t.req target },
       { rw [mem_set_of,bijection.g_inv],
         apply h₀ },
       note h₂ := minimum_le h₁,
@@ -167,7 +165,7 @@ begin
 end
 
 lemma INIT
-: system.init scheduler (eq list.nil ∘ sch_state.hist) :=
+: system.init scheduler (eq t.s₀ ∘ sch_state.target) :=
 begin
   unfold system.init program.init function.comp scheduler,
   refl,
@@ -176,7 +174,7 @@ end
 lemma STEP
 : co' scheduler
     (λ (σ σ' : sch_state),
-       sch_state.hist σ' = sch_state.hist σ ++ [next σ]) :=
+       σ'.target = t.next (next σ) σ.target) :=
 begin
   unfold co',
   intros σ σ',
@@ -185,17 +183,17 @@ begin
   rw H,
   unfold function.comp scheduler program.step subtype.val sch.step,
   cases σ, unfold subtype.val,
-  unfold sch.step sch_state.hist,
+  unfold sch.step sch_state.target,
   refl,
 end
 
 lemma INV (σ : sch_state)
-: requests (σ.hist) = ∅ ∨ next σ ∈ requests (σ.hist) :=
+: next σ ∈ t.req (σ.target) :=
 σ.inv
 
 lemma PROG (l)
 : often_imp_often scheduler
-      (mem l ∘ requests ∘ sch_state.hist)
+      (mem l ∘ t.req ∘ sch_state.target)
       (eq l ∘ next) :=
 begin
   apply often_imp_often.induct _ _ _ nat.lt_wf,
@@ -205,17 +203,19 @@ end
 
 end
 
+open scheduling.unity stream unity
+
 variable {lbl : Type}
 variable [pos_finite lbl]
-variable (r : list lbl → set lbl)
+variable (r : target_mch lbl)
 
 noncomputable def scheduler_spec
 : @scheduling.unity.scheduler lbl r :=
-  { s := program $ sch_state r
+  { s := program $ @sch_state lbl _ r
   , sem := _
-  , F := @scheduler _ _ r
+  , F := @scheduler _ _ _
   , ch := next r
-  , hist := sch_state.hist
+  , object := _
   , INIT := INIT r
   , STEP := STEP r
   , INV  := INV r
@@ -227,8 +227,8 @@ noncomputable instance : unity.system_sem ((scheduler_spec r).s) :=
 open scheduling
 
 lemma sched' {lbl : Type} [s : finite lbl] [nonempty lbl]
-  (r : list lbl → set lbl)
-: ∃ τ : stream lbl, fair (req_of r τ) τ :=
+  (r : target_mch lbl)
+: ∃ τ : stream r.σ, fair r τ :=
 begin
   assert h : pos_finite lbl,
   { apply pos_of_finite ; apply_instance },

@@ -52,7 +52,6 @@ def p_entails (p₀ p₁ : pred' α) : Prop
 lemma p_entails_of_fun (p₀ p₁ : pred' α) (x : β)
 : p_entails p₀ p₁ ↔ ∀ x, p₀ x → p₁ x := by refl
 
-
 def p_not (p : pred' α) : pred' α
 := lifted₁ not p
 
@@ -77,6 +76,11 @@ infix ` ⟹ `:60 := p_entails
 notation `⦃ `:max act ` ⦄`:0 := ew act
 
 instance : has_neg (pred' α) := has_neg.mk p_not
+
+@[simp]
+lemma p_and_comp (p q : pred' α) (f : β → α)
+: (p && q) ∘ f = (p ∘ f) && (q ∘ f) :=
+rfl
 
 @[simp]
 lemma p_not_to_fun (p₀ : pred' α) (x : α)

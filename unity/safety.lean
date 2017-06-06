@@ -289,6 +289,17 @@ begin
       cases hnq' hq } }
 end
 
+lemma co_sem'  {τ : stream σ} {A : act σ}
+    (sem : saf_ex s τ)
+    (H : co' s A)
+: []⟦ A ⟧ $ τ :=
+begin
+  unfold saf_ex at sem,
+  apply henceforth_entails_henceforth _ _ sem,
+  apply action_entails_action,
+  apply H
+end
+
 lemma unless_sem {τ : stream σ} {p q : pred' σ}
     (sem : saf_ex s τ)
     (H : unless s p q)

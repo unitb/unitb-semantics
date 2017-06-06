@@ -148,31 +148,37 @@ end
 
 end soundness
 
-open scheduling
+open scheduling scheduling.unity
+
+def object (p : program lbl α) : target_mch (option lbl) :=
+{ σ := α
+, s₀ := p.first
+, next := p.take_step
+, req := λ _, set.univ
+, req_nemp := λ _, @set.ne_empty_of_mem _ set.univ none trivial }
 
 lemma program.witness [sched lbl] (s : program lbl α)
 : ∃ (τ : stream (state (program lbl α))), ex s τ :=
 begin
-  apply exists_imp_exists' (run s) _ (sched.sched' (option lbl)),
+  apply exists_imp_exists _ (sched.sched_str (object s)),
   intros τ h,
   apply ex.mk,
-  { refl },
+  { rw h.init, refl },
   { unfold saf_ex,
-    intro i,
-    simp [action_drop],
-    unfold run,
-    cases (τ i) with e
-    ; unfold program.take_step step has_safety.step is_step,
-    { existsi @none lbl, apply rfl },
-    { existsi (some e), apply rfl } },
-  { apply forall_imp_forall _ h,
-    intros e Heq i,
-    cases (Heq i) with j Heq,
-    rw [stream.drop_drop,init_drop] at Heq,
-    unfold eventually, existsi j,
-    rw [stream.drop_drop,action_drop,Heq],
-    unfold program.action_of,
-    refl },
+    apply henceforth_entails_henceforth _ _ h.valid,
+    simp [init_eq_action,action_and_action,exists_action],
+    apply action_entails_action,
+    intros σ σ',
+    unfold step has_safety.step is_step,
+    apply exists_imp_exists,
+    intro l, apply and.left, },
+  { intro e,
+    apply inf_often_entails_inf_often _ _ (h.fair e _),
+    { intro, apply and.right },
+    { assert H : has_mem.mem e ∘ (object s).req = True,
+      { refl },
+      rw [H,init_true,event_true,hence_true],
+      apply trivial } },
 end
 
 instance {α} [sched lbl] : system_sem (program lbl α) :=

@@ -292,7 +292,7 @@ lemma action_imp (p q : act β)
 rfl
 
 lemma action_and_action (p q : act β)
-: (⟦ λ s s' : β, p s s' ∧ q s s' ⟧ : cpred β) = ⟦ p ⟧ && ⟦ q ⟧ :=
+: ⟦ p ⟧ && ⟦ q ⟧ = (⟦ λ s s' : β, p s s' ∧ q s s' ⟧ : cpred β) :=
 rfl
 
 /- end distributivity -/
@@ -329,7 +329,7 @@ begin
   apply eventually_of_leads_to' _ h (P _)
 end
 
-lemma leads_to_trans {p q r : cpred β} (τ)
+lemma leads_to_trans {p q r : cpred β} {τ}
   (Hp : p ~> q $ τ)
   (Hq : q ~> r $ τ)
 : p ~> r $ τ :=
@@ -479,6 +479,12 @@ begin
   simp [stream.drop_drop],
   exact ⟨Hp',Hq⟩
 end
+
+lemma coincidence' {p q : cpred β} {τ}
+    (Hp : ([]p) τ)
+    (Hq : ([]<>q) τ)
+: ([]<>(p && q)) τ :=
+coincidence (eventually_weaken _ Hp) Hq
 
 lemma inf_often_p_and {β} (p q : cpred β)
 : []<>(p && q) = []<>p && []<>q :=
@@ -650,7 +656,7 @@ end
 open function
 
 lemma henceforth_trading (f : α → β) (p : cpred β)
-: ([] (p ∘ comp f)) = ([] p) ∘ comp f :=
+: ([] (p ∘ map f)) = ([] p) ∘ map f :=
 begin
   apply funext, intro τ,
   rw -iff_eq_eq,
@@ -663,7 +669,7 @@ begin
 end
 
 lemma eventually_trading (f : α → β) (p : cpred β)
-: (<> (p ∘ comp f)) = (<> p) ∘ comp f :=
+: (<> (p ∘ map f)) = (<> p) ∘ map f :=
 begin
   apply funext, intro τ,
   rw -iff_eq_eq,
@@ -676,26 +682,42 @@ begin
 end
 
 lemma init_trading (f : α → β) (p : pred' β)
-: • (p ∘ f) = (• p) ∘ comp f :=
+: • (p ∘ f) = (• p) ∘ map f :=
 begin
   apply funext, intro x,
   unfold comp init,
   refl
 end
 
-lemma comp_comp_app_eq_app_comp (p : cpred β) (f : α → β) (τ : stream α)
-: (p ∘ comp f) τ ↔ p (f ∘ τ) :=
+lemma action_trading (f : α → β) (a : act β)
+: ( action $ a on f ) = (action a ∘ map f) :=
+begin
+  apply funext, intro x,
+  refl,
+end
+
+
+lemma comp_map_app_eq_map (p : cpred β) (f : α → β) (τ : stream α)
+: (p ∘ map f) τ ↔ p (map f τ) :=
 by refl
 
+lemma inf_often_trace_trading (τ : stream α) (f : α → β) (p : cpred β)
+: ([]<>(p ∘ map f)) τ = ([]<>p) (map f τ) :=
+by rw [eventually_trading,henceforth_trading]
+
 lemma inf_often_trace_init_trading (τ : stream α) (f : α → β) (p : β → Prop)
-: ([]<>•(p ∘ f)) τ = ([]<>•p) (f ∘ τ) :=
+: ([]<>•(p ∘ f)) τ = ([]<>•p) (map f τ) :=
 by rw [init_trading,eventually_trading,henceforth_trading]
+
+lemma inf_often_trace_action_trading (τ : stream α) (f : α → β) (p : act β)
+: ([]<>⟦ p on f ⟧) τ = ([]<>⟦ p ⟧) (map f τ) :=
+by rw [action_trading,eventually_trading,henceforth_trading]
 
 -- lemma stable_trace_init_trading (τ : stream α) (f : α → β) (p : β → Prop)
 -- : (<>[]•(p ∘ f)) τ = (<>[]•p) (f ∘ τ) :=
 -- by rw [init_trading,henceforth_trading,eventually_trading]
 
-lemma inf_often_trace_action_trading (τ : stream α) (f : α → α → β) (p : β → Prop)
+lemma inf_often_trace_action_init_trading (τ : stream α) (f : α → α → β) (p : β → Prop)
 : ([]<>⟦ λ σ σ', p (f σ σ') ⟧) τ = ([]<>•p) (λ i, f (τ i) (τ $ succ i)) :=
 begin
   unfold henceforth eventually,
@@ -720,7 +742,7 @@ protected theorem leads_to_strengthen_rhs {α} (q : cpred α) {p r : cpred α} {
     (P₀ : p ~> q $ τ)
     : p ~> r $ τ :=
 begin
-  apply leads_to_trans _ P₀,
+  apply leads_to_trans P₀,
   intros i H',
   apply eventually_weaken,
   apply H _ H',
@@ -917,9 +939,9 @@ begin
     { apply eventually_entails_eventually _ _ Q'',
       apply init_entails_init,
       intro, apply or.intro_right, },
-    { rw [henceforth_next_intro,next_init_eq_action,init_eq_action,-action_and_action] at Q'',
+    { rw [henceforth_next_intro,next_init_eq_action,init_eq_action,action_and_action] at Q'',
       note Q'' := coincidence (eventually_weaken' _ Q'') H₂,
-      rw -action_and_action at Q'',
+      rw action_and_action at Q'',
       apply eventually_entails_eventually _ _ (Q'' _),
       admit } },
   apply inf_often_of_leads_to _ h₀,
@@ -929,9 +951,9 @@ end
 
 lemma congr_inf_often_trace {x : α} {τ : stream α} (f : α → β)
   (Hinj : injective f)
-: ([]<>•eq x) τ ↔ ([]<>•(eq (f x))) (f ∘ τ) :=
+: ([]<>•eq x) τ ↔ ([]<>•(eq (f x))) (map f τ) :=
 begin
-  rw [ -comp_comp_app_eq_app_comp ([]<>•eq (f x)) f τ ],
+  rw [ -comp_map_app_eq_map ([]<>•eq (f x)) f τ ],
   simp [ (henceforth_trading f (<>•eq (f x))).symm  ],
   simp [ (eventually_trading f (•eq (f x))).symm ],
   simp [ (init_trading f (eq (f x))).symm ],

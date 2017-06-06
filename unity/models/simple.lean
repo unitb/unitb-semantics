@@ -5,29 +5,35 @@ import unity.logic
 
 import util.logic
 
+universe variables u
+
 namespace simple
 
 open unity
 open predicate
 
-structure program (α : Type) : Type :=
+section
+
+parameter (α : Type)
+
+structure program : Type u :=
   (first : α)
   (step : α → α)
 
-def pred α := α → Prop
+def pred := α → Prop
 
-def False {α} : pred α := λ_, false
+parameter {α}
 
-def program.init {α} (s : program α) (p : pred α) : Prop
+def program.init (s : program) (p : pred) : Prop
 := p (s^.first)
 
-def program.transient {α} (s : program α) (p q : pred α) : Prop
+def program.transient (s : program) (p q : pred) : Prop
 := ∀ σ, p σ → q σ → ¬ (q (s^.step σ))
 
-def program.unless {α} (s : program α) (p q : pred α) : Prop
+def program.unless (s : program) (p q : pred) : Prop
 := ∀ σ, p σ ∧ ¬q σ → p (s^.step σ) ∨ q (s^.step σ)
 
-lemma program.transient_impl {α} (s : program α) {p q : α → Prop}
+lemma program.transient_impl (s : program) {p q : pred}
   (H : p ⟹ -q)
 : s.transient p q :=
 begin
@@ -36,7 +42,7 @@ begin
   cases H _ hp hq,
 end
 
-lemma program.transient_antimono {α} (s : program α) (p q p' q' : α → Prop)
+lemma program.transient_antimono (s : program) (p q p' q' : pred)
   (hp : p' ⟹ p)
   (hq : q' ⟹ q)
   (T₀ : s.transient p q)
@@ -49,9 +55,9 @@ begin
   apply hq _ h₂
 end
 
-def is_step {α} (s : program α) (σ σ' : α) : Prop := σ' = s.step σ
+def is_step (s : program) (σ σ' : α) : Prop := σ' = s.step σ
 
-instance prog_is_system {α} : system (program α) :=
+instance prog_is_system : system program :=
   { σ := α
   , step := is_step
   , init := program.init
@@ -60,7 +66,7 @@ instance prog_is_system {α} : system (program α) :=
   , transient_antimono := program.transient_antimono
   }
 
-lemma unless_step {α : Type}
+lemma unless_step
   {init : α}
   {step : α → α}
   {p q : α → Prop}
@@ -77,10 +83,10 @@ begin
   apply h' ; assumption,
 end
 
-lemma leads_to_step {α : Type}
+lemma leads_to_step
   (init : α)
   (step : α → α)
-  (p q : α → Prop)
+  (p q : pred)
   (h : ∀ σ, p σ → ¬ q σ → q (step σ))
 : p ↦ q in program.mk init step :=
 begin
@@ -100,19 +106,19 @@ open nat
 
 open temporal
 
-def ex {α} (s : program α) : cpred α :=
+def ex (s : program) : cpred α :=
 •eq s.first && [] ⟦ is_step s ⟧
 
-lemma ex.safety {α} {s : program α} (τ : stream α)
+lemma ex.safety {s : program} (τ : stream α)
   (h : ex s τ)
 : [] ⟦ is_step s ⟧ $ τ :=
 h.right
 
-def ex.witness {α} (s : program α) : stream α
+def ex.witness (s : program) : stream α
   | 0 := s.first
   | (succ i) := s.step (ex.witness i)
 
-lemma ex.witness_correct  {α} (s : program α)
+lemma ex.witness_correct (s : program)
 : ex s (ex.witness s) :=
 begin
   unfold ex, simp,
@@ -127,11 +133,8 @@ end
 
 section semantics
 
-universe variable u
-
-parameter {α : Type}
-variable {s : program α}
-variables {p q : pred α}
+variable {s : program}
+variables {p q : pred}
 variable τ : stream α
 variable (H : ex s τ)
 open temporal
@@ -174,12 +177,14 @@ end
 
 end semantics
 
-instance {α} : system_sem (program α) :=
-  { (_ : system (program α)) with
+instance : system_sem program :=
+  { (_ : system program) with
     ex := ex
-  , safety := @ex.safety _
+  , safety := @ex.safety
   , inhabited := λ p, ⟨ex.witness p, ex.witness_correct p⟩
-  , init_sem := @init_sem _
-  , transient_sem := @transient.semantics _ }
+  , init_sem := @init_sem
+  , transient_sem := @transient.semantics }
+
+end
 
 end simple

@@ -11,7 +11,7 @@ import unity.scheduling.basic
 
 namespace scheduling.infinite
 
-open stream scheduling
+open stream scheduling unity
 
 open nat simple function
 
@@ -26,7 +26,9 @@ section
 
 parameter {lbl : Type}
 parameter [infinite lbl]
-parameter requests : list lbl → set lbl
+parameter t : scheduling.unity.target_mch lbl
+
+local attribute [instance] classical.prop_decidable
 
 noncomputable def first (req : set lbl)
   (l : rrobin lbl)
@@ -37,23 +39,22 @@ noncomputable def sch.current (r : set lbl) (queue : rrobin lbl) : lbl :=
 queue.f (first r queue)
 
 structure sch_state :=
-  (hist : list lbl)
+  (target : t.σ)
   (q_len : ℕ)
   (queue : rrobin lbl)
-  (inv : requests hist = ∅ ∨ sch.current (requests hist) queue ∈ requests hist)
+  (inv : sch.current (t.req target) queue ∈ t.req target)
 
 def sch_state.req (s : sch_state) : set lbl :=
-requests s.hist
+t.req s.target
 
-lemma first_mem {req : set lbl}
+lemma first_mem {s : t.σ}
   (l : rrobin lbl)
-  (h : req ≠ ∅)
-: l.f (first req l) ∈ req :=
+: l.f (first (t.req s) l) ∈ t.req s :=
 begin
-  unfold first, apply @minimum_mem _ _ { x | l.f x ∈ req },
-  cases exists_mem_of_ne_empty h with x h,
+  unfold first, apply @minimum_mem _ _ { x | l.f x ∈ t.req s },
+  cases exists_mem_of_ne_empty (t.req_nemp s) with x h,
   apply @set.ne_empty_of_mem _ _ (l.g x),
-  change l.f (l.g x) ∈ req,
+  change l.f (l.g x) ∈ t.req s,
   rw l.g_inv, apply h
 end
 
@@ -64,25 +65,23 @@ then s.queue ∘ bijection.rotate_right' (first s.req s.queue) (succ s.q_len) h
 else s.queue
 
 lemma sch.select_inv
-  (req : set lbl)
+  (s : t.σ)
   (q : rrobin lbl)
-:   req = ∅
-  ∨ sch.current req q ∈ req :=
+: sch.current (t.req s) q ∈ t.req s :=
 begin
-  rw or_iff_not_imp, intro h,
   unfold sch.current,
-  apply first_mem _ h,
+  apply first_mem _,
 end
 
 def sch.first : sch_state :=
 { q_len := 0
-, hist := [ ]
+, target := t.s₀
 , queue := rev (infinite.to_nat _)
 , inv := sch.select_inv _ _ }
 
 noncomputable def sch.step (s : sch_state) : sch_state :=
 { q_len := s.q_len + 1
-, hist := s.hist ++ [sch.current s.req s.queue]
+, target := t.next (sch.current s.req s.queue) s.target
 , queue := shift s
 , inv := sch.select_inv _ _ }
 
@@ -90,7 +89,7 @@ noncomputable def scheduler : program sch_state :=
   { first := sch.first
   , step  := sch.step }
 
-open sch_state unity has_mem
+open sch_state has_mem
 
 noncomputable def next (s : sch_state) : lbl :=
 sch.current s.req s.queue
@@ -226,25 +225,26 @@ begin
 end
 
 lemma fair_schedule_step  (l : lbl) (v : ℕ)
-:  mem l ∘ req && (eq v ∘ rank l) ↦ (flip has_lt.lt v ∘ rank l) || eq l ∘ next in scheduler :=
+:  mem l ∘ req && (eq v ∘ rank l) ↦ (flip has_lt.lt v ∘ rank l) || (eq l ∘ next) in scheduler :=
 begin
   unfold scheduler,
   apply leads_to_step,
   intros σ Heq Hnnext,
   simp, simp at Heq,
-  unfold function.comp flip sch.step, -- next rank subtype.val,
+--  unfold function.comp flip sch.step, -- next rank subtype.val,
   cases Heq with Heq Hmem,
   note HH := eq_next_or_rank_eq_or_rank_lt _ v Heq,
   rw or_iff_not_imp at HH,
   simp [not_or_iff_not_and_not] at Hnnext,
-  note HH' := HH Hnnext.left,
+  note Hnnext' : ¬ l = next t σ := Hnnext.left,
+  note HH' := HH Hnnext',
   rw [or_iff_not_imp,not_and_iff_not_or_not,not_not_iff_self] at HH',
   right, apply HH', clear HH' HH,
   apply or.intro_left _ Hmem,
 end
 
 lemma stable_queue_ranking (l : lbl) (v : ℕ)
-: unless scheduler (eq v ∘ rank l) (flip has_lt.lt v ∘ rank l || eq l ∘ next) :=
+: unless scheduler (eq v ∘ rank l) (flip has_lt.lt v ∘ rank l || (eq l ∘ next)) :=
 begin
   unfold scheduler,
   apply unless_step,
@@ -255,21 +255,22 @@ begin
   unfold comp at Heq,
   apply or.imp _ _ (eq_next_or_rank_eq_or_rank_lt _ _ Heq),
   { intro h, cases Hnnext.left h, },
-  { apply or.imp_left,
+  { apply or.imp_left _,
     intro h, cases h with _ h, rw h, },
 end
 
 lemma INIT
-: system.init scheduler (eq list.nil ∘ sch_state.hist) :=
+: system.init scheduler (eq t.s₀ ∘ sch_state.target) :=
 begin
   unfold system.init program.init function.comp scheduler,
+  unfold sch.first,
   refl,
 end
 
 lemma STEP
 : co' scheduler
     (λ (σ σ' : sch_state),
-       sch_state.hist σ' = sch_state.hist σ ++ [next σ]) :=
+       σ'.target = t.next (sch.current σ.req σ.queue) σ.target) :=
 begin
   unfold co',
   intros σ σ',
@@ -278,18 +279,17 @@ begin
   rw H,
   unfold function.comp scheduler program.step subtype.val sch.step,
   cases σ, unfold subtype.val,
-  unfold sch.step sch_state.hist,
+  unfold sch.step sch_state.target,
   refl,
 end
 
 lemma INV (σ : sch_state)
-: requests (σ.hist) = ∅ ∨ next σ ∈ requests (σ.hist) :=
+: next σ ∈ t.req (σ.target) :=
 σ.inv
 
 lemma PROG (l)
-: often_imp_often scheduler
-      (mem l ∘ requests ∘ sch_state.hist)
-      (eq l ∘ next) :=
+:     (mem l ∘ req)  >~>  (eq l ∘ next)
+  in scheduler :=
 begin
   apply often_imp_often.induct _ _ _ nat.lt_wf,
   apply fair_schedule_step _ l,
@@ -300,28 +300,28 @@ end
 
 variable {lbl : Type}
 variable [infinite lbl]
-variable (r : list lbl → set lbl)
+variable t : scheduling.unity.target_mch lbl
 
 noncomputable def scheduler_spec
-: @scheduling.unity.scheduler lbl r :=
-  { s := program $ sch_state r
+: @scheduling.unity.scheduler lbl t :=
+  { s := program $ sch_state t
   , sem := _
-  , F := @scheduler _ _ r
-  , ch := next r
-  , hist := sch_state.hist
-  , INIT := INIT r
-  , STEP := STEP r
-  , INV  := INV r
-  , PROG := PROG r }
+  , F := @scheduler _ _ t
+  , ch := next t
+  , object := sch_state.target
+  , INIT := INIT t
+  , STEP := STEP t
+  , INV  := INV t
+  , PROG := PROG t }
 
-noncomputable instance : unity.system_sem ((scheduler_spec r).s) :=
-(scheduler_spec r).sem
+noncomputable instance : unity.system_sem ((scheduler_spec t).s) :=
+(scheduler_spec t).sem
 
 lemma sched' {lbl : Type} [s : infinite lbl] [nonempty lbl]
-  (r : list lbl → set lbl)
-: ∃ τ : stream lbl, fair (req_of r τ) τ :=
+  (t : scheduling.unity.target_mch lbl)
+: ∃ τ : stream t.σ, fair t τ :=
 begin
-  apply unity.scheduling r (scheduling.infinite.scheduler_spec r),
+  apply unity.scheduling t (scheduling.infinite.scheduler_spec t),
   apply_instance
 end
 

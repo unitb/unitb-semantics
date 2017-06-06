@@ -9,34 +9,40 @@ universe variables u
 
 namespace scheduling
 
-open stream nat
+open stream nat function
+
+namespace unity
+
+section target
+
+parameters (lbl : Type)
+
+structure target_mch :=
+  (σ : Type)
+  (s₀ : σ)
+  (req : σ → set lbl)
+  (req_nemp : ∀ x, req x ≠ ∅)
+  (next : lbl → σ → σ)
+
+parameters {lbl}
+
+def target_mch.action (t : target_mch) (l : lbl) (s s' : t.σ) : Prop :=
+t.next l s = s'
+
+end target
+
+end unity
 
 section
 
 parameters {lbl : Type}
 
-open has_mem
+open has_mem scheduling.unity temporal
 
-structure fair (req : stream (set lbl)) (τ : stream lbl) : Prop :=
-  (valid : ∀ i, req i = ∅ ∨ τ i ∈ req i)
-  (fair : ∀ l, ([]<>•mem l) req → ([]<>•eq l) τ)
-
-def req_of (r : list lbl → set lbl) (τ : stream lbl) : stream (set lbl) :=
-λ i, r (approx i τ)
-
-lemma req_of_comp_length (r : stream (set lbl)) (τ : stream lbl)
-: req_of (r ∘ list.length) τ = r :=
-begin
-  unfold req_of function.comp,
-  simp [length_approx],
-end
-
-lemma req_of_succ (r : list lbl → set lbl) (τ : stream lbl) (i : ℕ)
-: req_of r τ (succ i) = req_of (r ∘ flip list.concat (τ i)) τ i :=
-begin
-  unfold req_of function.comp flip,
-  rw approx_succ_eq_concat,
-end
+structure fair (t : target_mch lbl) (τ : stream t.σ) : Prop :=
+  (init : τ 0 = t.s₀)
+  (valid : [] (∃∃ l, •(mem l ∘ t.req) && ⟦ t.action l ⟧) $ τ)
+  (fair : ∀ l, ([]<>•mem l ∘ t.req) ⟶ ([]<>(•mem l ∘ t.req && ⟦ t.action l ⟧)) $ τ)
 
 class inductive sched (l : Type)
   | fin : finite l → sched
@@ -58,76 +64,64 @@ namespace unity
 
 section
 
-open unity has_mem
+open unity has_mem temporal
 
 parameters {lbl : Type}
 parameters {s : Type u}
 parameters [system_sem s]
-parameters r : list lbl → set lbl
+parameters {α : Type}
+parameters r : α → set lbl
+parameters r_nemp : ∀ x, r x ≠ ∅
+parameters s₀ : α
+parameters next : lbl → α → α
 parameters {F : s}
 parameters ch : unity.state s → lbl
-parameters hist : unity.state s → list lbl
-def req (σ) := r (hist σ)
-parameters P : ∀ l, often_imp_often F (mem l ∘ req) (eq l ∘ ch)
-parameters INIT : system.init F (eq [ ] ∘ hist)
-parameters STEP : unity.co' F (λ σ σ', hist σ' = hist σ ++ [ch σ])
-parameters INV : ∀ σ, req σ = ∅ ∨ ch σ ∈ req σ
+parameters object : unity.state s → α
+def req (σ) := r (object σ)
+parameters P : ∀ l, (mem l ∘ req)  >~>  (eq l ∘ ch)  in  F
+parameters INIT : system.init F (eq s₀ ∘ object)
+parameters STEP : unity.co' F (λ σ σ', object σ' = next (ch σ) (object σ))
+parameters INV : ∀ σ, ch σ ∈ req σ
 
-include INIT STEP
+def t := target_mch.mk _ s₀ r r_nemp next
 
-section
-
-lemma keep_history {τ : stream (unity.state s)} (i : ℕ)
-  (h : system_sem.ex F τ)
-: approx i (map ch τ) = hist (τ i) :=
-begin
-  induction i with i IH,
-  { note h' := system_sem.init_sem τ h INIT,
-    unfold temporal.init function.comp at h',
-    rw -h', refl },
-  { rw [stream.approx_succ_eq_append,IH],
-    unfold map nth,
-    symmetry,
-    apply STEP,
-    note h' := system_sem.safety _ _ h i,
-    rw temporal.action_drop at h',
-    apply h' },
-end
-
-end
-
-include F
-
-lemma local_req (τ : stream (unity.state s))
-  (h : system_sem.ex F τ)
-  (i : ℕ)
-: req_of r (map ch τ) i = r (hist $ τ i) :=
-begin
-  unfold req_of,
-  rw keep_history _ _ INIT STEP i h,
-end
-
-include ch P hist INV
-
+include ch F INIT STEP INV P
 lemma scheduling'
-: ∃ τ : stream lbl, fair (req_of r τ) τ :=
+: ∃ τ : stream α, fair t τ :=
 begin
-  apply exists_imp_exists' (stream.map ch) _ (system_sem.inhabited F),
+  apply exists_imp_exists' (map object) _ (system_sem.inhabited F),
   intros τ sem,
   apply fair.mk,
+  { note h := system_sem.init_sem τ sem INIT,
+    unfold temporal.init function.comp at h,
+    unfold map nth, rw -h, refl },
   { intro i,
-    rw local_req _ _ _ INIT STEP _ sem i,
-    unfold map nth,
-    apply INV, },
-  { intro l,
-    assert h : req_of r (map ch τ) = (function.comp (req r hist) τ),
-    { apply funext (local_req _ _ _ INIT STEP _ sem) },
-    assert h' : (map ch τ) = ch ∘ τ,
-    { refl },
-    rw [h,-temporal.inf_often_trace_init_trading],
-    rw [h',-temporal.inf_often_trace_init_trading _ ch],
-    apply system_sem.often_imp_often_sem' _ sem,
-    apply P }
+    simp [temporal.init_drop,temporal.action_drop],
+    existsi (ch $ τ i),
+    split,
+    { note Hsaf := system_sem.safety _ _ sem i,
+      rw action_drop at Hsaf,
+      unfold map nth target_mch.action,
+      rw STEP (τ i) (τ $ succ i) Hsaf, refl },
+    { unfold map nth target_mch.action function.comp,
+      apply INV } },
+  { intros l h,
+    pose t := t r r_nemp s₀ next,
+    assert H : ⟦λ s s', t.action (ch s) (object s) (object s')⟧ && •eq l ∘ ch
+          ⟹ (•mem l ∘ t.req ∘ object && ⟦t.action l on object⟧),
+    { simp [init_eq_action,action_and_action],
+      unfold comp,
+      apply action_entails_action, intros σ σ' H,
+      cases H with H₀ H₁, subst l,
+      split,
+      { apply H₀ }, { apply INV } },
+    apply inf_often_entails_inf_often H,
+    apply coincidence',
+    { apply henceforth_entails_henceforth _ _ (system_sem.safety _ _ sem),
+      apply action_entails_action,
+      intros σ σ' H, rw STEP σ σ' H,
+      unfold target_mch.action, refl },
+    { apply system_sem.often_imp_often_sem' _ sem (P l) h, }, },
 end
 
 end
@@ -135,25 +129,35 @@ end
 open unity has_mem
 
 variable {lbl : Type}
-variable r : list lbl → set lbl
+
+variable t : target_mch lbl
 
 structure scheduler :=
  (s : Type u)
  (sem : system_sem s)
  (F : s)
  (ch : unity.state s → lbl)
- (hist : unity.state s → list lbl)
- (INIT : system.init F (eq [ ] ∘ hist))
- (STEP : unity.co' F (λ σ σ', hist σ' = hist σ ++ [ch σ]))
- (INV  : ∀ σ, r (hist σ) = ∅ ∨ ch σ ∈ r (hist σ))
- (PROG : ∀ l, often_imp_often F (mem l ∘ r ∘ hist) (eq l ∘ ch))
+ (object : unity.state s → t.σ)
+ (INIT : system.init F (eq t.s₀ ∘ object))
+ (STEP : unity.co' F (λ σ σ', object σ' = t.next (ch σ) (object σ)))
+ (INV  : ∀ σ, ch σ ∈ t.req (object σ))
+ (PROG : ∀ l, (mem l ∘ t.req ∘ object)  >~>  (eq l ∘ ch) in F)
 
 lemma scheduling
-  (sch : scheduler r)
+  (sch : scheduler t)
   (sem : system_sem (sch.s))
-: ∃ τ : stream lbl, fair (req_of r τ) τ :=
-@scheduling' lbl sch.s sch.sem _ sch.F sch.ch _ sch.PROG sch.INIT sch.STEP sch.INV
-
+: ∃ τ : stream t.σ, fair t τ :=
+begin
+  assert H : t = scheduling.unity.t t.req t.req_nemp t.s₀ t.next,
+  { cases t, refl },
+  rw H,
+  apply @scheduling' lbl sch.s sch.sem t.σ _ _ t.s₀ _ _
+        sch.ch sch.object sch.PROG sch.INIT sch.STEP sch.INV
+end
 end unity
 
 end scheduling
+
+-- TODO:
+--   generalize finite and infinite so that all that each module only has to provide
+--   a ranking system for events.

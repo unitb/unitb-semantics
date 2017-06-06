@@ -269,7 +269,7 @@ theorem leads_to.induction' {β : Type} {lt' : β → β → Prop}
     (wf : well_founded lt')
     (V : state α → β)
     {p q : pred' (state α)}
-    (P : ∀ v, p && (eq v ∘ V)  ↦ p && (flip lt' v ∘ V) || q in s)
+    (P : ∀ v, p && (eq v ∘ V)  ↦  p && (flip lt' v ∘ V) || q in s)
   : p ↦ q in s :=
 begin
   pose lt := flip lt',
@@ -314,11 +314,11 @@ theorem leads_to.induction {lt' : rel} (wf : well_founded lt')
 leads_to.induction' wf _ P
 
 theorem leads_to.PSP {p q r b : pred' (state α)}
-    (P : p ↦ q in s)
-    (S : unless s r b)
-    : p && r  ↦  (q && r) || b in s :=
+  (P : p ↦ q in s)
+  (S : unless s r b)
+: p && r  ↦  (q && r) || b in s :=
 begin
-  induction P with b p₀ q₀ b₀ t₀ u₀ P PSP₀
+  induction P with p p₀ q₀ b₀ t₀ u₀ P PSP₀
          p₁ q₁ r₁ PP₀ PP₁,
   { apply leads_to.impl,
     apply p_and_entails_of_entails_right,
@@ -471,7 +471,7 @@ begin
       begin [smt] eblast end },
     { apply saf', } },
     -- transitivity
-  { apply leads_to_trans _ H₀ H₁ },
+  { apply leads_to_trans H₀ H₁ },
     -- disjunction
   { intros i hp,
     cases hp with x hp,

@@ -20,7 +20,7 @@ def pred := α → Prop
 structure event : Type :=
   (coarse_sch : pred)
   (fine_sch : pred)
-  (step : ∀ s, coarse_sch s → fine_sch s → α → Prop)
+  (step : ∀ s, coarse_sch s → fine_sch s → pred)
   (fis : ∀ s CS FS, ∃ s', step s CS FS s')
 
 structure program : Type 2 :=
@@ -138,6 +138,22 @@ begin
   apply h
 end
 
+local attribute [instance] classical.prop_decidable
+
+noncomputable def program.object_mch (p : program)
+: scheduling.unity.target_mch (option p.lbl) :=
+{ σ := α
+, s₀ := classical.some p.first_fis
+, req := λ s, { l | p.guard l s }
+, req_nemp := take x,
+  begin
+    apply @set.ne_empty_of_mem _ _ none,
+    simp [mem_set_of], exact ⟨trivial,trivial⟩,
+  end
+, next := λ l s, if h : p.guard l s
+                 then classical.some ((p.event l).fis s h.left h.right)
+                 else s }
+
 instance : unity.has_safety program :=
   { σ := α
   , step := is_step }
@@ -150,7 +166,28 @@ structure program.falsify (s : program) (act : option s.lbl) (p q : pred' α) : 
 def program.transient (s : program) (p q : pred' α) : Prop :=
 ∃ (act : option s.lbl), s.falsify act p q
 
-open temporal
+open temporal has_mem scheduling.unity function
+
+lemma object_mch_action_eq_step_of (s : program) (e : option s.lbl)
+: •mem e ∘ s.object_mch.req && action (s.object_mch.action e) ⟹ action (s.step_of e) :=
+begin
+  rw [init_eq_action,action_and_action],
+  apply action_entails_action,
+  intro σ, intro σ',
+  unfold comp program.object_mch,
+  unfold  target_mch.action target_mch.next target_mch.req,
+  simp [mem_set_of],
+  intro h, cases h with h₀ h₁,
+  rw [dif_pos h₀] at h₁,
+  rw [-h₁],
+  unfold program.step_of event.step_of program.object_mch._proof_3,
+  existsi h₀.left, existsi h₀.right,
+  apply classical.some_spec,
+end
+
+lemma mem_object_req_eq_csch_and_fsch (s : program) (e : option s.lbl)
+: mem e ∘ s.object_mch.req = s.coarse_sch_of e && s.fine_sch_of e :=
+rfl
 
 lemma program.falsify.negate
    {s : program} {act : option s.lbl} {p q : pred}
@@ -209,8 +246,8 @@ end theorems
 instance prog_is_system : unity.system program :=
 { σ := α
 , transient := program.transient
-, step := is_step
-, init   := program.init
+, step  := is_step
+, init  := program.init
 , transient_false := λ s p, program.transient_false s
 , transient_antimono := program.transient_antimono }
 
@@ -346,92 +383,31 @@ begin
   rw dif_neg Hguard,
 end
 
-lemma program.run_enabled  (s : program) (τ : stream (option s.lbl)) (i : ℕ)
-  [Π (x : option (s.lbl)) (σ : α), decidable (s.guard x σ)]
-  (Hcoarse : s.coarse_sch_of (τ i) (run s τ i))
-  (Hfine : s.fine_sch_of (τ i) (run s τ i))
-: (s.event (τ i)).step (run s τ i) Hcoarse Hfine (run s τ (succ i)) :=
-begin
-  pose Hguard : s.guard (τ i) (run s τ i) := ⟨Hcoarse,Hfine⟩,
-  rw [s.run_succ],
-  unfold run_one,
-  rw [dif_pos Hguard],
-  note h := classical.some_spec ((s.event (τ i)).fis (run s τ i) (and.left Hguard) (and.right Hguard)),
-  apply h,
-end
 
 lemma program.witness (s : program)
 : ∃ (τ : stream α), s.ex τ :=
 begin
   note _inst := s.lbl_is_sched,
-  assert _inst_1 : ∀ (x : option s.lbl) σ, decidable (s.guard x σ),
-  { intros, apply classical.prop_decidable },
-
-  pose evts : list (option s.lbl) → set (option s.lbl) := enabled s,
-
-  apply exists_imp_exists' (run s) _ (sched.sched_str' evts),
+  apply exists_imp_exists _ (sched.sched_str s.object_mch),
   intros τ h,
   apply ex.mk,
-  { unfold run,
+  { rw h.init,
     apply classical.some_spec },
   { unfold saf_ex,
-    intro i,
-    simp [action_drop],
-    unfold step has_safety.step is_step,
-    note Hc : (s.event none).coarse_sch (run s τ i) := trivial,
-    note Hf : (s.event none).fine_sch (run s τ i) := trivial,
-    destruct (τ i),
-    { intros h,
-      existsi (τ i),
-      rw -h at Hc Hf,
-      unfold  step_of event.step_of,
-      existsi Hc, existsi Hf,
-      apply s.run_enabled, },
-    { intros e h,
-      cases _inst_1 (τ i) (run s τ i) with Hguard Hguard,
-      { existsi none,
-        rw step_of_none s,
-        rw [s.run_skip _ _ Hguard], },
-      { existsi (τ i),
-        unfold  step_of event.step_of,
-        existsi Hguard.left, existsi Hguard.right,
-        apply s.run_enabled, } }, },
-  { apply forall_imp_forall _ h,
-    intros e Heq Hc Hf,
-    assert inf_evts : ([]<>•mem e) (req_of evts τ),
-    { clear Heq h,
-      note Hg := coincidence Hc Hf,
-      revert evts, simp,
-      unfold req_of enabled,
-      change (([]<>•mem e) (λ (i : ℕ), {l : option (s.lbl) | s.guard l (run s τ i)})),
-      change (([]<>•mem e) ((λ (σ : α), {l : option (s.lbl) | s.guard l σ}) ∘ (run s τ))),
-      rw -inf_often_trace_init_trading,
-      apply inf_often_entails_inf_often _ _ Hg,
-      apply entails_p_and_of_entails,
-      { apply p_and_elim_left },
-      { apply p_and_elim_right } },
-    note Heq := Heq inf_evts,
-    admit,
-    -- -- cases (Heq inf_evts i) with j Heq,
-    -- -- rw [stream.drop_drop,init_drop,stream.fst_zip',stream.snd_zip'] at Heq,
-    -- cases Heq with He Hguard,
-    -- rename Hguard Hguard',
-    -- assert Hguard : s.guard (τ (j + i)) (run s τ (j + i)),
-    -- { subst e,
-    --   rw [or.comm,or_iff_not_imp] at Hguard',
-    --   apply Hguard',
-    --   apply @set.ne_empty_of_mem _ _ none,
-    --   change true ∧ true,
-    --   simp, },
-    -- clear Hguard',
-    -- unfold eventually, existsi j,
-    -- rw He,
-    -- rw [stream.drop_drop,p_and_to_fun,action_drop,init_drop],
-    -- unfold program.step_of event.step_of,
-    -- split, { admit },
-    -- existsi Hguard.left,existsi Hguard.right,
-    -- apply s.run_enabled },
-  }
+    apply henceforth_entails_henceforth _ _ h.valid,
+    rw p_exists_entails_eq_p_forall_entails,
+    intro l,
+    intros τ h,
+    apply is_step_inst' _ l,
+    apply object_mch_action_eq_step_of,
+    revert h, apply and.imp_left _,
+    apply id, },
+  { apply forall_imp_forall _ h.fair,
+    intros e Hsch Hc Hf,
+    apply inf_often_entails_inf_often (object_mch_action_eq_step_of _ _),
+    apply Hsch,
+    rw mem_object_req_eq_csch_and_fsch,
+    apply coincidence Hc Hf },
 end
 
 -- instance {α} [sched lbl] : system_sem (program lbl) :=
