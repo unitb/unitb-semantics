@@ -8,7 +8,6 @@ import util.data.stream
 
 namespace scheduling
 
-
 open stream temporal has_mem scheduling.unity
 
 section rules
@@ -25,7 +24,6 @@ begin
   { apply infinite.sched' ; apply_instance },
 end
 
-
 end rules
 
 variables {lbl : Type}
@@ -40,7 +38,6 @@ noncomputable def fair_sched : stream t.σ :=
 fair_sched_of _
 
 variables {lbl}
-
 
 lemma fair_sched_of_spec
 : fair t (fair_sched_of t) :=
@@ -57,6 +54,5 @@ begin
   apply nonempty.intro,
   intro i, apply l,
 end
-
 
 end scheduling

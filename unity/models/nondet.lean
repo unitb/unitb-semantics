@@ -304,85 +304,9 @@ end soundness
 
 open scheduling nat list
 
-noncomputable def run_one  (p : program)
-  [∀ (x : option p.lbl) σ, decidable (p.guard x σ)]
-  (e : option p.lbl) (s : α) : α :=
-if h : p.guard e s
-then classical.some ((p.event e).fis s h.left h.right)
-else s
-
-noncomputable def run' (p : program)
-  [∀ (x : option p.lbl) σ, decidable (p.guard x σ)]
-: list (option p.lbl) → α → α
-  | nil s := s
-  | (cons e es) s := run' es $ run_one p e s
-
-lemma run_cons (p : program) (xs : list (option p.lbl)) (x : option p.lbl)
-  [∀ (x : option p.lbl) σ, decidable (p.guard x σ)]
-: run' p (x :: xs) = run' p xs ∘ run_one p x :=
-by refl
-
-lemma run_append (p : program) (xs ys : list (option p.lbl))
-  [∀ (x : option p.lbl) σ, decidable (p.guard x σ)]
-: run' p (xs ++ ys) = run' p ys ∘ run' p xs :=
-begin
-  apply funext,
-  induction xs with x xs IH
-  ; intro σ
-  ; unfold function.comp,
-  { unfold run',
-    simp },
-  { simp,
-    unfold run',
-    rw [IH], }
-end
-
-lemma run_concat_eq_comp (p : program) (xs : list (option p.lbl)) (x : option p.lbl)
-  [∀ (x : option p.lbl) σ, decidable (p.guard x σ)]
-: run' p (concat xs x) = run_one p x ∘ run' p xs :=
-begin
-  simp [concat_eq_append,run_append],
-  refl,
-end
-
-lemma run_concat (p : program) (xs : list (option p.lbl)) (x : option p.lbl) (σ : α)
-  [∀ (x : option p.lbl) σ, decidable (p.guard x σ)]
-: run' p (concat xs x) σ = run_one p x (run' p xs σ) :=
-by rw run_concat_eq_comp
-
 noncomputable def program.first_state (s : program) := (classical.some s.first_fis)
 
-noncomputable def run (s : program)  [∀ (x : option s.lbl) σ, decidable (s.guard x σ)]
-  (τ : stream (option s.lbl))
-: stream α :=
-λ i, run' s (stream.approx i τ) s.first_state
-
-noncomputable def enabled (s : program)
-  [∀ (x : option s.lbl) σ, decidable (s.guard x σ)]
-  (es : list (option s.lbl))
-: set (option s.lbl) :=
-{ l | s.guard l $ run' s es s.first_state }
-
 open unity has_mem
-
-lemma program.run_succ  (s : program) (τ : stream (option s.lbl)) (i : ℕ)
-  [Π (x : option (s.lbl)) (σ : α), decidable (s.guard x σ)]
-: (run s τ (succ i)) = run_one s (τ i) (run s τ i) :=
-begin
-  unfold run,
-  rw [stream.approx_succ_eq_concat,run_concat],
-end
-
-lemma program.run_skip  (s : program) (τ : stream (option s.lbl)) (i : ℕ)
-  [Π (x : option (s.lbl)) (σ : α), decidable (s.guard x σ)]
-  (Hguard : ¬ s.guard (τ i) (run s τ i))
-: (run s τ (succ i)) = run s τ i :=
-begin
-  rw [s.run_succ],
-  unfold run_one,
-  rw dif_neg Hguard,
-end
-
 
 lemma program.witness (s : program)
 : ∃ (τ : stream α), s.ex τ :=

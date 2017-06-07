@@ -108,11 +108,6 @@ structure ex (p : program lbl α) (τ : stream α) : Prop :=
 open unity
 open nat
 
-def run (s : program lbl α) (τ : stream (option lbl)) : stream α
-  | 0 := s.first
-  | (succ n) := s.take_step (τ n) (run n)
-
-
 section soundness
 
 variables {s : program lbl α} {p q : pred' α}
