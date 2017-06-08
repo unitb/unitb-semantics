@@ -1,5 +1,5 @@
 import unity.scheduling.basic
-import unity.scheduling.finite2
+import unity.scheduling.finite
 import unity.scheduling.infinite
 
 import unity.temporal

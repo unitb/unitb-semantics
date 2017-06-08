@@ -1,294 +1,240 @@
 
-import data.stream
-
 import util.data.bijection
-import util.data.minimum
-import util.data.list
 import util.data.perm
+import util.data.minimum
 
+import unity.logic
 import unity.scheduling.basic
+import unity.models.simple
 
 namespace scheduling.finite
 
-open nat scheduling stream temporal classical
+open nat simple function
+
+@[reducible]
+def rrobin (lbl : Type) [pos_finite lbl] : Type :=
+bijection (fin $ succ $ pos_finite.pred_count lbl) lbl
+
+@[reducible]
+def index_t (lbl : Type) [pos_finite lbl] :=
+fin $ succ $ pos_finite.pred_count lbl
 
 section
 
 parameter {lbl : Type}
 parameter [pos_finite lbl]
+parameter t : scheduling.unity.target_mch lbl
 
 noncomputable def first (req : set lbl)
-  (l : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
-: fin $ succ $ pos_finite.pred_count lbl :=
-has_minimum.minimum { x | l.f x ∈ req }
+  (l : rrobin lbl)
+: index_t lbl :=
+(↓ x, l.f x ∈ req )
+
+noncomputable def sch.current (r : set lbl) (queue : rrobin lbl) : lbl :=
+queue.f (first r queue)
+
+structure sch_state : Type :=
+  (target : t.σ)
+  (queue : rrobin lbl)
+  (inv : sch.current (t.req target) queue ∈ t.req target)
+
+lemma first_mem {req : set lbl}
+  (l : rrobin lbl)
+  (h : req ≠ ∅)
+: l.f (first req l) ∈ req :=
+begin
+  unfold first, apply @minimum_mem _ _ { x | l.f x ∈ req },
+  cases set.exists_mem_of_ne_empty h with x h,
+  apply @set.ne_empty_of_mem _ _ (l.g x),
+  change l.f (l.g x) ∈ req,
+  rw l.g_inv, apply h
+end
 
 noncomputable def select (req : set lbl)
-  (l : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
-: bijection (fin $ succ $ pos_finite.pred_count lbl) lbl :=
+  (l : rrobin lbl)
+: rrobin lbl :=
 l ∘ rev (perm.rotate_right (first req l))
 
-local infixr ∘ := function.comp
-
-lemma selected (req : set lbl)
-  (l : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
-  (h : req ≠ ∅)
-: (select req l).f fin.max ∈ req :=
+lemma sch.select_inv
+  (s : t.σ)
+  (q : rrobin lbl)
+: sch.current (t.req s) q ∈ t.req s :=
 begin
-  unfold select,
-  rw [comp_f,rev_f],
-  unfold function.comp,
-  rw perm.rotate_right_g_max,
-  unfold first,
-  apply @minimum_mem _ _ {x : fin (succ (pos_finite.pred_count lbl)) | l.f x ∈ req},
-  note h' := exists_mem_of_ne_empty h,
-  cases h' with x h',
-  apply (@set.ne_empty_of_mem _ _ $ l.g x),
-  rw [mem_set_of,bijection.g_inv],
-  apply h',
+  unfold select sch.current,
+  apply first_mem _ (t.req_nemp s),
 end
 
-lemma safety
-  (x : lbl)
-  (req : set lbl)
-  (l : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
-: (select req l).f fin.max = x ∨ ((select req l).g x).val ≤ (l.g x).val :=
-begin
-  unfold select,
-  rw [comp_f,comp_g,or_iff_not_imp], unfold function.comp,
-  rw [bijection.inverse,rev_f,rev_g],
-  rw perm.rotate_right_g_max,
-  intro h,
-  cases lt_or_gt_of_ne h with Hlt Hgt,
-  { rw [perm.rotate_right_f_lt_shifted _ _ Hlt,fin.pred_def],
-    apply pred_le },
-  { rw [perm.rotate_right_f_gt_eq_self _ _ Hgt], },
-end
+def sch.first : sch_state :=
+{ target := t.s₀
+, queue := rev (finite.to_nat _)
+, inv := sch.select_inv _ _ }
 
-lemma progress
-  {x : lbl}
-  {req : set lbl}
-  (l : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
-  (h : x ∈ req)
-: (select req l).f fin.max = x ∨ succ ((select req l).g x).val = (l.g x).val :=
+noncomputable def sch.step : sch_state → sch_state
+ | (sch_state.mk target queue P) :=
+     { target := t.next (sch.current (t.req target) queue) target P
+     , queue := select (t.req target) queue
+     , inv := sch.select_inv _ _
+     }
+
+noncomputable def scheduler : program sch_state :=
+  { first := sch.first
+  , step  := sch.step }
+
+open sch_state unity subtype has_mem
+
+def req (s : sch_state) : set lbl :=
+t.req s.target
+
+noncomputable def next (s : sch_state) : lbl :=
+sch.current (req s) s.queue
+
+def rank (l : lbl) (s : sch_state) : ℕ := (s.queue.g l).val
+
+lemma eq_next_or_rank_eq_or_rank_lt {s : sch_state} {l : lbl} (v : ℕ)
+  (h : v = (s.queue.g l).val)
+: l = next s ∨
+  ( l ∉ req s ∧ rank l (sch.step s) = v ) ∨
+  rank l (sch.step s) < v :=
 begin
-  unfold select,
-  rw [comp_f,rev_f,comp_g,rev_g],
-  unfold function.comp,
-  assert H : first req l < l.g x ∨ first req l = l.g x,
-  { apply lt_or_eq_of_le,
-    unfold first,
-    apply minimum_le,
-    rw [mem_set_of,bijection.g_inv],
-    apply h },
-  cases H with H H,
-  { right,
-    rw [perm.rotate_right_f_lt_shifted _ _ H,fin.pred_def,succ_pred_eq_of_pos],
-    rw [fin.lt_def] at H,
-    apply lt_of_le_of_lt (zero_le _) H, },
+  unfold sch.current select sch.step rank next sch_state.queue sch_state.target req,
+  pose target'  := (sch.step _ s).target,
+  pose queue' := (sch.step _ s).queue,
+  cases s,
+  unfold sch.step sch_state.queue sch_state.target,
+  cases classical.em (queue.g l = first (t.req target) queue) with Heq Hne,
   { left,
-    rw [perm.rotate_right_g_max,H],
-    apply bijection.g_inv }
+    unfold comp, symmetry,
+    rw [bijection.inverse],
+    symmetry, apply Heq, },
+  cases lt_or_gt_of_ne Hne with Hlt Hgt
+  ; clear Hne,
+  { right,left,
+    split,
+    { intro h₀,
+      assert h₁ : queue.g l ∈ { x | queue.f x ∈ t.req target },
+      { rw [mem_set_of,bijection.g_inv],
+        apply h₀ },
+      note h₂ := minimum_le h₁,
+      apply not_le_of_gt Hlt h₂, },
+    { unfold select comp sch.step sch_state.queue,
+      rw [comp_g], unfold comp,
+      rw [rev_g,perm.rotate_right_f_gt_eq_self _ _ Hlt,h], } },
+  { right,right,
+    unfold comp select,
+    rw [comp_g], unfold comp,
+    rw [rev_g,perm.rotate_right_f_lt_shifted _ _ Hgt,fin.pred_def,-h],
+    apply pred_lt_self_of_pos,
+    unfold gt at Hgt,
+    rw [fin.lt_def,-h] at Hgt,
+    apply lt_of_le_of_lt _ Hgt,
+    apply zero_le },
 end
 
-structure state_t :=
-  (hist  : list lbl)
-  (queue : bijection (fin $ succ $ pos_finite.pred_count lbl) lbl)
-
-
-def state_t.last (s : state_t) : lbl := s.queue.f fin.max
-
-parameter requests : list lbl → set lbl
-
-def state_t.mk'
-       (h : list lbl)
-       (q : bijection _ _)
-: state_t :=
-   { hist := h.concat (q.f fin.max)
-   , queue := q }
-
-open list
-
-noncomputable def state
-: stream state_t
-  | 0 := state_t.mk' nil $ select (requests nil) (rev (finite.to_nat _))
-  | (succ n) :=
-      match state n with
-      | state_t.mk h q := state_t.mk' h $ select (requests h) q
-      end
-
-def state_t.req (s : state_t) : set lbl :=
-requests s.hist
-
-noncomputable def state_t.select (s : state_t)
-: bijection (fin (succ _)) lbl :=
-select (s.req requests) s.queue
-
-lemma state_succ_hist
-  (i : ℕ)
-: (state (succ i)).hist = concat (state i).hist (state (succ i)).last :=
+lemma fair_schedule_step  (l : lbl) (v : ℕ)
+:  mem l ∘ req && (eq v ∘ rank l) ↦ (flip has_lt.lt v ∘ rank l) || eq l ∘ next in scheduler :=
 begin
-  unfold scheduling.finite.state,
-  cases (state requests i),
+  unfold scheduler,
+  apply leads_to_step,
+  intros σ Heq Hnnext,
+  simp, simp at Heq,
+  unfold function.comp flip sch.step, -- next rank subtype.val,
+  cases Heq with Heq Hmem,
+  note HH := eq_next_or_rank_eq_or_rank_lt _ v Heq,
+  rw or_iff_not_imp at HH,
+  simp [not_or_iff_not_and_not] at Hnnext,
+  note HH' := HH Hnnext.left,
+  rw [or_iff_not_imp,not_and_iff_not_or_not,not_not_iff_self] at HH',
+  right, apply HH', clear HH' HH,
+  apply or.intro_left _ Hmem,
+end
+
+lemma stable_queue_ranking (l : lbl) (v : ℕ)
+: unless scheduler (eq v ∘ rank l) (flip has_lt.lt v ∘ rank l || eq l ∘ next) :=
+begin
+  unfold scheduler,
+  apply unless_step,
+  intros σ Heq Hnnext,
+  simp,
+  simp [not_or_iff_not_and_not] at Hnnext,
+  unfold function.comp,
+  unfold comp at Heq,
+  apply or.imp _ _ (eq_next_or_rank_eq_or_rank_lt _ _ Heq),
+  { intro h, cases Hnnext.left h, },
+  { apply or.imp_left,
+    intro h, cases h with _ h, rw h, },
+end
+
+lemma INIT
+: system.init scheduler (eq t.s₀ ∘ sch_state.target) :=
+begin
+  unfold system.init program.init function.comp scheduler,
   refl,
 end
 
-lemma state_succ_queue
-  (i : ℕ)
-: (state (succ i)).queue = state_t.select (state i) :=
+lemma STEP
+: co' scheduler
+    (λ (σ σ' : sch_state),
+       ∃ P, σ'.target = t.next (next σ) σ.target P) :=
 begin
-  unfold scheduling.finite.state,
-  cases (state requests i),
-  refl
+  unfold co',
+  intros σ σ',
+  unfold step has_safety.step is_step,
+  intros H,
+  existsi σ.inv,
+  rw H,
+  unfold function.comp scheduler program.step subtype.val sch.step,
+  cases σ, unfold subtype.val,
+  unfold sch.step sch_state.target,
+  refl,
 end
 
-lemma not_hist_eq_nil
-  (i : ℕ)
-: (state i).hist ≠ [ ] :=
+lemma INV (σ : sch_state)
+: next σ ∈ t.req (σ.target) :=
+σ.inv
+
+lemma PROG (l)
+: often_imp_often scheduler
+      (mem l ∘ t.req ∘ sch_state.target)
+      (eq l ∘ next) :=
 begin
-  cases i,
-  { contradiction },
-  { rw state_succ_hist,
-    apply not_concat_eq_nil }
+  apply often_imp_often.induct _ _ _ nat.lt_wf,
+  apply fair_schedule_step _ l,
+  apply stable_queue_ranking _ l
 end
 
-lemma select_queue_eq_ilast_hist
-  (i : ℕ)
-: (state i).queue.f fin.max = ilast (state i).hist :=
-begin
-  cases i,
-  { refl },
-  { rw [state_succ_queue,state_succ_hist,ilast_concat],
-    unfold state_t.last,
-    rw state_succ_queue }
 end
 
-lemma state_fst
-: req_of requests (state_t.last ∘ state) = requests ∘ front ∘ state_t.hist ∘ state :=
+open scheduling.unity stream unity
+
+variable {lbl : Type}
+variable [pos_finite lbl]
+variable (r : target_mch lbl)
+
+noncomputable def scheduler_spec
+: @scheduling.unity.scheduler lbl r :=
+  { s := program $ @sch_state lbl _ r
+  , sem := _
+  , F := @scheduler _ _ _
+  , ch := next r
+  , object := _
+  , INIT := INIT r
+  , STEP := STEP r
+  , INV  := INV r
+  , PROG := PROG r }
+
+noncomputable instance : unity.system_sem ((scheduler_spec r).s) :=
+(scheduler_spec r).sem
+
+open scheduling
+
+lemma sched' {lbl : Type} [s : finite lbl] [nonempty lbl]
+  (r : target_mch lbl)
+: ∃ τ : stream r.σ, fair r τ :=
 begin
-  apply funext, intro i,
-  pose r := requests,
-  change req_of r _ _ = (r ∘ _) _,
-  generalize r r,
-  induction i with i IH ; intro r,
-  { refl },
-  { rw [req_of_succ,IH],
-    unfold function.comp flip,
-    rw state_succ_hist,
-    apply congr_arg, unfold scheduling.finite.state,
-    note H := select_queue_eq_ilast_hist requests i,
-    note H' := not_hist_eq_nil requests i,
-    cases (state requests i),
-    unfold state._match_1 state_t.mk' state_t.hist,
-    unfold state_t.last last state_t.queue,
-    rw front_concat,
-    apply front_last_eq,
-    { apply not_concat_eq_nil },
-    { apply H' },
-    rw front_concat ,
-    rw [ilast_concat ],
-    apply H },
-end
-
-lemma hist_eq_approx (i : ℕ)
-: (state i).hist = approx (succ i) (state_t.last ∘ state) :=
-begin
-  induction i with i IH ,
-  { refl, },
-  { rw [approx_succ_eq_concat,-IH],
-    destruct (state requests i),
-    intros hist queue Hstate,
-    unfold function.comp,
-    unfold scheduling.finite.state state_t.hist,
-    rw [Hstate],
-    unfold state._match_1 state_t.queue  state_t.hist last state_t.mk',
-    refl, }
-end
-
-section variant
-
-parameter l : lbl
-
-def VAR (s : state_t) : ℕ := ((s.queue).g l).val
-
-lemma variant
-: ([]⟦λ (s s' : state_t),
-         l = state_t.last s'
-       ∨ VAR s' < VAR s
-       ∨ ¬(l ∈ requests (front $ state_t.hist s')) ∧ VAR s = VAR s'⟧)
-    state :=
-begin
-  intro i, rw action_drop,
-  unfold function.comp,
-  cases classical.em (l ∈ requests (front ((state requests (succ i)).hist)))
-        with h h,
-  { rw [eq_true_intro h,not_true,false_and,or_false],
-    rw [state_succ_hist,front_concat] at h,
-    apply or.imp _ _ (progress ((state requests i).queue) h),
-    { intro h',
-      unfold state_t.last,
-      rw -h',
-      unfold state_t.last,
-      rw state_succ_queue,
-      refl },
-    { intros h',
-      unfold measure inv_image,
-      unfold VAR,
-      rw [state_succ_queue,-h'],
-      apply nat.le_of_eq,
-      refl, }, },
-  { rw [eq_false_intro h,not_false_iff,true_and],
-    apply or.imp _ _ (safety l
-         (requests (state requests i).hist)
-         (state requests i).queue),
-    { intro, subst l,
-      unfold state_t.last,
-      rw state_succ_queue, refl },
-    { intro h',
-      unfold VAR, unfold VAR,
-      note h'' := lt_or_eq_of_le h',
-      simp, simp at h'',
-      apply or.imp _ _ h'' ; clear h'' h',
-      { intro h',
-        tactic.whnf_target,
-        rw [-h',state_succ_queue], refl },
-      { unfold measure inv_image,
-        rw state_succ_queue,
-        apply id, }, } }
-end
-
-end variant
-lemma sched'
-: ∃ τ : stream lbl, fair (req_of requests τ) τ :=
-begin
-  pose τ : stream lbl := λ i, (state requests i).last,
-  existsi τ,
-  apply fair.mk,
-  { intro i,
-    rw or_iff_not_imp,
-    induction i with i IH ; intro h,
-    { revert τ, simp,
-      apply selected _ (rev (pos_finite.to_nat lbl)), },
-    { revert τ, simp, intros h',
-      unfold function.comp state_t.last scheduling.finite.state last,
-      note HHH := hist_eq_approx requests i,
-      cases (state requests i),
-      unfold state_t.hist at HHH,
-      unfold state._match_1 state_t.queue state_t.mk',
-      assert HH' : req_of requests (λ (x : ℕ), ((state requests x).queue).f fin.max) (succ i) = requests hist,
-      { rw HHH, refl },
-      rw [HH'],
-      apply selected }, },
-  { intros l,
-    revert τ, simp,
-    intro h,
-    rw [ state_fst requests,-function.comp.assoc,-function.comp.assoc
-       , -inf_often_trace_init_trading] at h,
-    rw -inf_often_trace_init_trading,
-    pose VAR : state_t  → ℕ := (λs, (s.queue.g l).val),
-    apply inf_often_induction VAR _ _ lt_wf h,
-    apply variant },
-end
-
+  assert h : pos_finite lbl,
+  { apply pos_of_finite ; apply_instance },
+  apply unity.scheduling r (scheduling.finite.scheduler_spec r),
+  apply_instance
 end
 
 end scheduling.finite
