@@ -29,6 +29,10 @@ parameters {lbl}
 def target_mch.action (t : target_mch) (l : lbl) (s s' : t.σ) : Prop :=
 ∃ P, s' = t.next l s P
 
+-- def run (t : target_mch) (τ : stream lbl) : stream t.σ
+--   | 0 := t.s₀
+--   | (succ i) := t.next (τ i) (run i)
+
 end target
 
 end unity
@@ -43,6 +47,8 @@ structure fair (t : target_mch lbl) (τ : stream t.σ) : Prop :=
   (init : τ 0 = t.s₀)
   (valid : [] (∃∃ l, •(mem l ∘ t.req) && ⟦ t.action l ⟧) $ τ)
   (fair : ∀ l, ([]<>•mem l ∘ t.req) ⟶ ([]<>(•mem l ∘ t.req && ⟦ t.action l ⟧)) $ τ)
+  -- (evts : stream lbl)
+  -- (run_evts_eq_τ : run t evts = τ)
 
 class inductive sched (l : Type)
   | fin : finite l → sched
