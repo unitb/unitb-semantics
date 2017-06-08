@@ -44,7 +44,7 @@ lemma first_mem {req : set lbl}
 : l.f (first req l) ∈ req :=
 begin
   unfold first, apply @minimum_mem _ _ { x | l.f x ∈ req },
-  cases exists_mem_of_ne_empty h with x h,
+  cases set.exists_mem_of_ne_empty h with x h,
   apply @set.ne_empty_of_mem _ _ (l.g x),
   change l.f (l.g x) ∈ req,
   rw l.g_inv, apply h

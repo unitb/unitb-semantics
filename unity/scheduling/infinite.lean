@@ -52,7 +52,7 @@ lemma first_mem {s : t.σ}
 : l.f (first (t.req s) l) ∈ t.req s :=
 begin
   unfold first, apply @minimum_mem _ _ { x | l.f x ∈ t.req s },
-  cases exists_mem_of_ne_empty (t.req_nemp s) with x h,
+  cases set.exists_mem_of_ne_empty (t.req_nemp s) with x h,
   apply @set.ne_empty_of_mem _ _ (l.g x),
   change l.f (l.g x) ∈ t.req s,
   rw l.g_inv, apply h
