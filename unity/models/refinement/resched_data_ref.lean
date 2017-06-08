@@ -75,7 +75,7 @@ begin
   apply set.ne_empty_of_exists_mem,
   unfold Tevts,
   simp [mem_set_of],
-  note H := system_sem.safety _ _ Hc i,
+  have H := system_sem.safety _ _ Hc i,
   rw action_drop at H,
   apply H,
 end
@@ -130,10 +130,10 @@ include Hc
 def object_req_ne_emp (i : ℕ)
 : {l' : option (ma.lbl) | option.cast' l' (R.bij) ∈ Tevts i} ≠ ∅ :=
 begin
-  assert H : {l' : option (ma.lbl) | option.cast' l' (R.bij) ∈ Tevts mc Tc i}
+  have H : {l' : option (ma.lbl) | option.cast' l' (R.bij) ∈ Tevts mc Tc i}
           = (λ l, option.cast l R.bij) <$> Tevts mc Tc i,
   { apply set.ext, intro l,
-    note Hinj : function.injective (λ (l : option (mc.lbl)), option.cast l (R.bij)) :=
+    have Hinj : function.injective (λ (l : option (mc.lbl)), option.cast l (R.bij)) :=
        option_cast_injective R.bij,
     rw [mem_set_of,set.mem_fmap_iff_mem_of_bij Hinj],
     apply option.cast_left_inverse, },
@@ -232,7 +232,7 @@ end
 
 theorem glued [nonempty α] (i : ℕ) : R.glue (Ta i) (Tc i) :=
 begin
-  note H := (Ta' R Hc i).glued,
+  have H := (Ta' R Hc i).glued,
   rw Ta_index at H,
   apply H,
 end
@@ -245,11 +245,11 @@ begin
   intros e h, cases h with P h,
   unfold Ta stream.map stream.nth,
   rw h,
-
-  apply is_step_inst _ _,
-  apply (abs_step _ _ _ _ R _ Hc i _).right,
-  apply glued _ _ _ _ _ _ Hc,
-  apply_instance,
+  admit,
+  -- apply is_step_inst _ _,
+  -- apply (abs_step _ _ _ _ R _ Hc i _).right,
+  -- apply glued _ _ _ _ _ _ Hc,
+  -- apply_instance,
 end
 
 open unity
@@ -259,55 +259,40 @@ include R
 theorem soundness [nonempty α] : data_ref ma f mc g :=
 begin
   intros Tc Hc,
-  existsi (Ta _ ma _ mc R Tc Hc),
+  existsi (Ta R Hc),
   split,
   apply program.ex.mk ,
-  { apply (init_simmed _ _ _ _ _ _ Hc).right },
+  { apply (init_simmed _ Hc).right },
   { intro i,
     unfold action step has_safety.step stream.drop,
     simp [add_one_eq_succ],
-    apply simmed _ _ _ _ _ _ Hc,
+    apply simmed _ Hc,
     apply_instance },
   { intros ea,
-    pose ec := (option.cast' ea (R.bij)),
+    let ec := (option.cast' ea (R.bij)),
     apply imp_mono _ _ (Hc.liveness ec),
     { apply iff.mp,
       apply exists_congr, intro i,
       apply forall_congr, intro j,
       unfold temporal.init stream.drop,
-      pose ec := (option.cast' ea (R.bij)),
+      let ec := (option.cast' ea (R.bij)),
       rw [R.coarse ec,option_cast_cast'],
-      apply glued, apply Hc },
+      apply glued },
     apply imp_mono _ _,
     { apply iff.mp _,
       apply forall_congr, intro j,
       apply exists_congr, intro i,
       unfold temporal.init stream.drop,
-      note HHH:= R.fine ec _ _ (glued _ _ g mc R Tc Hc $ 0 + i + j),
+      have HHH:= R.fine ec _ _ (glued R Hc $ 0 + i + j),
       repeat { rw [p_and_to_fun,init_to_fun,init_to_fun] },
       rw [HHH,option_cast_cast'] },
     { intro Hevt,
-      pose Tevt' : stream (option ma.lbl) := λ i, (Tevt mc Tc i).cast R.bij,
-      apply events_to_states Tevt' (program.step_of ma),
-      intro i,
-      apply (abs_step f ma g mc _ _ Hc i _).right,
-      { apply glued, apply Hc },
-      rw [congr_inf_often_trace (λ e, option.cast' e R.bij)], simp,
-      { unfold function.comp, revert  Tevt', simp [option_cast'_cast],
-        apply fair_sched_of_is_fair',
-        unfold Tevts ,
-        pose F := λ σ σ', {e : option (mc.lbl) | program.step_of mc e σ σ'},
-        rw -inf_often_trace_action_trading Tc F,
-        apply inf_often_entails_inf_often _ _ Hevt,
-        apply action_entails_action, intros s s',
-        apply id, },
-      { apply option_cast_injective } }, },
+      admit } },
   { apply funext, intro i,
     unfold function.comp,
     symmetry,
     apply R.obs_cons,
-    apply glued,
-    apply Hc },
+    apply glued },
 end
 
 end thm
