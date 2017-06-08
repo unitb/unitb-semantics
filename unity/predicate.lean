@@ -428,7 +428,7 @@ take x, and.imp_right (h x)
 lemma p_not_entails_p_not_right {p q : pred' β}
   (h : q ⟹ p)
 : - p ⟹ - q :=
-take x, contrapos (h x)
+take x, mt (h x)
 
 lemma entails_of_eq (p q : pred' β)
   (h : p = q)

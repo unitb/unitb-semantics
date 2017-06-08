@@ -499,7 +499,7 @@ begin
     apply Tsem },
   { intros p q r P₀ P₁,
     intros Lpq Lqr Hp,
-    show ([]<>•r) τ, from Lqr (Lpq Hp) },
+    apply Lqr (Lpq Hp) },
   { intros t V lt wf p q P₀ S₀,
     apply inf_often_induction' V p q wf,
     { intro v,

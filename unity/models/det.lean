@@ -86,7 +86,7 @@ begin
   existsi ev,
   intros σ,
   apply imp_mono (hq _) _ (T₁ σ),
-  apply contrapos (hq _),
+  apply mt (hq _),
 end
 
 instance prog_is_system : unity.system (program lbl α) :=

@@ -5,8 +5,6 @@ import unity.logic
 
 import util.logic
 
-universe variables u
-
 namespace simple
 
 open unity
@@ -16,7 +14,7 @@ section
 
 parameter (α : Type)
 
-structure program : Type u :=
+structure program : Type :=
   (first : α)
   (step : α → α)
 
