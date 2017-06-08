@@ -8,7 +8,7 @@ import util.data.stream
 
 namespace scheduling
 
-open stream temporal has_mem scheduling.unity
+open stream temporal has_mem scheduling.unity nat
 
 section rules
 
@@ -43,10 +43,21 @@ lemma fair_sched_of_spec
 : fair t (fair_sched_of t) :=
 by apply classical.some_spec (sched.sched_str t)
 
+lemma fair_sched_succ (i : ℕ) {τ : stream t.σ}
+  (H : fair t τ)
+: ∃ l (P : l ∈ t.req (τ i)), τ (succ i) = t.next l (τ i) P :=
+begin
+  apply exists_imp_exists _ (H.valid i),
+  intros l h,
+  simp [init_drop,action_drop] at h,
+  exact h.left
+end
+
 lemma fair_sched_of_is_fair
   (l : lbl)
-: ([]<>•mem l ∘ t.req) (fair_sched_of t) → ([]<>(•mem l ∘ t.req && ⟦ t.action l ⟧)) (fair_sched_of t) :=
-(fair_sched_of_spec t).fair l
+  (h : ([]<>•mem l ∘ t.req) $ fair_sched_of t)
+: ([]<>(•mem l ∘ t.req && ⟦ t.action l ⟧)) $ fair_sched_of t :=
+(fair_sched_of_spec t).fair l h
 
 instance {lbl} [i : nonempty lbl] : nonempty (stream lbl) :=
 begin

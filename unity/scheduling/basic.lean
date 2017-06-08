@@ -22,12 +22,12 @@ structure target_mch :=
   (s₀ : σ)
   (req : σ → set lbl)
   (req_nemp : ∀ x, req x ≠ ∅)
-  (next : lbl → σ → σ)
+  (next : ∀ l s, l ∈ req s → σ)
 
 parameters {lbl}
 
 def target_mch.action (t : target_mch) (l : lbl) (s s' : t.σ) : Prop :=
-t.next l s = s'
+∃ P, s' = t.next l s P
 
 end target
 
@@ -54,7 +54,7 @@ sched.fin (by apply_instance)
 instance inf_sched [infinite lbl] : sched lbl :=
 sched.inf (by apply_instance)
 
-instance sched_option_inf : ∀ [sched lbl], sched (option lbl)
+instance sched_option : ∀ [sched lbl], sched (option lbl)
   | (sched.inf inf) := sched.inf (by apply_instance)
   | (sched.fin fin) := sched.fin (by apply_instance)
 
@@ -73,14 +73,14 @@ parameters {α : Type}
 parameters r : α → set lbl
 parameters r_nemp : ∀ x, r x ≠ ∅
 parameters s₀ : α
-parameters next : lbl → α → α
+parameters next : ∀ l s, r s l → α
 parameters {F : s}
 parameters ch : unity.state s → lbl
 parameters object : unity.state s → α
 def req (σ) := r (object σ)
 parameters P : ∀ l, (mem l ∘ req)  >~>  (eq l ∘ ch)  in  F
 parameters INIT : system.init F (eq s₀ ∘ object)
-parameters STEP : unity.co' F (λ σ σ', object σ' = next (ch σ) (object σ))
+parameters STEP : unity.co' F (λ σ σ', ∃ P, object σ' = next (ch σ) (object σ) P)
 parameters INV : ∀ σ, ch σ ∈ req σ
 
 def t := target_mch.mk _ s₀ r r_nemp next
@@ -102,7 +102,7 @@ begin
     { note Hsaf := system_sem.safety _ _ sem i,
       rw action_drop at Hsaf,
       unfold map nth target_mch.action,
-      rw STEP (τ i) (τ $ succ i) Hsaf, refl },
+      apply (STEP (τ i) (τ $ succ i) Hsaf), },
     { unfold map nth target_mch.action function.comp,
       apply INV } },
   { intros l h,
@@ -119,8 +119,7 @@ begin
     apply coincidence',
     { apply henceforth_entails_henceforth _ _ (system_sem.safety _ _ sem),
       apply action_entails_action,
-      intros σ σ' H, rw STEP σ σ' H,
-      unfold target_mch.action, refl },
+      intros σ σ' H, apply STEP σ σ' H, },
     { apply system_sem.often_imp_often_sem' _ sem (P l) h, }, },
 end
 
@@ -139,7 +138,7 @@ structure scheduler :=
  (ch : unity.state s → lbl)
  (object : unity.state s → t.σ)
  (INIT : system.init F (eq t.s₀ ∘ object))
- (STEP : unity.co' F (λ σ σ', object σ' = t.next (ch σ) (object σ)))
+ (STEP : unity.co' F (λ σ σ', ∃ P, object σ' = t.next (ch σ) (object σ) P))
  (INV  : ∀ σ, ch σ ∈ t.req (object σ))
  (PROG : ∀ l, (mem l ∘ t.req ∘ object)  >~>  (eq l ∘ ch) in F)
 

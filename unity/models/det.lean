@@ -29,7 +29,7 @@ def program.take_step (s : program lbl α) : option lbl → α → α
   | (some e) := s^.step e
 
 def program.action_of (s : program lbl α) (e : option lbl) (σ σ' : α) : Prop :=
-s^.take_step e σ = σ'
+σ' = s^.take_step e σ
 
 def is_step (s : program lbl α) (σ σ' : α) : Prop :=
 ∃ ev, s.action_of ev σ σ'
@@ -48,7 +48,7 @@ begin
   intros τ Hq H₁,
   unfold temporal.action program.action_of at H₁,
   unfold temporal.action,
-  rw -H₁,
+  rw H₁,
   apply (h _ Hq),
 end
 
@@ -148,7 +148,7 @@ open scheduling scheduling.unity
 def object (p : program lbl α) : target_mch (option lbl) :=
 { σ := α
 , s₀ := p.first
-, next := p.take_step
+, next := λ l s P, p.take_step l s
 , req := λ _, set.univ
 , req_nemp := λ _, @set.ne_empty_of_mem _ set.univ none trivial }
 
@@ -157,19 +157,27 @@ lemma program.witness [sched lbl] (s : program lbl α)
 begin
   apply exists_imp_exists _ (sched.sched_str (object s)),
   intros τ h,
+  assert H : ∀ e, •has_mem.mem e ∘ (object s).req && ⟦target_mch.action (object s) e⟧
+              ⟹ ⟦s.action_of e⟧,
+  { simp [init_eq_action,action_and_action],
+    intro e,
+    apply action_entails_action,
+    intros σ σ',
+    unfold target_mch.action,
+    rw [exists_and,exists_imp_iff_forall_imp],
+    intro, apply and.left },
   apply ex.mk,
   { rw h.init, refl },
   { unfold saf_ex,
     apply henceforth_entails_henceforth _ _ h.valid,
-    simp [init_eq_action,action_and_action,exists_action],
-    apply action_entails_action,
-    intros σ σ',
-    unfold step has_safety.step is_step,
-    apply exists_imp_exists,
-    intro l, apply and.left, },
+    rw p_exists_entails_eq_p_forall_entails,
+    intro l,
+    apply entails_trans _ (H _),
+    revert l,
+    rw [-p_exists_entails_eq_p_forall_entails,exists_action], refl },
   { intro e,
     apply inf_often_entails_inf_often _ _ (h.fair e _),
-    { intro, apply and.right },
+    { apply H },
     { assert H : has_mem.mem e ∘ (object s).req = True,
       { refl },
       rw [H,init_true,event_true,hence_true],

@@ -81,7 +81,7 @@ def sch.first : sch_state :=
 
 noncomputable def sch.step (s : sch_state) : sch_state :=
 { q_len := s.q_len + 1
-, target := t.next (sch.current s.req s.queue) s.target
+, target := t.next (sch.current s.req s.queue) s.target s.inv
 , queue := shift s
 , inv := sch.select_inv _ _ }
 
@@ -270,12 +270,13 @@ end
 lemma STEP
 : co' scheduler
     (λ (σ σ' : sch_state),
-       σ'.target = t.next (sch.current σ.req σ.queue) σ.target) :=
+       ∃P, σ'.target = t.next (sch.current σ.req σ.queue) σ.target P) :=
 begin
   unfold co',
   intros σ σ',
   unfold step has_safety.step is_step,
   intros H,
+  existsi σ.inv,
   rw H,
   unfold function.comp scheduler program.step subtype.val sch.step,
   cases σ, unfold subtype.val,

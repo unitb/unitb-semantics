@@ -51,6 +51,10 @@ def program.init (s : program) (p : pred) : Prop
 def program.guard  (s : program) (e : option s.lbl) : α → Prop :=
 (s^.event e)^.coarse_sch && (s^.event e)^.fine_sch
 
+def program.guard_none_holds (s : program) (σ : α)
+: s.guard none σ :=
+⟨trivial,trivial⟩
+
 def program.coarse_sch_of (s : program) (act : option s.lbl) : α → Prop :=
 (s.event act).coarse_sch
 
@@ -150,9 +154,9 @@ noncomputable def program.object_mch (p : program)
     apply @set.ne_empty_of_mem _ _ none,
     simp [mem_set_of], exact ⟨trivial,trivial⟩,
   end
-, next := λ l s, if h : p.guard l s
-                 then classical.some ((p.event l).fis s h.left h.right)
-                 else s }
+, next := λ l s (h : p.guard l s),
+                 classical.some ((p.event l).fis s h.left h.right)
+                  }
 
 instance : unity.has_safety program :=
   { σ := α
@@ -178,8 +182,8 @@ begin
   unfold  target_mch.action target_mch.next target_mch.req,
   simp [mem_set_of],
   intro h, cases h with h₀ h₁,
-  rw [dif_pos h₀] at h₁,
-  rw [-h₁],
+  cases h₁ with P h₁,
+  rw [h₁],
   unfold program.step_of event.step_of program.object_mch._proof_3,
   existsi h₀.left, existsi h₀.right,
   apply classical.some_spec,
