@@ -269,7 +269,7 @@ theorem leads_to.induction' {β : Type} {lt' : β → β → Prop}
     (wf : well_founded lt')
     (V : state α → β)
     {p q : pred' (state α)}
-    (P : ∀ v, p && (eq v ∘ V)  ↦  p && (flip lt' v ∘ V) || q in s)
+    (P : ∀ v, p && (eq v ∘ V)  ↦  p && (flip lt' v ∘ V) || q  in  s)
   : p ↦ q in s :=
 begin
   pose lt := flip lt',
@@ -309,7 +309,7 @@ def rel : Type := system.state α → system.state α → Prop
 
 theorem leads_to.induction {lt' : rel} (wf : well_founded lt')
     {p q : pred' (state α)}
-    (P : ∀ v, p && eq v  ↦ p && flip lt' v || q in s)
+    (P : ∀ v, p && eq v  ↦  p && flip lt' v || q  in  s)
   : p ↦ q in s :=
 leads_to.induction' wf _ P
 
@@ -382,13 +382,19 @@ begin
     apply ih_1 i, },
 end
 
+lemma leads_to.completion {n : ℕ} {p q : fin n → pred' (state α)} {b : pred' (state α)}
+  (P : ∀ i, p i ↦ q i || b in s)
+  (S : ∀ i, unless s (q i) b)
+: (∀∀ i, p i) ↦ (∀∀ i, q i) || b in s :=
+sorry
+
 lemma True_leads_to_True
 : True ↦ True in s :=
 leads_to.trivial
 
 lemma often_imp_often.basis {p q}
-          (h : p ↦ q in s)
-          : often_imp_often s p q :=
+  (h : p ↦ q in s)
+: p >~> q in s :=
 begin
   assert H : ∀ t t' (v : t) (f : t' → t), flip empty_relation v ∘ f = False,
   { intros, refl },
@@ -403,6 +409,14 @@ begin
     apply p_and_elim_left, },
   { rw [H'],
     apply True_unless }
+end
+
+lemma True_often_imp_often_True
+: True >~> True in s :=
+begin
+  apply often_imp_often.basis,
+  apply leads_to.impl,
+  refl
 end
 
 end rules
@@ -488,7 +502,7 @@ lemma often_imp_often_sem'
     {s : α}
     (τ : stream _)
      (sem : ex s τ)
-: ∀ {p q : pred' (state α)} (P : often_imp_often s p q),
+: ∀ {p q : pred' (state α)} (P : p >~> q in s),
     ([]<>•p ⟶ []<>•q) τ :=
 begin
   apply @often_imp_often.drec α _ s _ _ _ _,

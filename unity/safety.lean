@@ -5,6 +5,7 @@ import unity.predicate
 import unity.temporal
 
 import util.logic
+import util.data.fin
 
 namespace unity
 
@@ -246,10 +247,54 @@ begin
   apply or.imp_left _ h₂,
   apply Exists.intro x,
 end
-open nat
 
-open temporal
-open stream
+lemma forall_unless {n} {p q : fin n → pred' (state α)}
+  (h : ∀ i, unless s (p i) (q i))
+: unless s (∀∀ i, p i) (∃∃ i, q i) :=
+begin
+  revert p q h,
+  induction n with n IH
+  ; intros p q h,
+  { rw p_forall_fin_zero, apply True_unless, },
+  { rw [p_exists_split_one,p_forall_split_one],
+    assert h' : ∀ i, unless s (restr p i) (restr q i),
+    { unfold restr, intro i, apply h },
+    note Hconj := unless_conj_gen _ (h fin.max) (IH h'),
+    apply unless_weak_rhs _ _ Hconj, clear Hconj,
+    { intro, simp, clear h h' IH,
+      generalize (∀ (x : fin n), restr p x i) PP,
+      generalize (∃ (x : fin n), restr q x i) QQ,
+      generalize (p fin.max i) PP₀,
+      generalize (q fin.max i) QQ₀,
+      intros _ _ _ _ h₀, clear s p q n i _inst_1 α,
+      repeat { cases h₀ with h₀ h₁ ; try {cases h₁ with h₀ h₁} }
+      ; begin [smt] eblast end, } },
+end
+
+lemma forall_unless' {n} {p q : fin n → pred' (state α)}
+  (h : ∀ i, unless s (p i) (p i && q i))
+: unless s (∀∀ i, p i) ( (∀∀ i, p i) && (∃∃ i, q i) ) :=
+begin
+  revert p q h,
+  induction n with n IH
+  ; intros p q h,
+  { rw p_forall_fin_zero, apply True_unless, },
+  { rw [p_exists_split_one,p_forall_split_one],
+    assert h' : ∀ i, unless s (restr p i) (restr p i && restr q i),
+    { unfold restr, intro i, apply h },
+    note Hconj := unless_conj_gen _ (h fin.max) (IH h'),
+    apply unless_weak_rhs _ _ Hconj, clear Hconj,
+    { intro, simp, clear h h' IH,
+      generalize (∀ (x : fin n), restr p x i) PP,
+      generalize (∃ (x : fin n), restr q x i) QQ,
+      generalize (p fin.max i) PP₀,
+      generalize (q fin.max i) QQ₀,
+      intros _ _ _ _ h₀, clear s p q n i _inst_1 α,
+      repeat { cases h₀ with h₀ h₁ ; try {cases h₁ with h₀ h₁} }
+      ; begin [smt] eblast end, } },
+end
+
+open nat temporal stream
 
 lemma unless_sem' {τ : stream σ} {p q : pred' σ} (i : ℕ)
     (sem : saf_ex s τ)

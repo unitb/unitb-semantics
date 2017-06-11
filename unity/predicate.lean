@@ -1,5 +1,6 @@
 
 import util.logic
+import util.data.fin
 
 namespace predicate
 
@@ -595,6 +596,29 @@ lemma p_or_iff_not_imp (p q : pred' β)
 begin
   apply funext, intro i,
   simp [or_iff_not_imp],
+end
+
+lemma p_forall_fin_zero (p : fin 0 → pred' β)
+: (∀∀ i, p i) = True :=
+begin
+  apply funext, intro,
+  simp [forall_fin_zero_iff_true],
+end
+
+lemma p_forall_split_one {n : ℕ} (p : fin (nat.succ n) → pred' β)
+: (∀∀ i, p i) = p fin.max && (∀∀ i, restr p i) :=
+begin
+  apply funext, intro,
+  simp [forall_split_one],
+  refl,
+end
+
+lemma p_exists_split_one {n : ℕ} (p : fin (nat.succ n) → pred' β)
+: (∃∃ i, p i) = p fin.max || (∃∃ i, restr p i) :=
+begin
+  apply funext, intro,
+  simp [exists_split_one],
+  refl,
 end
 
 end predicate
