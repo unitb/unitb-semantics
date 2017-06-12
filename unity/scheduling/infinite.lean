@@ -231,7 +231,6 @@ begin
   apply leads_to_step,
   intros σ Heq Hnnext,
   simp, simp at Heq,
---  unfold function.comp flip sch.step, -- next rank subtype.val,
   cases Heq with Heq Hmem,
   note HH := eq_next_or_rank_eq_or_rank_lt _ v Heq,
   rw or_iff_not_imp at HH,

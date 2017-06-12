@@ -297,15 +297,6 @@ rfl
 
 /- end distributivity -/
 
--- lemma leads_to_of_eventually {p q : pred' β} (τ)
---   (h : (<>•p ⟶ <>•q) τ )
--- : (p ~> q) τ :=
--- begin
---   intros i H₀,
---   apply h,
---   apply eventually_weaken _ H₀,
--- end
-
 lemma eventually_of_leads_to' {p q : cpred β} {τ} (i : ℕ)
   (h : [](p ⟶ <>q) $ τ)
 : (<>p ⟶ <>q) (τ.drop i)  :=
@@ -431,8 +422,6 @@ end
 
 theorem em' {β} (p : cpred β) (τ) : (<>[]p) τ ∨ ([]<>(- p)) τ :=
 by apply em
-
--- lemma not_stable (p : pred' β) : (-<>[]•p) = []<>•-p := sorry
 
 lemma inf_often_of_stable {p : cpred β} : (<>[]p) ⟹ ([]<>p) :=
 begin
@@ -836,11 +825,7 @@ parameters (wf : well_founded lt)
 
 def le (x y : β') := lt x y ∨ x = y
 
-
-
 include wf
-
--- set_option pp.notation false
 
 lemma inf_often_induction'
   (S₀ : ∀ v, ([]<>•(eq v ∘ V)) τ → (<>[]•eq v ∘ V) τ ∨ ([]<>•(flip lt v ∘ V || q)) τ)

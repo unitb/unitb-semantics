@@ -296,10 +296,6 @@ lemma p_not_and_self_or (p q : pred' β) :
 - p && (p || q) = -p && q :=
 by rw [p_and_over_or_left,p_not_and_self,False_p_or]
 
--- lemma p_not_p_forall {t} (p : t → pred' β) :
--- (- ∀∀ x, p x) = (∃∃ x, -p x) :=
--- sorry
-
 @[simp]
 lemma p_exists_to_fun {t : Type u'} (P : t → pred' β) (i : β)
 : (∃∃ x, P x) i ↔ (∃ x, P x i) :=
