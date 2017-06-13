@@ -382,15 +382,36 @@ begin
     apply ih_1 i, },
 end
 
+lemma True_leads_to_True
+: True ↦ True in s :=
+leads_to.trivial
+
 lemma leads_to.completion {n : ℕ} {p q : fin n → pred' (state α)} {b : pred' (state α)}
   (P : ∀ i, p i ↦ q i || b in s)
   (S : ∀ i, unless s (q i) b)
 : (∀∀ i, p i) ↦ (∀∀ i, q i) || b in s :=
-sorry
-
-lemma True_leads_to_True
-: True ↦ True in s :=
-leads_to.trivial
+begin
+  revert p q,
+  induction n with n IH ; intros p q P S,
+  { simp [p_forall_fin_zero], apply True_leads_to_True },
+  { simp [p_forall_split_one],
+    note P' := λ i, P (widen i),
+    note S' := λ i, S (widen i),
+    note H₀ : (∀∀ i, restr p i) ↦ (∀∀ i, restr q i) || b in s := IH P' S',
+    note H₁ := leads_to.PSP H₀ (S fin.max),
+    assert H₂ : (∀∀ i, restr p i) && p fin.max ↦ (∀∀ i, restr p i) && q fin.max || b in s,
+    { admit },
+    note H₄ := forall_unless _ S',
+    note H₅ := leads_to.PSP (P fin.max) H₄,
+    rw [p_or_over_and_right,-p_or_assoc,p_or_self,-p_or_over_and_right] at H₅,
+    assert H₃ : (∀∀ i, restr p i) && p fin.max ↦ (∀∀ i, restr p i) && q fin.max || b in s,
+    { admit },
+    note GOAL := leads_to.cancellation _ H₂ H₁, clear H₂ H₁ H₀,
+    rw p_and_comm,
+    apply leads_to.strengthen_rhs _ _ GOAL, clear GOAL,
+    { intro x, simp,
+      begin [smt] by_cases (b x), eblast end, },  },
+end
 
 lemma often_imp_often.basis {p q}
   (h : p ↦ q in s)
