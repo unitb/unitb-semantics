@@ -224,6 +224,10 @@ lemma p_imp_entails_p_imp_right {p q q' : pred' α}
 : ( p ⟶ q ) ⟹ ( p ⟶ q' ) :=
 p_imp_entails_p_imp (by refl) hq
 
+lemma p_or_self (p : pred' β) :
+p || p = p :=
+by { apply funext, intro, simp }
+
 lemma p_not_p_not_iff_self (p : pred' β) :
 - - p = p :=
 begin
@@ -241,6 +245,18 @@ lemma p_and_over_or_right (p q r : pred' β)
 : (q || r) && p = (q && p) || (r && p) :=
 begin
   apply funext, intro x, simp [distrib_left_and],
+end
+
+lemma p_or_over_and_left (p q r : pred' β)
+: p || (q && r) = (p || q) && (p || r) :=
+begin
+  apply funext, intro x, simp [distrib_right_or],
+end
+
+lemma p_or_over_and_right (p q r : pred' β)
+: (q && r) || p = (q || p) && (r || p) :=
+begin
+  apply funext, intro x, simp [distrib_right_or],
 end
 
 lemma mutual_entails {p q : pred' β}

@@ -248,30 +248,7 @@ begin
   apply Exists.intro x,
 end
 
-lemma forall_unless {n} {p q : fin n → pred' (state α)}
-  (h : ∀ i, unless s (p i) (q i))
-: unless s (∀∀ i, p i) (∃∃ i, q i) :=
-begin
-  revert p q h,
-  induction n with n IH
-  ; intros p q h,
-  { rw p_forall_fin_zero, apply True_unless, },
-  { rw [p_exists_split_one,p_forall_split_one],
-    assert h' : ∀ i, unless s (restr p i) (restr q i),
-    { unfold restr, intro i, apply h },
-    note Hconj := unless_conj_gen _ (h fin.max) (IH h'),
-    apply unless_weak_rhs _ _ Hconj, clear Hconj,
-    { intro, simp, clear h h' IH,
-      generalize (∀ (x : fin n), restr p x i) PP,
-      generalize (∃ (x : fin n), restr q x i) QQ,
-      generalize (p fin.max i) PP₀,
-      generalize (q fin.max i) QQ₀,
-      intros _ _ _ _ h₀, clear s p q n i _inst_1 α,
-      repeat { cases h₀ with h₀ h₁ ; try {cases h₁ with h₀ h₁} }
-      ; begin [smt] eblast end, } },
-end
-
-lemma forall_unless' {n} {p q : fin n → pred' (state α)}
+lemma forall_unless_exists_str {n} {p q : fin n → pred' (state α)}
   (h : ∀ i, unless s (p i) (p i && q i))
 : unless s (∀∀ i, p i) ( (∀∀ i, p i) && (∃∃ i, q i) ) :=
 begin
@@ -285,13 +262,36 @@ begin
     note Hconj := unless_conj_gen _ (h fin.max) (IH h'),
     apply unless_weak_rhs _ _ Hconj, clear Hconj,
     { intro, simp, clear h h' IH,
-      generalize (∀ (x : fin n), restr p x i) PP,
-      generalize (∃ (x : fin n), restr q x i) QQ,
-      generalize (p fin.max i) PP₀,
-      generalize (q fin.max i) QQ₀,
-      intros _ _ _ _ h₀, clear s p q n i _inst_1 α,
-      repeat { cases h₀ with h₀ h₁ ; try {cases h₁ with h₀ h₁} }
-      ; begin [smt] eblast end, } },
+      generalize (∀ (x : fin n), restr p x i) PP, intro,
+      generalize (∃ (x : fin n), restr q x i) QQ, intro,
+      begin [smt] by_cases (p fin.max i), by_cases PP, by_cases QQ, eblast end, } },
+end
+
+lemma forall_unless_exists {n} {p q : fin n → pred' (state α)}
+  (h : ∀ i, unless s (p i) (q i))
+: unless s (∀∀ i, p i) (∃∃ i, q i) :=
+begin
+  revert p q h,
+  induction n with n IH
+  ; intros p q h,
+  { rw p_forall_fin_zero, apply True_unless, },
+  { rw [p_exists_split_one,p_forall_split_one],
+    assert h' : ∀ i, unless s (restr p i) (restr q i),
+    { unfold restr, intro i, apply h },
+    note Hconj := unless_conj_gen _ (h fin.max) (IH h'),
+    apply unless_weak_rhs _ _ Hconj, clear Hconj,
+    { intro, simp,
+      begin [smt] by_cases (q fin.max i), eblast end, } },
+end
+
+lemma forall_unless {n} {p : fin n → pred' (state α)} {b : pred' (state α)}
+  (h : ∀ i, unless s (p i) b)
+: unless s (∀∀ i, p i) b :=
+begin
+  note h : unless s (∀∀ i, p i) (∃∃ i : fin n, b) := forall_unless_exists _ h,
+  apply unless_weak_rhs _ _ h,
+  intro x, simp, apply Exists.rec _,
+  intro , apply id,
 end
 
 open nat temporal stream
