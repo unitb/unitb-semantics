@@ -259,6 +259,16 @@ begin
   apply init_entails_init f,
 end
 
+lemma inf_often_imp_inf_often_of_henceforth {p q : cpred β} {τ}
+  (f : [] (p ⟶ q) $ τ)
+: []<>p ⟶ []<>q $ τ :=
+begin
+  apply henceforth_imp_henceforth,
+  rw -henceforth_henceforth at f,
+  apply henceforth_entails_henceforth _ _ f,
+  apply @eventually_imp_eventually _,
+end
+
 lemma stable_entails_stable {p q : cpred β} (f : p ⟹ q) : <>[]p ⟹ <>[]q :=
 begin
   apply eventually_entails_eventually,
@@ -644,7 +654,7 @@ end
 
 open function
 
-lemma henceforth_trading (f : α → β) (p : cpred β)
+lemma henceforth_trading' (f : α → β) (p : cpred β)
 : ([] (p ∘ map f)) = ([] p) ∘ map f :=
 begin
   apply funext, intro τ,
@@ -656,6 +666,10 @@ begin
   apply funext, intro j,
   unfold stream.drop, refl
 end
+
+lemma henceforth_trading (f : α → β) (p : cpred β) (τ : stream α)
+: ([] (p ∘ map f)) τ = ([] p) (map f τ) :=
+by rw henceforth_trading'
 
 lemma eventually_trading (f : α → β) (p : cpred β)
 : (<> (p ∘ map f)) = (<> p) ∘ map f :=
@@ -685,22 +699,21 @@ begin
   refl,
 end
 
-
 lemma comp_map_app_eq_map (p : cpred β) (f : α → β) (τ : stream α)
 : (p ∘ map f) τ ↔ p (map f τ) :=
 by refl
 
 lemma inf_often_trace_trading (τ : stream α) (f : α → β) (p : cpred β)
 : ([]<>(p ∘ map f)) τ = ([]<>p) (map f τ) :=
-by rw [eventually_trading,henceforth_trading]
+by rw [eventually_trading,henceforth_trading']
 
 lemma inf_often_trace_init_trading (τ : stream α) (f : α → β) (p : β → Prop)
 : ([]<>•(p ∘ f)) τ = ([]<>•p) (map f τ) :=
-by rw [init_trading,eventually_trading,henceforth_trading]
+by rw [init_trading,eventually_trading,henceforth_trading']
 
 lemma inf_often_trace_action_trading (τ : stream α) (f : α → β) (p : act β)
 : ([]<>⟦ p on f ⟧) τ = ([]<>⟦ p ⟧) (map f τ) :=
-by rw [action_trading,eventually_trading,henceforth_trading]
+by rw [action_trading,eventually_trading,henceforth_trading']
 
 -- lemma stable_trace_init_trading (τ : stream α) (f : α → β) (p : β → Prop)
 -- : (<>[]•(p ∘ f)) τ = (<>[]•p) (f ∘ τ) :=
@@ -939,7 +952,7 @@ lemma congr_inf_often_trace {x : α} {τ : stream α} (f : α → β)
 : ([]<>•eq x) τ ↔ ([]<>•(eq (f x))) (map f τ) :=
 begin
   rw [ -comp_map_app_eq_map ([]<>•eq (f x)) f τ ],
-  simp [ (henceforth_trading f (<>•eq (f x))).symm  ],
+  simp [ (henceforth_trading' f (<>•eq (f x))).symm  ],
   simp [ (eventually_trading f (•eq (f x))).symm ],
   simp [ (init_trading f (eq (f x))).symm ],
   assert H : eq (f x) ∘ f = eq x,

@@ -9,7 +9,7 @@ universe variables u
 
 namespace scheduling
 
-open stream nat function
+open stream nat function predicate
 
 namespace unity
 
@@ -79,7 +79,7 @@ parameters ch : unity.state s → lbl
 parameters object : unity.state s → α
 def req (σ) := r (object σ)
 parameters P : ∀ l, (mem l ∘ req)  >~>  (eq l ∘ ch)  in  F
-parameters INIT : system.init F (eq s₀ ∘ object)
+parameters INIT : init F (eq s₀ ∘ object)
 parameters STEP : unity.co' F (λ σ σ', ∃ P, object σ' = next (ch σ) (object σ) P)
 parameters INV : ∀ σ, ch σ ∈ req σ
 
@@ -91,23 +91,28 @@ lemma scheduling'
 begin
   apply exists_imp_exists' (map object) _ (system_sem.inhabited F),
   intros τ sem,
+  note Hsaf := safety _ sem,
   apply fair.mk,
-  { note h := system_sem.init_sem τ sem INIT,
+  { note h := INIT _ (safety τ sem).left,
     unfold temporal.init function.comp at h,
     unfold map nth, rw -h, refl },
-  { intro i,
-    simp [temporal.init_drop,temporal.action_drop],
-    existsi (ch $ τ i),
+  { pose t := t _ r_nemp s₀ next,
+    pose object := object,
+    assert H : ∀ x : lbl,   (•mem x ∘ t.req && action (target_mch.action t x)) ∘ map object
+                    = (⟦(λ s s', mem x (t.req s) ∧ target_mch.action t x s s') on object⟧) ,
+    { intro l, rw [init_eq_action,action_and_action,-action_trading], },
+    rw [-henceforth_trading,p_exists_comp,p_exists_congr H,exists_action], clear H,
+    apply assume_reach_step Hsaf,
+    intros σ σ' Hrch Hstep, simp, unfold function.on_fun,
+    existsi (ch σ),
     split,
-    { note Hsaf := system_sem.safety _ _ sem i,
-      rw action_drop at Hsaf,
-      unfold map nth target_mch.action,
-      apply (STEP (τ i) (τ $ succ i) Hsaf), },
+    { unfold target_mch.action,
+      apply (STEP σ σ' Hrch Hstep), },
     { unfold map nth target_mch.action function.comp,
       apply INV } },
   { intros l h,
     pose t := t r r_nemp s₀ next,
-    assert H : ⟦λ s s', t.action (ch s) (object s) (object s')⟧ && •eq l ∘ ch
+    assert H : ⟦ λ s s', t.action (ch s) (object s) (object s')⟧ && •eq l ∘ ch
           ⟹ (•mem l ∘ t.req ∘ object && ⟦t.action l on object⟧),
     { simp [init_eq_action,action_and_action],
       unfold comp,
@@ -117,9 +122,8 @@ begin
       { apply H₀ }, { apply INV } },
     apply inf_often_entails_inf_often H,
     apply coincidence',
-    { apply henceforth_entails_henceforth _ _ (system_sem.safety _ _ sem),
-      apply action_entails_action,
-      intros σ σ' H, apply STEP σ σ' H, },
+    { apply assume_reach_step Hsaf,
+      intros σ σ' Hrch Hstep, apply STEP σ σ' Hrch Hstep, },
     { apply system_sem.often_imp_often_sem' _ sem (P l) h, }, },
 end
 
@@ -137,7 +141,7 @@ structure scheduler :=
  (F : s)
  (ch : unity.state s → lbl)
  (object : unity.state s → t.σ)
- (INIT : system.init F (eq t.s₀ ∘ object))
+ (INIT : unity.init F (eq t.s₀ ∘ object))
  (STEP : unity.co' F (λ σ σ', ∃ P, object σ' = t.next (ch σ) (object σ) P))
  (INV  : ∀ σ, ch σ ∈ t.req (object σ))
  (PROG : ∀ l, (mem l ∘ t.req ∘ object)  >~>  (eq l ∘ ch) in F)

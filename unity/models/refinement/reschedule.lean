@@ -59,7 +59,13 @@ lemma piecewise_event_refinement {mc : program α}
   {n : ℕ} {ccsch : fin n → α → Prop}
   (H : evt_ref_piecewise mc ea ec ccsch)
 : evt_ref mc ea ec :=
-sorry
+begin
+  apply evt_ref.mk,
+  { apply H.sim },
+  { admit },
+  { admit },
+  { apply H.resched },
+end
 
 lemma event_refinement {ma mc : program α}
    (BIJ : mc.lbl = ma.lbl)

@@ -25,40 +25,46 @@ parameter {α}
 def program.init (s : program) (p : pred) : Prop
 := p (s^.first)
 
+def is_step (s : program) (σ σ' : α) : Prop := σ' = s.step σ
+
+instance : has_safety program :=
+{ σ := α
+, init := λ s σ, s.first = σ
+, step := is_step }
+
 def program.transient (s : program) (p q : pred) : Prop
-:= ∀ σ, p σ → q σ → ¬ (q (s^.step σ))
+:= ∀ σ, reachable s σ → p σ → q σ → ¬ (q (s^.step σ))
 
 def program.unless (s : program) (p q : pred) : Prop
 := ∀ σ, p σ ∧ ¬q σ → p (s^.step σ) ∨ q (s^.step σ)
 
 lemma program.transient_impl (s : program) {p q : pred}
-  (H : p ⟹ -q)
+  (H : s ⊢ p ⟶ -q)
 : s.transient p q :=
 begin
   unfold program.transient,
-  intros σ hp hq,
-  cases H _ hp hq,
+  intros σ R hp hq,
+  cases H _ R hp hq,
 end
 
 lemma program.transient_antimono (s : program) (p q p' q' : pred)
-  (hp : p' ⟹ p)
-  (hq : q' ⟹ q)
+  (hp : s ⊢ p' ⟶ p)
+  (hq : s ⊢ q' ⟶ q)
   (T₀ : s.transient p q)
 : s.transient p' q' :=
 begin
   unfold program.transient,
-  intros σ hp' hq',
-  note h'' := T₀ σ (hp _ hp') (hq _ hq'),
+  intros σ R hp' hq',
+  note h'' := T₀ σ R (hp _ R hp') (hq _ R hq'),
   intro h₂, apply h'',
-  apply hq _ h₂
+  apply hq _ _ h₂,
+  apply (reachable.step _ _ R rfl),
 end
-
-def is_step (s : program) (σ σ' : α) : Prop := σ' = s.step σ
 
 instance prog_is_system : system program :=
   { σ := α
   , step := is_step
-  , init := program.init
+  , init := _
   , transient := program.transient
   , transient_false := λ s p, program.transient_impl s (by simp)
   , transient_antimono := program.transient_antimono
@@ -72,7 +78,7 @@ lemma unless_step
 : unless (program.mk init step) p q :=
 begin
   unfold unless,
-  intros σ σ' S,
+  intros σ σ' R S,
   note h' := h σ, clear h,
   unfold unity.step has_safety.step is_step program.step at S,
   rw S,
@@ -90,7 +96,7 @@ lemma leads_to_step
 begin
   apply leads_to.basis,
   { unfold transient system.transient program.transient program.step,
-    intros σ _ h,
+    intros σ R _ h,
     cases h with h₀ h₁,
     note h' := h _ h₀ h₁,
     simp [not_and_iff_not_or_not,not_not_iff_self],
@@ -109,8 +115,8 @@ def ex (s : program) : cpred α :=
 
 lemma ex.safety {s : program} (τ : stream α)
   (h : ex s τ)
-: [] ⟦ is_step s ⟧ $ τ :=
-h.right
+: saf_ex s $ τ :=
+h
 
 def ex.witness (s : program) : stream α
   | 0 := s.first
@@ -143,11 +149,12 @@ lemma init_sem
   (I₀ : init s p)
 : (•p) τ :=
 begin
-  unfold init system.init program.init at I₀,
+  unfold init at I₀,
+  apply I₀,
   unfold temporal.init,
   note H' := H.left,
   unfold temporal.init at H',
-  rw -H', apply I₀,
+  rw -H', apply rfl,
 end
 
 lemma transient.semantics
@@ -157,18 +164,19 @@ begin
   intros Hp,
   assert Hstep : (<>[]⟦is_step s⟧) τ,
   { apply eventually_weaken,
-    apply ex.safety τ H },
+    apply (ex.safety τ H).right },
   note H' := coincidence Hstep Hp,
   rw -eventually_eventually,
-  apply inf_often_entails_inf_often _ _ H',
+  apply inf_often_imp_inf_often_of_henceforth _ H',
+  apply henceforth_entails_henceforth _ _ (henceforth_reachable (H.safety _)),
   { unfold p_entails, rw p_and_p_imp,
-    intros τ Hs Hp,
+    intros τ Hr Hs Hp,
     cases classical.em (•q $ τ) with Hq Hnq,
     { apply eventually_of_next,
       unfold transient' system.transient program.transient at T₀,
       unfold action is_step at Hs,
       rw [next_init,Hs],
-      apply T₀ _ Hp Hq, },
+      apply T₀ _ Hr Hp Hq, },
     { rw [-p_not_to_fun,not_init] at Hnq,
       apply eventually_weaken _ Hnq }, },
 end
@@ -180,7 +188,6 @@ instance : system_sem program :=
     ex := ex
   , safety := @ex.safety
   , inhabited := λ p, ⟨ex.witness p, ex.witness_correct p⟩
-  , init_sem := @init_sem
   , transient_sem := @transient.semantics }
 
 end

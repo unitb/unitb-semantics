@@ -113,7 +113,6 @@ begin
   intro x, simp,
 end
 
-
 @[simp]
 lemma True_p_and (p : pred' α)
 : True && p = p :=
@@ -151,6 +150,15 @@ end
 lemma entails_refl (p : pred' β)
 : p ⟹ p :=
 take _, id
+
+lemma p_not_eq_imp_False {p : pred' α}
+: - p = p ⟶ False :=
+begin apply funext, intro, begin [smt] eblast end, end
+
+@[simp]
+lemma p_imp_True {p : pred' α}
+: p ⟶ True = True :=
+begin apply funext, intro, simp end
 
 lemma p_or_p_imp_p_or' {p p' q q' : pred' α}
   (hp : p ⟹ p')
@@ -601,6 +609,19 @@ begin
   simp,
   rw exists_congr,
   intro, rw h,
+end
+
+lemma p_exists_comp (p : α → pred' β) (f : γ → β)
+: (∃∃ x, p x) ∘ f = (∃∃ x, p x ∘ f) := rfl
+
+lemma p_exists_inst (p : pred' β) (q : α → pred' β) (f : β → α)
+  (h : p ⟹ (λ s, q (f s) s))
+: p ⟹ (∃∃ x, q x) :=
+begin
+  apply entails_trans _ h,
+  intros s h', simp,
+  existsi (f s),
+  assumption,
 end
 
 lemma p_or_iff_not_imp (p q : pred' β)

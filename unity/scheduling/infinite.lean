@@ -11,9 +11,7 @@ import unity.scheduling.basic
 
 namespace scheduling.infinite
 
-open stream scheduling unity
-
-open nat simple function
+open stream scheduling unity nat simple function bijection
 
 @[reducible]
 def rrobin (lbl : Type) [infinite lbl] : Type :=
@@ -259,10 +257,10 @@ begin
 end
 
 lemma INIT
-: system.init scheduler (eq t.s₀ ∘ sch_state.target) :=
+: unity.init scheduler (eq t.s₀ ∘ sch_state.target) :=
 begin
-  unfold system.init program.init function.comp scheduler,
-  unfold sch.first,
+  unfold unity.init unity.first has_safety.init function.comp scheduler,
+  simp, intros x H, subst x,
   refl,
 end
 
@@ -274,7 +272,7 @@ begin
   unfold co',
   intros σ σ',
   unfold step has_safety.step is_step,
-  intros H,
+  intros Hr H,
   existsi σ.inv,
   rw H,
   unfold function.comp scheduler program.step subtype.val sch.step,

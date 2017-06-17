@@ -150,6 +150,25 @@ begin
 end
 
 infixr ∘ := bij.comp
+protected lemma eq_f {α β} (b₀ b₁ : bijection α β)
+  (Hf : ∀ x, b₀.f x = b₁.f x)
+: b₀ = b₁ :=
+begin
+  apply bijection.eq _ _ Hf,
+  intro x,
+  rw [-b₁.inverse,-Hf,b₀.g_inv],
+end
+
+protected lemma eq_g {α β} (b₀ b₁ : bijection α β)
+  (Hg : ∀ x, b₀.g x = b₁.g x)
+: b₀ = b₁ :=
+begin
+  apply bijection.eq _ _ _ Hg,
+  intro x,
+  rw [b₀.inverse,Hg,b₁.f_inv],
+end
+
+local infixr ∘ := bij.comp
 
 lemma bijection.left_id {α β} (x : bijection α β) : id ∘ x = x :=
 begin

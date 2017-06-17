@@ -17,18 +17,16 @@ open predicate
 
 class system (α : Type u) extends has_safety α : Type (u+1) :=
    (transient : α → pred' σ → pred' σ → Prop)
-   (init : α → pred' σ → Prop)
    (transient_false : ∀ {s} (p : pred' σ), transient s p False)
    (transient_antimono : ∀ {s : α} {p q p' q' : pred' σ},
-         (p' ⟹ p) →
-         (q' ⟹ q) →
+         (s ⊢ p' ⟶ p) →
+         (s ⊢ q' ⟶ q) →
          transient s p q →
          transient s p' q' )
 
 parameters (α : Type u) [system α] (s : α)
 
 def system.state := has_safety.σ α
-
 parameters {α}
 
 def transient (p : pred' (state α)) : Prop
@@ -37,14 +35,19 @@ def transient (p : pred' (state α)) : Prop
 def transient' (p q : pred' (state α)) : Prop
 := system.transient s p q
 
+parameter {s}
+
+lemma system.transient_str' {p q r : pred' (state α)}
+  (H : s ⊢ r ⟶ q)
+: transient' p q → transient' p r :=
+system.transient_antimono (relative _ (entails_refl _)) H
 
 lemma system.transient_str {p q r : pred' (state α)}
   (H : r ⟹ q)
 : transient' p q → transient' p r :=
-system.transient_antimono (by refl) H
+system.transient_str' (relative _ H)
 
-def init (p : pred' (state α)) : Prop
-:= system.init s p
+parameter (s)
 
 inductive leads_to : pred' (state α) → pred' (state α) → Prop
   | trivial {} : ∀ {p}, leads_to p True
@@ -140,44 +143,37 @@ end
 
 parameter s
 
-theorem leads_to.impl {p q : pred' (state α)}
-   (h : p ⟹ q)
+theorem leads_to.impl' {p q : pred' (state α)}
+   (h : s ⊢ p ⟶ q)
    : p ↦ q in s :=
 begin
   apply leads_to.basis,
-  { assert h' : (p && -q) = False,
-    { apply funext,
-      intro x, unfold p_and p_not,
-      apply eq_false_of_not_eq_true,
-      apply eq_true_intro,
-      intros h, cases h with hp hq,
-      apply absurd (h _ hp) hq },
-    rw h',
+  { assert h' : s ⊢ (p && -q) ⟶ False,
+    { rw [p_and_p_imp,-p_not_eq_imp_False,p_not_p_not_iff_self],
+      apply h },
+    apply system.transient_str' h' _,
     apply system.transient_false },
-  apply impl_unless _ h
+  apply impl_unless' _ h
 end
+
+theorem leads_to.impl {p q : pred' (state α)}
+   (h : p ⟹ q)
+   : p ↦ q in s :=
+by { apply leads_to.impl', apply relative _ h }
 
 parameter {s}
 
-theorem leads_to.weaken_lhs (q : pred' (state α)) {p r : pred' (state α)}
-    (H  : p ⟹ q)
-    (P₀ : q  ↦ r in s)
-    : p ↦ r in s :=
+theorem leads_to.monotonicity'
+  {p p' q q' : pred' (state α)}
+  (Hp : s ⊢ p' ⟶ p)
+  (Hq : s ⊢ q  ⟶ q')
+  (P₀ : p  ↦ q in s)
+: p' ↦ q' in s :=
 begin
-  apply leads_to.trans,
-  apply leads_to.impl s H,
-  apply P₀
-end
-
-theorem leads_to.strengthen_rhs
-    (q : pred' (state α)) {p r : pred' (state α)}
-    (H  : q ⟹ r)
-    (P₀ : p  ↦ q in s)
-    : p ↦ r in s :=
-begin
-  apply leads_to.trans,
-  apply P₀,
-  apply leads_to.impl s H,
+  note Hlt_p := leads_to.impl' s Hp,
+  note Hlt_q := leads_to.impl' s Hq,
+  apply leads_to.trans _ Hlt_p,
+  apply leads_to.trans _ P₀ Hlt_q,
 end
 
 theorem leads_to.monotonicity
@@ -187,9 +183,36 @@ theorem leads_to.monotonicity
   (P₀ : p  ↦ q in s)
 : p' ↦ q' in s :=
 begin
-  apply leads_to.weaken_lhs _ Hp,
-  apply leads_to.strengthen_rhs _ Hq P₀,
+  apply leads_to.monotonicity' _ _ P₀,
+  { apply relative _ Hp },
+  { apply relative _ Hq },
 end
+
+theorem leads_to.weaken_lhs' (q : pred' (state α)) {p r : pred' (state α)}
+    (H  : s ⊢ p ⟶ q)
+    (P₀ : q  ↦ r in s)
+    : p ↦ r in s :=
+leads_to.monotonicity' H (holds_impl_refl _) P₀
+
+theorem leads_to.weaken_lhs (q : pred' (state α)) {p r : pred' (state α)}
+    (H  : p ⟹ q)
+    (P₀ : q  ↦ r in s)
+    : p ↦ r in s :=
+leads_to.monotonicity H (by refl) P₀
+
+theorem leads_to.strengthen_rhs'
+    (q : pred' (state α)) {p r : pred' (state α)}
+    (H  : s ⊢ q ⟶ r)
+    (P₀ : p  ↦ q in s)
+    : p ↦ r in s :=
+leads_to.monotonicity' (holds_impl_refl _) H P₀
+
+theorem leads_to.strengthen_rhs
+    (q : pred' (state α)) {p r : pred' (state α)}
+    (H  : q ⟹ r)
+    (P₀ : p  ↦ q in s)
+    : p ↦ r in s :=
+leads_to.monotonicity (by refl) H P₀
 
 lemma leads_to.disj_rng {t : Type} {p : t → pred' (state α)} {q} {r : t → Prop}
          (h : ∀ i, r i → p i ↦ q in s)
@@ -325,49 +348,25 @@ begin
     apply entails_p_or_of_entails_left,
     simp, },
   { apply leads_to.basis' b₀,
-    { apply system.transient_str _ _ t₀,
-      apply entails_p_and_of_entails,
-      { apply p_and_entails_of_entails_left,
-        simp },
-      { rw [p_not_p_or,p_not_p_and,p_and_assoc],
-        apply p_and_entails_of_entails_left _,
-        rw -p_and_assoc,
-        apply p_and_entails_of_entails_right _,
-        rw p_and_p_or_p_not_self, simp } },
+    { apply system.transient_str _ t₀,
+      { intro, simp, clear P PSP₀ u₀ t₀,
+        begin [smt] by_cases r i end }, },
     { assert H : unless s r (r || b),
       { apply impl_unless, intro, apply or.inl },
       assert H' : unless s p₀ (q₀ || b),
-      { apply unless_weak_rhs _ _ u₀,
+      { apply unless_weak_rhs _ u₀,
         intro, apply or.inl },
-      note H'' := unless_conj_gen _ u₀ S,
-      apply unless_weak_rhs _ _ H'',
+      note H'' := unless_conj_gen u₀ S,
+      apply unless_weak_rhs _ H'',
       intro i, unfold p_or p_and,
       intro hh, cases hh with hh₀ hh₀, cases hh₀ with hh₀ hh₀,
       { cases hh₀ with hh₀ hh₁, exact or.inl ⟨hh₀,hh₁⟩ },
       { cases hh₀ with hh₀ hh₁, exact or.inr hh₁ },
       { cases hh₀ with hh₀ hh₁, exact or.inr hh₁ } },
     { apply leads_to.monotonicity _ _ PSP₀,
-      { apply entails_p_and_of_entails,
-        apply entails_p_and_of_entails,
-        { apply p_and_entails_of_entails_left,
-          apply p_and_elim_left },
-        { rw [p_not_p_or,p_not_p_and,p_and_assoc],
-          apply p_and_entails_of_entails_left _,
-          rw [-p_and_assoc],
-          apply p_and_entails_of_entails_right _,
-          rw [p_and_p_or_p_not_self],
-          apply p_and_elim_right _ _, },
-        { apply p_and_entails_of_entails_left,
-          apply p_and_elim_right } },
-      { apply p_or_entails_of_entails,
-        { rw p_and_over_or_right,
-          apply p_or_entails_of_entails,
-          apply entails_p_or_of_entails_left,
-          { apply p_and_elim_left },
-          { apply entails_p_or_of_entails_right,
-            apply p_or_intro_left }, },
-        { apply entails_p_or_of_entails_right,
-          apply p_or_intro_right } }, } },
+      { intro, simp, begin [smt] by_cases r i end },
+      { intro, simp, clear PSP₀ P u₀ t₀ S,
+        begin [smt] by_cases b i, by_cases q₀ i, end }, } },
   { note H := leads_to.cancellation _ ih_1 ih_2,
     assert H' : (r₁ && r || b || b) = (r₁ && r || b),
     { apply funext, intro,
@@ -419,6 +418,19 @@ begin
   refl
 end
 
+lemma leads_to.abstract_basis {p q r : pred' (state α)}
+  (T : r >~> -(p && - q) in s)
+  (U : unless s p q)
+  (P : (p && -q) ↦ (r || q) in s)
+: p ↦ q in s :=
+begin
+  admit,
+  -- revert U P,
+  -- note H := often_imp_often.drec_on T _ _,
+  -- induction T,
+  -- apply @often_imp_often.drec_on,
+end
+
 end rules
 
 open predicate
@@ -427,14 +439,13 @@ class system_sem (α : Type u) extends system α :=
   (ex : α → stream _ → Prop)
   (safety : ∀ s, ex s ⟹ saf_ex s)
   (inhabited : ∀s, ∃τ, ex s τ)
-  (init_sem : ∀ {s : α} {p : pred' _} (τ : stream _),
-         ex s τ →
-         init s p →
-         (•p) τ)
   (transient_sem : ∀ {s : α} {p q : pred' _} (τ : stream _),
          ex s τ →
          transient' s p q →
          ([]<>•p) τ → ([]<>-•q) τ)
+
+def ex {α : Type u} [system_sem α] (s : α) := system_sem.ex s
+def safety {α : Type u} [system_sem α] {s : α} := system_sem.safety s
 
 namespace system_sem
 
@@ -463,7 +474,7 @@ begin
     simp, },
     -- transient and unless
   { intros i hp,
-    note saf' := unless_sem' _ _ saf S (temporal.eventually_weaken _ hp),
+    note saf' := unless_sem' _ saf S (temporal.eventually_weaken _ hp),
     cases saf' with saf' saf',
     { assert T' : ([]<>-•(p && -q)) τ,
       { rw [-or_self (([]<>-•(p && -q)) τ),or_iff_not_imp],
@@ -517,7 +528,7 @@ begin
   { intros t V lt wf p q P₀ S₀,
     apply inf_often_induction' V p q wf,
     { intro v,
-      apply unless_sem_str _ _ (S₀ v),
+      apply unless_sem_str _ (S₀ v),
       apply system_sem.safety _ _ sem, },
     { intro v,
       apply leads_to_sem (P₀ v) _ sem, } }
