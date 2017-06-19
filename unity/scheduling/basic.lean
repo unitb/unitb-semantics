@@ -35,7 +35,7 @@ end unity
 
 section
 
-parameters {lbl : Type}
+parameters {lbl lbl₀ lbl₁ : Type}
 
 open has_mem scheduling.unity temporal
 
@@ -57,6 +57,12 @@ sched.inf (by apply_instance)
 instance sched_option : ∀ [sched lbl], sched (option lbl)
   | (sched.inf inf) := sched.inf (by apply_instance)
   | (sched.fin fin) := sched.fin (by apply_instance)
+
+instance sched_sum : ∀ [sched lbl₀] [sched lbl₁], sched (lbl₀ ⊕ lbl₁)
+  | (sched.fin fin) (sched.fin fin') := sched.fin (by apply_instance)
+  | (sched.inf inf) (sched.fin fin') := sched.inf (by apply_instance)
+  | (sched.fin fin) (sched.inf inf') := sched.inf (by apply_instance)
+  | (sched.inf inf) (sched.inf inf') := sched.inf (by apply_instance)
 
 end
 

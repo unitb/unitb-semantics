@@ -30,6 +30,9 @@ structure program : Type 2 :=
   (first_fis : ∃ s, first s)
   (event' : lbl → event)
 
+instance {p : program} : scheduling.sched p.lbl :=
+p.lbl_is_sched
+
 parameter {α}
 
 def event.step_of (e : event) (σ σ' : α) : Prop :=
@@ -315,7 +318,6 @@ open unity has_mem
 lemma program.witness (s : program)
 : ∃ (τ : stream α), s.ex τ :=
 begin
-  note _inst := s.lbl_is_sched,
   apply exists_imp_exists _ (sched.sched_str s.object_mch),
   intros τ h,
   apply ex.mk,
