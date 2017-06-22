@@ -191,7 +191,36 @@ begin
 end
 
 lemma to_fin_inv {p q} {c : code lbl p q} (pc : current c)
-: from_fin c (to_fin pc) = pc := sorry
+: from_fin c (to_fin pc) = pc :=
+begin
+  induction pc
+  ; unfold to_fin
+  ; try { refl },
+  { unfold from_fin, simp [fin.split_nest],
+    unfold from_fin._match_1,
+    simp [ih_1] },
+  { unfold from_fin, simp [fin.split_shift],
+    unfold from_fin._match_1,
+    simp [ih_1] },
+  { unfold from_fin, simp [fin.shift_zero,fin.split_shift],
+    unfold from_fin._match_2, refl },
+  { unfold from_fin, simp [fin.split_nest],
+    unfold from_fin._match_2,
+    simp [fin.split_nest],
+    unfold from_fin._match_3,
+    simp [ih_1] },
+  { unfold from_fin, simp [fin.split_nest],
+    unfold from_fin._match_2,
+    simp [fin.split_shift],
+    unfold from_fin._match_3,
+    simp [ih_1] },
+  { unfold from_fin,
+    simp [fin.shift_zero,fin.split_shift],
+    refl },
+  { unfold from_fin, simp [fin.split_nest],
+    unfold from_fin._match_4,
+    simp [ih_1] },
+end
 
 instance current_finite {p q : pred} {c : code lbl p q} : finite (current c) :=
 ⟨ control_nodes c,
