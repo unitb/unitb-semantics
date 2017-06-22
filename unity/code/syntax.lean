@@ -3,6 +3,7 @@ import unity.models.nondet
 import unity.predicate
 
 import util.data.option
+import util.data.sum
 
 universe variables u v
 
@@ -24,6 +25,14 @@ inductive code : pred → pred → Type
 
 parameters {σ lbl}
 
+@[pattern,reducible]
+def if_then_else : ∀ p {pa pb q}, pred → code pa q → code pb q → code p q :=
+code.if_then_else
+
+@[pattern,reducible]
+def while : ∀ {p inv} q, pred → code p inv → code inv q :=
+@code.while
+
 inductive current : ∀ {p q}, code p q → Type
   | action : ∀ p q l, current (code.action p q l)
   | seq_left : ∀ p q r (c₀ : code p q) (c₁ : code q r), current c₀ → current (code.seq c₀ c₁)
@@ -39,30 +48,43 @@ inductive current : ∀ {p q}, code p q → Type
   | while_body : ∀ p inv w (c : code p inv) q,
          current c → current (code.while q w c)
 
-def is_control : Π {p q} {c : code p q}, current c →  Prop
-  | ._ ._ ._ (current.action _ _ _) := false
-  | ._ ._ ._ (current.seq_left  p q r _ _ pc) := is_control pc
-  | ._ ._ ._ (current.seq_right p q r _ _ pc) := is_control pc
-  | ._ ._ ._ (current.if_then_else_cond  p t _ _ _ _ _)    := true
-  | ._ ._ ._ (current.if_then_else_left  p t _ _ _ _ _ pc) := is_control pc
-  | ._ ._ ._ (current.if_then_else_right p t _ _ _ _ _ pc) := is_control pc
-  | ._ ._ ._ (current.while_cond _ _ _ _ _)    := true
-  | ._ ._ ._ (current.while_body _ _ _ _ _ pc) := is_control pc
+@[reducible]
+def seq_left {p q r} {c₀ : code p q} (c₁ : code q r)
+  (cur : current c₀)
+: current (code.seq c₀ c₁) :=
+current.seq_left _ _ _ c₀ _ cur
 
-def control {p q} (c : code p q) := subtype (@is_control _ _ c)
+@[reducible]
+def seq_right {p q r} (c₀ : code p q) {c₁ : code q r}
+  (cur : current c₁)
+: current (code.seq c₀ c₁) :=
+current.seq_right _ _ _ c₀ _ cur
 
-def condition' : Π {p q} {c : code p q} (pc : current c), is_control pc → σ → Prop
-  | ._ ._ ._ (current.action _ _ _) h := by cases h
-  | ._ ._ ._ (current.seq_left  p q r c₀ c₁ pc) h := condition' pc h
-  | ._ ._ ._ (current.seq_right p q r c₀ c₁ pc) h := condition' pc h
-  | ._ ._ ._ (current.if_then_else_cond  pa pb p q c c₀ c₁) h := c
-  | ._ ._ ._ (current.if_then_else_left  pa pb p q c c₀ c₁ pc) h := condition' pc h
-  | ._ ._ ._ (current.if_then_else_right pa pb p q c c₀ c₁ pc) h := condition' pc h
-  | ._ ._ ._ (current.while_cond _ _ c _ _) h    := c
-  | ._ ._ ._ (current.while_body _ _ _ _ _ pc) h := condition' pc h
+@[reducible]
+def ite_cond (p t) {pa pb q} (c₀ : code pa q) (c₁ : code pb q)
+: current (if_then_else p t c₀ c₁) :=
+current.if_then_else_cond p t _ _ _ c₀ c₁
 
-def condition {p q} {c : code p q} : control c → σ → Prop
-  | ⟨pc,H⟩ := condition' pc H
+@[reducible]
+def ite_left (p t) {pa pb q} {c₀ : code pa q} (c₁ : code pb q) (cur₀ : current c₀)
+: current (if_then_else p t c₀ c₁) :=
+current.if_then_else_left p t _ _ _ c₀ c₁ cur₀
+
+@[reducible]
+def ite_right (p t) {pa pb q} (c₀ : code pa q) {c₁ : code pb q} (cur₁ : current c₁)
+: current (if_then_else p t c₀ c₁) :=
+current.if_then_else_right p t _ _ _ c₀ c₁ cur₁
+
+@[reducible]
+def while_cond {p inv} (w) (c : code p inv) (q)
+: current (code.while q w c) :=
+current.while_cond _ _ _ c _
+
+@[reducible]
+def while_body {p inv} (w) {c : code p inv} (q)
+  (cur : current c)
+: current (code.while q w c) :=
+current.while_body _ _ w _ _ cur
 
 def selects' : Π {p q} {c : code p q}, current c → lbl → Prop
   | ._ ._ ._ (current.action _ _ e') e := e = e'
@@ -77,6 +99,58 @@ def selects' : Π {p q} {c : code p q}, current c → lbl → Prop
 def selects {p q} {c : code p q} : option (current c) → lbl → Prop
   | (some c) := selects' c
   | none := False
+
+def is_control' : Π {p q} {c : code p q}, current c → bool
+  | ._ ._ ._ (current.action _ _ l) := ff
+  | ._ ._ ._ (current.seq_left  p q r _ _ pc)       := is_control' pc
+  | ._ ._ ._ (current.seq_right p q r _ _ pc)       := is_control' pc
+  | .(p) .(q) ._ (current.if_then_else_cond  p t pa pb q _ _) := tt
+  | ._ ._ ._ (current.if_then_else_left  p t _ _ _ _ _ pc)    := is_control' pc
+  | ._ ._ ._ (current.if_then_else_right p t _ _ _ _ _ pc)    := is_control' pc
+  | .(inv) .(q) ._ (current.while_cond p inv t _ q) := tt
+  | ._ ._ ._ (current.while_body _ _ _ _ _ pc)      := is_control' pc
+
+def is_control {p q} {c : code p q} : option (current c) → bool
+  | (some pc) := is_control' pc
+  | none := ff
+
+-- def control {p q} (c : code p q) := subtype (@is_control _ _ c)
+
+-- instance is_control_decidable
+-- : ∀ {p q} {c : code p q} (cur : current c), decidable (is_control cur)
+--   | ._ ._ ._ (current.action _ _ _) := decidable.false
+--   | ._ ._ ._ (current.seq_left p q r c₀ c₁ cur) := is_control_decidable cur
+--   | ._ ._ ._ (current.seq_right p q r c₀ c₁ cur) := is_control_decidable cur
+--   | ._ ._ ._ (current.if_then_else_cond  p t pa pb q c₀ c₁) := decidable.true
+--   | ._ ._ ._ (current.if_then_else_left  p t pa pb q c₀ c₁ cur) := is_control_decidable cur
+--   | ._ ._ ._ (current.if_then_else_right p t pa pb q c₀ c₁ cur) := is_control_decidable cur
+--   | ._ ._ ._ (current.while_cond p t inv q c) := decidable.true
+--   | ._ ._ ._ (current.while_body p t inv q c cur) := is_control_decidable cur
+
+def condition' : Π {p q} {c : code p q} (pc : current c), is_control' pc → σ → Prop
+  | ._ ._ ._ (current.action _ _ _) h := by cases h
+  | ._ ._ ._ (current.seq_left  p q r c₀ c₁ pc) h := condition' pc h
+  | ._ ._ ._ (current.seq_right p q r c₀ c₁ pc) h := condition' pc h
+  | .(p) .(q) ._ (current.if_then_else_cond  p c pa pb q c₀ c₁) h := c
+  | .(p) .(q) ._ (current.if_then_else_left  p c pa pb q c₀ c₁ pc) h := condition' pc h
+  | .(p) .(q) ._ (current.if_then_else_right p c pa pb q c₀ c₁ pc) h := condition' pc h
+  | ._ ._ ._ (current.while_cond _ _ c _ _) h    := c
+  | ._ ._ ._ (current.while_body _ _ _ _ _ pc) h := condition' pc h
+
+def condition {p q} {c : code p q} : ∀ pc : option $ current c, is_control pc → σ → Prop
+  | (some pc) := condition' pc
+  | none := take h, by cases h
+
+def action_of : Π {p q} {c : code p q} (cur : current c),
+{ p // ∃ P, condition (some cur) P = p }  ⊕ subtype (selects (some cur))
+  | ._ ._ ._ (current.action _ _ l) := sum.inr ⟨l,rfl⟩
+  | ._ ._ ._ (current.seq_left  p q r _ _ pc) := action_of pc
+  | ._ ._ ._ (current.seq_right p q r _ _ pc) := action_of pc
+  | .(p) .(q) ._ (current.if_then_else_cond  p t pa pb q _ _) := sum.inl ⟨t,rfl,rfl⟩
+  | ._ ._ ._ (current.if_then_else_left  p t _ _ _ _ _ pc) := action_of pc
+  | ._ ._ ._ (current.if_then_else_right p t _ _ _ _ _ pc) := action_of pc
+  | .(inv) .(q) ._ (current.while_cond p inv t _ q)    := sum.inl ⟨t,rfl,rfl⟩
+  | ._ ._ ._ (current.while_body _ _ _ _ _ pc) := action_of pc
 
 def assert_of' : Π {p q} {c : code p q}, current c → σ → Prop
   | .(p) ._ ._ (current.action p _ _) := p
@@ -110,12 +184,12 @@ def first : Π {p q} (c : code p q), option (current c)
   | ._ ._ (code.skip p) := none
   | ._ ._ (code.action p _ l) := some $ current.action _ _ _
   | .(p) .(r) (@code.seq ._ ._ p q r c₀ c₁) :=
-        current.seq_left _ _ _ _ _ <$> first _
-    <|> current.seq_right _ _ _ _ _ <$> first _
-  | ._ ._ (@code.if_then_else ._ ._ p _ _ _ c b₀ b₁) :=
-    some $ current.if_then_else_cond _ _ _ _ _ _ _
+        seq_left c₁ <$> first _
+    <|> seq_right _ <$> first _
+  | ._ ._ (@if_then_else ._ ._ p _ _ _ c b₀ b₁) :=
+    some $ ite_cond _ _ _ _
   | ._ ._ (@code.while ._ ._ _ _ _ c b) :=
-    some $ current.while_cond _ _ _ _ _
+    some $ while_cond _ _ _
 
 lemma assert_of_first {p q} {c : code p q}
 : assert_of (first c) = p :=
@@ -149,22 +223,22 @@ local attribute [instance] classical.prop_decidable
 noncomputable def next' (s : σ) : ∀ {p q} {c : code p q}, current c → option (current c)
   | ._ ._ ._ (current.action p q l) := none
   | ._ ._ ._ (current.seq_left _ _ _ c₀ c₁ cur₀) :=
-        current.seq_left _ _ _ _ c₁ <$> next' cur₀
-    <|> current.seq_right _ _ _ c₀ _ <$> first c₁
+        seq_left c₁ <$> next' cur₀
+    <|> seq_right c₀ <$> first c₁
   | ._ ._ ._ (current.seq_right _ _ _ c₀ c₁ cur₁) :=
-        current.seq_right _ _ _ _ c₁ <$> next' cur₁
+        seq_right _ <$> next' cur₁
   | ._ ._ ._ (current.if_then_else_cond _ _ _ p c b₀ b₁) :=
       if c s
-         then current.if_then_else_left  _ _ _ _ _ _ _ <$> first b₀
-         else current.if_then_else_right _ _ _ _ _ _ _ <$> first b₁
+         then ite_left _ _ _ <$> first b₀
+         else ite_right _ _ _ <$> first b₁
   | ._ ._ ._ (current.if_then_else_left _ _ _ _ _ b₀ b₁ cur₀) :=
-      current.if_then_else_left _ _ _ _ _ b₀ b₁ <$> next' cur₀
+      ite_left _ _ b₁ <$> next' cur₀
   | ._ ._ ._ (current.if_then_else_right _ _ _ _ _ b₀ b₁ cur₁) :=
-      current.if_then_else_right _ _ _ _ _ b₀ b₁ <$> next' cur₁
+      ite_right _ _ _ <$> next' cur₁
   | ._ ._ ._ (current.while_cond _ _ c b q) :=
-      current.while_body _ _ c b q <$> first b
+      while_body c q <$> first b
   | ._ ._ ._ (current.while_body _ _ c b q cur) :=
-      current.while_body _ _ c b q <$> next' cur
+      while_body c q <$> next' cur
 
 noncomputable def next (s : σ) {p q : pred} {c : code p q}
 : option (current c) → option (current c)
@@ -172,7 +246,7 @@ noncomputable def next (s : σ) {p q : pred} {c : code p q}
   | none := none
 
 lemma assert_of_next {p q : pred} {c : code p q} (pc : option (current c)) (s : σ)
-: assert_of (next s pc) s ↔ next_assert pc s :=
+: assert_of (next s pc) = next_assert pc :=
 sorry
 
 -- def control_nodes : Π {p q : pred}, code p q → ℕ
@@ -180,21 +254,174 @@ sorry
 --   | ._ ._ (code.action _ _ _) := 1
 --   | ._ ._ (@code.seq ._ ._ p q r c₀ c₁) := control_nodes c₀ + control_nodes c₁
 --   | ._ ._ (@code.if_then_else ._ ._ c pa pb q _ c₀ c₁) :=
---      1 + control_nodes c₀ + control_nodes c₁
+--      control_nodes c₀ + control_nodes c₁ + 1
 --   | ._ ._ (@code.while ._ ._ p inv q c b) :=
---      1 + control_nodes b
+--      control_nodes b + 1
 
 -- def bij.finite.f : Π {p q} {c : code p q}, current c → fin (control_nodes c)
 --   | ._ ._ ._ (current.action _ _ _) := ⟨0,zero_lt_one⟩
---   | ._ ._ ._ (current.seq_left p q r c₀ c₁ pc) := _
---   | ._ ._ ._ (current.seq_right p q r c₀ c₁ pc) := _
+--   | ._ ._ ._ (current.seq_left p q r c₀ c₁ pc) := fin.nest (bij.finite.f pc)
+--   | ._ ._ ._ (current.seq_right p q r c₀ c₁ pc) := fin.shift (bij.finite.f pc)
+--   | ._ ._ ._ (current.if_then_else_cond p t pa pb q c₀ c₁) :=
+--     (fin.max : fin (succ $ _ + _))
+--   | ._ ._ ._ (current.if_then_else_left p t pa pb q c₀ c₁ pc) :=
+--     (fin.nest $ fin.nest $ bij.finite.f pc : fin (control_nodes c₀ + control_nodes c₁ + 1))
+--   | ._ ._ ._ (current.if_then_else_right p t pa pb q c₀ c₁ pc) :=
+--     (fin.nest $ fin.shift $ bij.finite.f pc : fin (control_nodes c₀ + control_nodes c₁ + 1))
+--   | ._ ._ ._ (current.while_cond p inv w c q) :=
+--     (fin.max : fin (control_nodes c + 1))
+--   | ._ ._ ._ (current.while_body p inv w c q pc) :=
+--     (fin.nest $ bij.finite.f pc : fin (control_nodes c + 1))
 
-instance control_finite {p q : pred} {c : code p q} : finite (control c) :=
-sorry
--- ⟨ control_nodes c, _ ⟩
+-- def bij.finite.g : Π {p q} (c : code p q), fin (control_nodes c) → current c
+--   | ._ ._ (code.skip _) ⟨_,P⟩ := by cases (nat.not_lt_zero _ P)
+--   | ._ ._ (code.action p q l) _ := current.action p q l
+--   | ._ ._ (@code.seq ._ ._ p q r c₀ c₁) m :=
+--     match fin.split m with
+--      | (sum.inl n) := seq_left  c₁ $ bij.finite.g c₀ n
+--      | (sum.inr n) := seq_right c₀ $ bij.finite.g c₁ n
+--     end
+--   | ._ ._ (@code.if_then_else ._ ._ p pa pb q t c₀ c₁) n :=
+--     match (fin.split n : fin (control_nodes c₀ + control_nodes c₁) ⊕ fin 1) with
+--      | (sum.inl n') :=
+--         match (fin.split n' : fin (control_nodes c₀) ⊕ fin (control_nodes c₁)) with
+--          | (sum.inl n) := ite_left  _ _ c₁ $ bij.finite.g c₀ n
+--          | (sum.inr n) := ite_right _ _ c₀ $ bij.finite.g c₁ n
+--         end
+--      | (sum.inr _) := ite_cond p t c₀ c₁
+--     end
+--   | ._ ._ (@code.while ._ ._ p inv q t b) n :=
+--     match (fin.split n : fin (control_nodes b) ⊕ fin 1) with
+--      | (sum.inl n') := while_body t q $ bij.finite.g b n'
+--      | (sum.inr _) := while_cond t b q
+--     end
 
-instance control_sched {p q : pred} {c : code p q} : scheduling.sched (control c) :=
-scheduling.sched.fin (by apply_instance)
+-- section g_over_constr
+
+-- lemma from_fin_eq_seq_left
+--   {p q r : pred}
+--   {c₀ : code p q} {c₁ : code q r}
+--   {n : fin (control_nodes c₀ + control_nodes c₁)}
+--   {k : fin (control_nodes c₀)}
+--   (Hk : fin.split n = sum.inl k)
+-- :   bij.finite.g (code.seq c₀ c₁) n
+--   = seq_left c₁ (bij.finite.g c₀ k) :=
+-- by { unfold bij.finite.g, simp [Hk], refl }
+
+-- lemma from_fin_eq_seq_right
+--   {p q r : pred}
+--   {c₀ : code p q} {c₁ : code q r}
+--   {n : fin (control_nodes c₀ + control_nodes c₁)}
+--   {k : fin (control_nodes c₁)}
+--   (Hk : fin.split n = sum.inr k)
+-- :   bij.finite.g (code.seq c₀ c₁) n
+--   = seq_right c₀ (bij.finite.g c₁ k) :=
+-- by { unfold bij.finite.g, simp [Hk], refl }
+
+-- lemma from_fin_eq_ite_left
+--   {p t pa pb q : pred}
+--   {c₀ : code pa q} {c₁ : code pb q}
+--   {n  : fin (control_nodes c₀ + control_nodes c₁ + 1)}
+--   {k  : fin (control_nodes c₀ + control_nodes c₁)}
+--   {k' : fin (control_nodes c₀)}
+--   (Hk : fin.split n = sum.inl k)
+--   (Hk' : fin.split k = sum.inl k')
+-- :   bij.finite.g (if_then_else p t c₀ c₁) n
+--   = ite_left p t c₁ (bij.finite.g c₀ k') :=
+-- begin
+--   unfold bij.finite.g, simp [Hk],
+--   unfold bij.finite.g._match_2, simp [Hk'],
+--   refl,
+-- end
+
+-- lemma from_fin_eq_ite_right
+--   {p t pa pb q : pred}
+--   {c₀ : code pa q} {c₁ : code pb q}
+--   {n  : fin (control_nodes c₀ + control_nodes c₁ + 1)}
+--   {k  : fin (control_nodes c₀ + control_nodes c₁)}
+--   {k' : fin (control_nodes c₁)}
+--   (Hk : fin.split n = sum.inl k)
+--   (Hk' : fin.split k = sum.inr k')
+-- :   bij.finite.g (if_then_else p t c₀ c₁) n
+--   = ite_right p t c₀ (bij.finite.g c₁ k') :=
+-- sorry
+
+-- lemma from_fin_eq_ite_cond
+--   {p t pa pb q : pred}
+--   {c₀ : code pa q} {c₁ : code pb q}
+--   {n  : fin (control_nodes c₀ + control_nodes c₁ + 1)}
+--   {k  : fin 1}
+--   (Hk : fin.split n = sum.inr k)
+-- :   bij.finite.g (if_then_else p t c₀ c₁) n
+--   = ite_cond p t c₀ c₁ :=
+-- by { unfold bij.finite.g, simp [Hk], refl }
+
+-- lemma from_fin_eq_ite_cond
+--   {p t pa pb q : pred}
+--   {c₀ : code pa q}
+--   {n  : fin (control_nodes c₀ + 1)}
+--   {k  : fin $ control_nodes c₀}
+--   (Hk : fin.split n = sum.inr k)
+-- :   bij.finite.g (while p t c₀) n
+--   = while_body p t (bij.finite.g c₀ k)  :=
+-- sorry
+
+-- end g_over_constr
+
+-- lemma bij.finite.g_inv {p q} {c : code p q} (n : fin (control_nodes c))
+-- : bij.finite.f (bij.finite.g c n) = n :=
+-- begin
+--   induction c
+--   ; unfold control_nodes at n,
+--   { apply fin.elim0 n, },
+--   { unfold bij.finite.g bij.finite.f
+--   ; apply fin.eq_of_veq,
+--     unfold fin.val,
+--     apply le_antisymm (zero_le _),
+--     apply le_of_lt_succ,
+--     apply n.is_lt },
+--   { destruct fin.split n
+--     ; intros k Hk,
+--     { rw [from_fin_eq_seq_left Hk], unfold bij.finite.f,
+--       rw [ih_1,fin.nest_eq_iff_eq_split,Hk], },
+--     { rw [from_fin_eq_seq_right Hk], unfold bij.finite.f,
+--       rw [ih_2,fin.shift_eq_iff_eq_split,Hk], }, },
+--   { destruct fin.split n
+--     ; intros k Hk,
+--     destruct fin.split k
+--     ; intros k' Hk',
+--     { rw [from_fin_eq_ite_left Hk Hk'], unfold bij.finite.f,
+--       simp [ih_1,fin.nest_eq_iff_eq_split,Hk],
+--       apply congr_arg,
+--       simp [fin.nest_eq_iff_eq_split,Hk'] },
+--     { rw [from_fin_eq_ite_right Hk Hk'], unfold bij.finite.f,
+--       simp [ih_2,fin.nest_eq_iff_eq_split,Hk],
+--       apply congr_arg,
+--       simp [fin.shift_eq_iff_eq_split,Hk'] },
+--     { rw [from_fin_eq_ite_cond Hk], unfold bij.finite.f,
+--       apply fin.split_injective _ n,
+--       simp [Hk,eq_comm],
+--       rw [-fin.shift_eq_iff_eq_split,fin.all_eq_zero k],
+--       apply fin.eq_of_veq, simp [fin.val_shift_zero], refl }, },
+--   { destruct fin.split n
+--     ; intros k Hk,
+--      }
+-- end
+
+-- #print sum.elim
+
+-- lemma bij.finite.f_inv {p q} {c : code p q} (pc : current c)
+-- : bij.finite.g c (bij.finite.f pc) = pc := sorry
+
+-- instance current_finite {p q : pred} {c : code p q} : finite (current c) :=
+-- ⟨ control_nodes c,
+--   bijection.mk bij.finite.f (bij.finite.g c) bij.finite.f_inv bij.finite.g_inv ⟩
+
+-- instance control_finite {p q : pred} {c : code p q} : finite (control c) :=
+-- sorry
+
+-- instance control_sched {p q : pred} {c : code p q} : scheduling.sched (control c) :=
+-- scheduling.sched.fin (by apply_instance)
 
 def cpred : Type := stream σ → Prop
 
@@ -243,6 +470,10 @@ structure local_correctness : Prop :=
   (enabled : ∀ (pc : option $ current c) l, selects pc l → assert_of pc ⟹ p.guard l)
   (correct : ∀ (pc : option $ current c) l, selects pc l →
        ∀ s s', assert_of pc s → p.step_of l s s' → next_assert pc s')
+  (cond_true : ∀ (pc : option $ current c) (H : is_control pc),
+       ∀ s, assert_of pc s → condition pc H s → next_assert pc s)
+  (cond_false : ∀ (pc : option $ current c) (H : is_control pc),
+       ∀ s, assert_of pc s → ¬ condition pc H s → next_assert pc s)
 
 -- instance : scheduling.sched (control c ⊕ p.lbl) := _
 
@@ -259,7 +490,7 @@ section event
 
 parameter (e : p.lbl)
 parameter (s : state)
-parameter (h₀ : selects (s.pc) e)
+parameter (h₀ : selects s.pc e)
 parameter (h₁ : true)
 
 include h₁
@@ -276,56 +507,103 @@ theorem evt_fine_sch
 : p.fine_sch_of e s.intl :=
 evt_guard.right
 
-noncomputable def machine.step (s' : state) : Prop :=
-  (p.event e).step s.intl evt_coarse_sch evt_fine_sch s'.intl
-∧ s'.pc = next s.intl s.pc
-
-include evt_coarse_sch evt_fine_sch
-
-def machine.step_fis
-: ∃ (s' : state), machine.step s' :=
-begin
-  note CS := evt_coarse_sch _ p c Hcorr e s h₀ h₁,
-  note FS := evt_fine_sch _ _ c Hcorr e s h₀ h₁,
-  cases (p.event e).fis s.intl CS FS with s' H,
-  assert Hss' : assert_of (next s.intl s.pc) s',
-  { cases s.pc, admit, admit },
-  note ss' := state.mk (next s.intl s.pc) s' Hss',
-  existsi ss',
-  admit
-end
+def machine.run_event (s' : state) : Prop :=
+(p.event e).step s.intl evt_coarse_sch evt_fine_sch s'.intl
 
 end event
 
-section test
+noncomputable def machine.step
+  (e : current c)
+  (s  : state)
+  (h : some e = s.pc)
+  (s' : state) : Prop :=
+  s'.pc = next s.intl s.pc
+∧ match action_of e with
+   | (sum.inr ⟨l,hl⟩) :=
+         have h : selects (s.pc) l,
+              by { simp [h] at hl, apply hl },
+         machine.run_event l s h trivial s'
+   | (sum.inl _) := s'.intl = s.intl
+  end
 
-parameter (s : state)
+def machine.step_fis
+  (e : current c)
+  (s  : state)
+  (h : some e = s.pc)
+: ∃ (s' : state), machine.step e s h s' :=
+begin
+  destruct action_of e
+  ; intros l Hl,
+  { assert Hss' : assert_of (next s.intl s.pc) s.intl,
+    { rw assert_of_next,
+      cases l with l H, cases H with P H,
+      rw -h,
+      cases classical.em (condition (some e) P s.intl) with Hc Hnc,
+      { apply Hcorr.cond_true _ _ _ _ Hc,
+        rw h,
+        apply s.assertion, },
+      { apply Hcorr.cond_false _ _ _ _ Hnc,
+        rw h,
+        apply s.assertion } },
+    pose ss' := state.mk (next s.intl s.pc) s.intl Hss',
+    existsi ss',
+    unfold machine.step,
+    split,
+    { refl },
+    { rw Hl, unfold machine.step._match_1 machine.run_event,
+      refl } },
+  { cases l with l hl,
+    rw h at hl,
+    note CS := evt_coarse_sch _ p c Hcorr l s hl trivial,
+    note FS := evt_fine_sch _ _ c Hcorr l s hl trivial,
+    cases (p.event l).fis s.intl CS FS with s' H,
+    assert Hss' : assert_of (next s.intl s.pc) s',
+    { rw [assert_of_next],
+      apply Hcorr.correct _ _ hl s.intl _ _ ⟨CS,FS,H⟩,
+      apply s.assertion },
+    pose ss' := state.mk (next s.intl s.pc) s' Hss',
+    existsi ss',
+    unfold machine.step,
+    split,
+    { refl },
+    { rw Hl, unfold machine.step._match_1 machine.run_event,
+      apply H } }
+end
 
-noncomputable def machine.test (s' : state) : Prop :=
-  s.intl = s'.intl
-∧ s'.pc = next s.intl s.pc
+-- section test
 
-def machine.test_fis
-: ∃ (s' : state), machine.test s' :=
-sorry
+-- parameter (s : state)
 
-end test
+-- noncomputable def machine.test (s' : state) : Prop :=
+--   s.intl = s'.intl
+-- ∧ s'.pc = next s.intl s.pc
 
-noncomputable def machine.event : control c ⊕ p.lbl → nondet.event state
-| (sum.inr e) :=
-  { coarse_sch := λ s, selects s.pc e
+-- def machine.test_fis
+-- : ∃ (s' : state), machine.test s' :=
+-- sorry
+
+-- end test
+
+noncomputable def machine.event (cur : current c) : nondet.event state :=
+  { coarse_sch := λ s, some cur = s.pc
   , fine_sch   := True
-  , step := machine.step e
-  , fis  := machine.step_fis e }
-| (sum.inl pc) :=
-  { coarse_sch := λ s, s.pc = pc.val
-  , fine_sch   := True
-  , step := λ s _ _ s', machine.test s s'
-  , fis  := λ s _ _, machine.test_fis s }
+  , step := λ s hc _ s', machine.step cur s hc s'
+  , fis  := λ s hc _, machine.step_fis cur s hc }
+
+-- | (sum.inr e) :=
+--   { coarse_sch := λ s, selects s.pc e
+--   , fine_sch   := True
+--   , step := machine.step e
+--   , fis  := machine.step_fis e }
+-- | (sum.inl pc) :=
+--   { coarse_sch := λ s, s.pc = pc.val
+--   , fine_sch   := True
+--   , step := λ s _ _ s', machine.test s s'
+--   , fis  := λ s _ _, machine.test_fis s }
 
 def machine_of : nondet.program state :=
- { lbl := control c ⊕ p.lbl
- , lbl_is_sched := by apply_instance
+ { lbl := current c
+ , lbl_is_sched := sorry
  , first := λ ⟨s₀,s₁,_⟩, s₀ = first c ∧ p.first s₁
  , first_fis :=
    begin cases p.first_fis with s Hs,

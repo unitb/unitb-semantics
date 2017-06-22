@@ -7,9 +7,11 @@ LEAN_PATH = $(shell pwd):/usr/local/bin/../lib/lean/library:$(shell printenv LEA
 all:
 	LEAN_PATH=$(LEAN_PATH) lean $(LEAN_OPT) --make > errors.txt
 
-root: logic models refinement syntax util/data/array.olean
+root: logic models refinement syntax util/data/array.olean code
 
 logic: unity/logic.olean unity/refinement.olean
+
+code: unity/code/syntax.olean
 
 models: unity/models/nondet.olean unity/models/det.olean unity/models/simple.olean unity/models/sched.olean
 
