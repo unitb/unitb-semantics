@@ -58,7 +58,7 @@ lemma program.falsify.negate
 →  •q && ⟦ s^.action_of act ⟧ ⟹ <>-•q :=
 begin
   intros FALSE τ H,
-  assert GOAL : ⟦ λ _, - q ⟧ τ,
+  have GOAL : ⟦ λ _, - q ⟧ τ,
   { cases H with H₀ H₁,
     apply s.falsify_action p q act FALSE _ H₀ H₁, },
   unfold temporal.eventually,
@@ -133,7 +133,7 @@ begin
   unfold program.transient at T₀,
   cases T₀ with ev T₀,
   cases temporal.em' (• q) τ with hq hnq,
-  { note occ := coincidence hq (h.liveness ev),
+  { have occ := coincidence hq (h.liveness ev),
     rw -eventually_eventually,
     apply henceforth_entails_henceforth _ _ occ,
     apply eventually_entails_eventually,
@@ -157,7 +157,7 @@ lemma program.witness [sched lbl] (s : program lbl α)
 begin
   apply exists_imp_exists _ (sched.sched_str (object s)),
   intros τ h,
-  assert H : ∀ e, •has_mem.mem e ∘ (object s).req && ⟦target_mch.action (object s) e⟧
+  have H : ∀ e, •has_mem.mem e ∘ (object s).req && ⟦target_mch.action (object s) e⟧
               ⟹ ⟦s.action_of e⟧,
   { simp [init_eq_action,action_and_action],
     intro e,
@@ -178,7 +178,7 @@ begin
   { intro e,
     apply inf_often_entails_inf_often _ _ (h.fair e _),
     { apply H },
-    { assert H : has_mem.mem e ∘ (object s).req = True,
+    { have H : has_mem.mem e ∘ (object s).req = True,
       { refl },
       rw [H,init_true,event_true,hence_true],
       apply trivial } },

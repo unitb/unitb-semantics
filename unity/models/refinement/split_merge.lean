@@ -86,7 +86,7 @@ end
 
 lemma conc_coarse : ∃ e', (<>[](• W e' && • CC e'.val) ) τ :=
 begin
-  assert H : ((∃∃ e', <>[](• W ma mc R e e' && • CC mc e'.val))
+  have H : ((∃∃ e', <>[](• W ma mc R e e' && • CC mc e'.val))
                    || []<>((-•AC ma e) || ∃∃ e' : imp_lbl ma mc R e, ⟦ mc.step_of e'.val ⟧)) τ,
   { rw exists_action,
     apply p_or_p_imp_p_or_right _ (unless_sem_exists' mc M₁.safety (R.events e).stable _),
@@ -101,10 +101,10 @@ begin
       cases H with H₀ H₁,
       unfold program.step_of,
       rw H₁, apply H₀, },
-    note H' := leads_to.gen_disj' (R.events e).delay,
+    have H' := leads_to.gen_disj' (R.events e).delay,
     apply inf_often_of_leads_to (system_sem.leads_to_sem H' _ M₁),
     simp,
-    note H' := ew_eq_true (R.events e).witness_fis,
+    have H' := ew_eq_true (R.events e).witness_fis,
     rw [-p_and_over_p_exists_right
        ,-p_and_over_p_exists_right],
     simp [H'],
@@ -128,7 +128,7 @@ lemma conc_fine : ∀ e',
          ([]<>•CF e'.val) τ :=
 begin
   intros e' H,
-  note H' := system_sem.leads_to_sem ((R.events e).resched e') _ M₁,
+  have H' := system_sem.leads_to_sem ((R.events e).resched e') _ M₁,
   apply inf_often_of_leads_to H',
   rw p_and_comm,
   apply coincidence H,
@@ -150,20 +150,20 @@ begin
     apply M₁.safety },
   { intros e COARSE₀ FINE₀,
     apply assume_neg _, intro ACT,
-    assert COARSE₁ :  (<>[](•AC ma e && -⟦program.step_of ma e⟧)) τ,
+    have COARSE₁ :  (<>[](•AC ma e && -⟦program.step_of ma e⟧)) τ,
     { rw [p_not_eq_not,not_henceforth,not_eventually] at ACT,
       apply stable_and_of_stable_of_stable COARSE₀ ACT },
     clear COARSE₀ ACT,
     cases conc_coarse ma mc R τ M₁ _ COARSE₁ FINE₀ with e' C_COARSE',
-    assert C_COARSE : (<>[]•CC mc e'.val) τ,
+    have C_COARSE : (<>[]•CC mc e'.val) τ,
     { apply stable_entails_stable _ _ C_COARSE',
       intro, apply and.right },
-    assert WIT : (<>[]•W ma mc R e e') τ,
+    have WIT : (<>[]•W ma mc R e e') τ,
     { apply stable_entails_stable _ _ C_COARSE',
       intro, apply and.left },
-    note C_FINE := conc_fine ma mc R τ M₁ e COARSE₁ FINE₀ e' WIT,
+    have C_FINE := conc_fine ma mc R τ M₁ e COARSE₁ FINE₀ e' WIT,
     apply inf_often_entails_inf_often _ _ (M₁.liveness _ C_COARSE C_FINE),
-    note H := (R.events e).sim e',
+    have H := (R.events e).sim e',
     apply H, },
 end
 

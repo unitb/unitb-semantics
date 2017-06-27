@@ -202,7 +202,7 @@ lemma program.falsify.negate
 →  •q && ⟦ s^.step_of act ⟧ ⟹ <>-•q :=
 begin
   intros h₀ τ h₁,
-  note h₂ := h₀.negate' _ h₁.left h₁.right,
+  have h₂ := h₀.negate' _ h₁.left h₁.right,
   unfold eventually p_not init,
   existsi 1,
   apply h₂,
@@ -239,8 +239,8 @@ begin
   apply falsify.mk,
   { apply entails_trans _ hq h'.enable, },
   { apply entails_trans _ hp h'.schedule, },
-  { note hp' := init_entails_init hp,
-    note hq' := init_entails_init hq,
+  { have hp' := init_entails_init hp,
+    have hq' := init_entails_init hq,
     apply ew_imp_ew _ h'.negate',
     apply p_imp_entails_p_imp hq' _,
     apply p_imp_entails_p_imp_right _,
@@ -291,15 +291,15 @@ begin
   cases (temporal.em' (•q) τ) with h_q ev_nq,
   { unfold program.transient at T₀,
     cases T₀ with ev T₀,
-    assert Hc : (<>[]•s.coarse_sch_of ev) τ,
+    have Hc : (<>[]•s.coarse_sch_of ev) τ,
     { apply stable_entails_stable' _ _ h_q,
       apply T₀.enable },
     intro Hp,
-    assert Hf : ([]<>•s.fine_sch_of ev) τ,
+    have Hf : ([]<>•s.fine_sch_of ev) τ,
     { apply inf_often_entails_inf_often' _ _ Hp,
       apply T₀.schedule, },
-    note live := h.liveness ev Hc Hf,
-    note act := coincidence h_q (h.liveness ev Hc Hf),
+    have live := h.liveness ev Hc Hf,
+    have act := coincidence h_q (h.liveness ev Hc Hf),
     rw [-eventually_eventually],
     apply inf_often_entails_inf_often _ _ act,
     apply entails_imp_entails_left _ T₀.negate,
@@ -387,13 +387,13 @@ theorem unless_rule {s : program} {p q : pred' α}
 : unless s p q :=
 begin
   rw unless_eq_unless_except,
-  assert H : unless_except s p q ∅,
+  have H : unless_except s p q ∅,
   { apply unless_except_rule,
     intros,
     apply ACT
     ; try { assumption }, },
   unfold unless_except at H,
-  assert Heq : (λ (σ σ' : α), ∃ (e : event), e ∈ (∅ : set event) ∧ e.step_of σ σ')
+  have Heq : (λ (σ σ' : α), ∃ (e : event), e ∈ (∅ : set event) ∧ e.step_of σ σ')
              = (λ (_x : α), False),
   { apply funext, intro,
     apply funext, intro,
@@ -430,7 +430,7 @@ begin
   { refl },
     -- negation
   { intros σ Hf Hact,
-    note H := NEG (σ 0) (σ 1) Hf.right Hact,
+    have H := NEG (σ 0) (σ 1) Hf.right Hact,
     revert H,
     simp [not_init,next_init,not_and_iff_not_or_not,not_not_iff_self],
     apply or.intro_left }

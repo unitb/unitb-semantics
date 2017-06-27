@@ -97,8 +97,8 @@ lemma eq_next_or_rank_eq_or_rank_lt {s : sch_state} {l : lbl} (v : ℕ)
   rank l (sch.step s) < v :=
 begin
   unfold sch.current select sch.step rank next sch_state.queue sch_state.target req,
-  pose target'  := (sch.step _ s).target,
-  pose queue' := (sch.step _ s).queue,
+  let target'  := (sch.step _ s).target,
+  let queue' := (sch.step _ s).queue,
   cases s,
   unfold sch.step sch_state.queue sch_state.target,
   cases classical.em (queue.g l = first (t.req target) queue) with Heq Hne,
@@ -111,10 +111,10 @@ begin
   { right,left,
     split,
     { intro h₀,
-      assert h₁ : queue.g l ∈ { x | queue.f x ∈ t.req target },
+      have h₁ : queue.g l ∈ { x | queue.f x ∈ t.req target },
       { rw [mem_set_of,bijection.g_inv],
         apply h₀ },
-      note h₂ := minimum_le h₁,
+      have h₂ := minimum_le h₁,
       apply not_le_of_gt Hlt h₂, },
     { unfold select comp sch.step sch_state.queue,
       rw [comp_g], unfold comp,
@@ -139,10 +139,10 @@ begin
   simp, simp at Heq,
   unfold function.comp flip sch.step, -- next rank subtype.val,
   cases Heq with Heq Hmem,
-  note HH := eq_next_or_rank_eq_or_rank_lt _ v Heq,
+  have HH := eq_next_or_rank_eq_or_rank_lt _ v Heq,
   rw or_iff_not_imp at HH,
   simp [not_or_iff_not_and_not] at Hnnext,
-  note HH' := HH Hnnext.left,
+  have HH' := HH Hnnext.left,
   rw [or_iff_not_imp,not_and_iff_not_or_not,not_not_iff_self] at HH',
   right, apply HH', clear HH' HH,
   apply or.intro_left _ Hmem,
@@ -231,7 +231,7 @@ lemma sched' {lbl : Type} [s : finite lbl] [nonempty lbl]
   (r : target_mch lbl)
 : ∃ τ : stream r.σ, fair r τ :=
 begin
-  assert h : pos_finite lbl,
+  have h : pos_finite lbl,
   { apply pos_of_finite ; apply_instance },
   apply unity.scheduling r (scheduling.finite.scheduler_spec r),
   apply_instance

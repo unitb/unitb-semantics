@@ -48,7 +48,7 @@ lemma program.transient_antimono (s : program) (p q p' q' : pred)
 begin
   unfold program.transient,
   intros σ hp' hq',
-  note h'' := T₀ σ (hp _ hp') (hq _ hq'),
+  have h'' := T₀ σ (hp _ hp') (hq _ hq'),
   intro h₂, apply h'',
   apply hq _ h₂
 end
@@ -73,7 +73,7 @@ lemma unless_step
 begin
   unfold unless,
   intros σ σ' S,
-  note h' := h σ, clear h,
+  have h' := h σ, clear h,
   unfold unity.step has_safety.step is_step program.step at S,
   rw S,
   intros h,
@@ -92,7 +92,7 @@ begin
   { unfold transient system.transient program.transient program.step,
     intros σ _ h,
     cases h with h₀ h₁,
-    note h' := h _ h₀ h₁,
+    have h' := h _ h₀ h₁,
     simp [not_and_iff_not_or_not,not_not_iff_self],
     left, apply h', },
   { apply unless_step,
@@ -145,7 +145,7 @@ lemma init_sem
 begin
   unfold init system.init program.init at I₀,
   unfold temporal.init,
-  note H' := H.left,
+  have H' := H.left,
   unfold temporal.init at H',
   rw -H', apply I₀,
 end
@@ -155,10 +155,10 @@ lemma transient.semantics
 : ([]<>•p) τ → ([]<>•-q) τ :=
 begin
   intros Hp,
-  assert Hstep : (<>[]⟦is_step s⟧) τ,
+  have Hstep : (<>[]⟦is_step s⟧) τ,
   { apply eventually_weaken,
     apply ex.safety τ H },
-  note H' := coincidence Hstep Hp,
+  have H' := coincidence Hstep Hp,
   rw -eventually_eventually,
   apply inf_often_entails_inf_often _ _ H',
   { unfold p_entails, rw p_and_p_imp,

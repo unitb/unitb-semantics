@@ -67,7 +67,7 @@ def machine.run_event (s' : state) : Prop :=
 
 end event
 
-noncomputable def machine.step
+def machine.step
   (e : current c)
   (s  : state)
   (h : some e = s.pc)
@@ -89,7 +89,7 @@ def machine.step_fis
 begin
   destruct action_of e
   ; intros l Hl,
-  { assert Hss' : assert_of (next s.intl s.pc) s.intl,
+  { have Hss' : assert_of (next s.intl s.pc) s.intl,
     { rw assert_of_next,
       cases l with l H, cases H with P H,
       rw -h,
@@ -100,7 +100,7 @@ begin
       { apply Hcorr.cond_false _ _ _ _ Hnc,
         rw h,
         apply s.assertion } },
-    pose ss' := state.mk (next s.intl s.pc) s.intl Hss',
+    let ss' := state.mk (next s.intl s.pc) s.intl Hss',
     existsi ss',
     unfold machine.step,
     split,
@@ -109,14 +109,14 @@ begin
       refl } },
   { cases l with l hl,
     rw h at hl,
-    note CS := evt_coarse_sch _ p c Hcorr l s hl trivial,
-    note FS := evt_fine_sch _ _ c Hcorr l s hl trivial,
+    have CS := evt_coarse_sch _ p c Hcorr l s hl trivial,
+    have FS := evt_fine_sch _ _ c Hcorr l s hl trivial,
     cases (p.event l).fis s.intl CS FS with s' H,
-    assert Hss' : assert_of (next s.intl s.pc) s',
+    have Hss' : assert_of (next s.intl s.pc) s',
     { rw [assert_of_next],
       apply Hcorr.correct _ _ hl s.intl _ _ ⟨CS,FS,H⟩,
       apply s.assertion },
-    pose ss' := state.mk (next s.intl s.pc) s' Hss',
+    let ss' := state.mk (next s.intl s.pc) s' Hss',
     existsi ss',
     unfold machine.step,
     split,
@@ -139,7 +139,7 @@ end
 
 -- end test
 
-noncomputable def machine.event (cur : current c) : nondet.event state :=
+def machine.event (cur : current c) : nondet.event state :=
   { coarse_sch := λ s, some cur = s.pc
   , fine_sch   := True
   , step := λ s hc _ s', machine.step cur s hc s'
@@ -162,8 +162,8 @@ def machine_of : nondet.program state :=
  , first := λ ⟨s₀,s₁,_⟩, s₀ = first c ∧ p.first s₁
  , first_fis :=
    begin cases p.first_fis with s Hs,
-         assert Hss : assert_of (first c) s, admit,
-         pose ss := state.mk (first c) s Hss,
+         have Hss : assert_of (first c) s, admit,
+         let ss := state.mk (first c) s Hss,
          existsi ss,
          unfold machine_of._match_1,
          exact ⟨rfl,Hs⟩

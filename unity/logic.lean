@@ -145,7 +145,7 @@ theorem leads_to.impl {p q : pred' (state α)}
    : p ↦ q in s :=
 begin
   apply leads_to.basis,
-  { assert h' : (p && -q) = False,
+  { have h' : (p && -q) = False,
     { apply funext,
       intro x, unfold p_and p_not,
       apply eq_false_of_not_eq_true,
@@ -195,7 +195,7 @@ lemma leads_to.disj_rng {t : Type} {p : t → pred' (state α)} {q} {r : t → P
          (h : ∀ i, r i → p i ↦ q in s)
          : (∃∃ i, (λ _, r i) && p i) ↦ q in s :=
 begin
-  assert h' : (∃∃ (i : t), (λ _, r i) && p i) =
+  have h' : (∃∃ (i : t), (λ _, r i) && p i) =
               (∃∃ (i : { x : t // r x }), p i),
   { apply funext, intro x,
     rw -iff_eq_eq, split,
@@ -272,10 +272,10 @@ theorem leads_to.induction' {β : Type} {lt' : β → β → Prop}
     (P : ∀ v, p && (eq v ∘ V)  ↦  p && (flip lt' v ∘ V) || q  in  s)
   : p ↦ q in s :=
 begin
-  pose lt := flip lt',
-  assert P' : (∃∃ v, p && eq v ∘ V)  ↦ q in s,
+  let lt := flip lt',
+  have P' : (∃∃ v, p && eq v ∘ V)  ↦ q in s,
   { apply leads_to.disj β, intro i,
-    pose PP := λ i, p && eq i ∘ V  ↦  q in s,
+    let PP := λ i, p && eq i ∘ V  ↦  q in s,
     change PP i,
     apply @well_founded.induction _ lt' wf PP,
     intros j IH,
@@ -283,7 +283,7 @@ begin
     apply leads_to.strengthen_rhs (q || q),
     { intro, simp, exact id },
     apply leads_to.cancellation (p && lt j ∘ V) (P _),
-    assert h' : (p && lt j ∘ V) = (λ s, ∃v, lt j v ∧ p s ∧ v = V s),
+    have h' : (p && lt j ∘ V) = (λ s, ∃v, lt j v ∧ p s ∧ v = V s),
     { apply funext,
       intro x,
       rw -iff_eq_eq, split,
@@ -296,7 +296,7 @@ begin
     rw h', clear h',
     apply leads_to.disj_rng,
     apply IH, },
-  { assert h : (∃∃ (v : β), p && eq v ∘ V) = p,
+  { have h : (∃∃ (v : β), p && eq v ∘ V) = p,
     { apply funext,
       intro x, unfold function.comp,
       simp, rw [exists_one_point_right (V x) _], simp,
@@ -334,12 +334,12 @@ begin
         rw -p_and_assoc,
         apply p_and_entails_of_entails_right _,
         rw p_and_p_or_p_not_self, simp } },
-    { assert H : unless s r (r || b),
+    { have H : unless s r (r || b),
       { apply impl_unless, intro, apply or.inl },
-      assert H' : unless s p₀ (q₀ || b),
+      have H' : unless s p₀ (q₀ || b),
       { apply unless_weak_rhs _ _ u₀,
         intro, apply or.inl },
-      note H'' := unless_conj_gen _ u₀ S,
+      have H'' := unless_conj_gen _ u₀ S,
       apply unless_weak_rhs _ _ H'',
       intro i, unfold p_or p_and,
       intro hh, cases hh with hh₀ hh₀, cases hh₀ with hh₀ hh₀,
@@ -368,8 +368,8 @@ begin
             apply p_or_intro_left }, },
         { apply entails_p_or_of_entails_right,
           apply p_or_intro_right } }, } },
-  { note H := leads_to.cancellation _ ih_1 ih_2,
-    assert H' : (r₁ && r || b || b) = (r₁ && r || b),
+  { have H := leads_to.cancellation _ ih_1 ih_2,
+    have H' : (r₁ && r || b || b) = (r₁ && r || b),
     { apply funext, intro,
       rw -iff_eq_eq,
       simp, rw [-or_assoc,or_self] },
@@ -396,9 +396,9 @@ lemma often_imp_often.basis {p q}
   (h : p ↦ q in s)
 : p >~> q in s :=
 begin
-  assert H : ∀ t t' (v : t) (f : t' → t), flip empty_relation v ∘ f = False,
+  have H : ∀ t t' (v : t) (f : t' → t), flip empty_relation v ∘ f = False,
   { intros, refl },
-  assert H' : ∀ t' (v : unit) (f : t' → unit), eq v ∘ f = True,
+  have H' : ∀ t' (v : unit) (f : t' → unit), eq v ∘ f = True,
   { intros, apply funext, intro x,
     unfold function.comp,
     apply eq_true_intro (unit_eq v (f x)), },
@@ -452,7 +452,7 @@ lemma leads_to_sem {s : α} {p q : pred' (state α)}
     (sem : ex s τ)
 : (•p ~> •q) τ :=
 begin
-  note saf : saf_ex s τ := system_sem.safety s _ sem,
+  have saf : saf_ex s τ := system_sem.safety s _ sem,
   induction P with
         p'
         p q b T S B Bsem
@@ -463,9 +463,9 @@ begin
     simp, },
     -- transient and unless
   { intros i hp,
-    note saf' := unless_sem' _ _ saf S (temporal.eventually_weaken _ hp),
+    have saf' := unless_sem' _ _ saf S (temporal.eventually_weaken _ hp),
     cases saf' with saf' saf',
-    { assert T' : ([]<>-•(p && -q)) τ,
+    { have T' : ([]<>-•(p && -q)) τ,
       { rw [-or_self (([]<>-•(p && -q)) τ),or_iff_not_imp],
         rw [p_not_eq_not,not_henceforth,not_eventually,p_not_p_not_iff_self],
         apply function.comp _ (inf_often_of_stable _),
@@ -477,7 +477,7 @@ begin
         apply inf_often_entails_inf_often' _ _ (inf_often_of_leads_to Bsem H),
         { apply p_or_entails_p_or_right,
           apply p_or_intro_right, }, },
-      note T'' := (coincidence saf' (henceforth_drop i T')),
+      have T'' := (coincidence saf' (henceforth_drop i T')),
       apply eventually_entails_eventually _ _ (henceforth_str _ T''),
       intros τ',
       simp [init_to_fun],
@@ -507,7 +507,7 @@ lemma often_imp_often_sem'
 begin
   apply @often_imp_often.drec α _ s _ _ _ _,
   { intros p q T,
-    note Tsem : ([]<>•p ⟶ []<>-•-q) τ
+    have Tsem : ([]<>•p ⟶ []<>-•-q) τ
               := system_sem.transient_sem _ sem T,
     rw [not_init,p_not_p_not_iff_self] at Tsem,
     apply Tsem },

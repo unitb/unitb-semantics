@@ -91,7 +91,7 @@ lemma init_simmed
 begin
   unfold Ta,
   apply @classical.epsilon_spec _ (λ a, R.glue a (Tc 0) ∧ ma.first a),
-  note H := Hc.init,
+  have H := Hc.init,
   apply R.sim_init _ H,
 end
 

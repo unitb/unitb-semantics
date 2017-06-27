@@ -98,22 +98,22 @@ begin
   apply exists_imp_exists' (map object) _ (system_sem.inhabited F),
   intros τ sem,
   apply fair.mk,
-  { note h := system_sem.init_sem τ sem INIT,
+  { have h := system_sem.init_sem τ sem INIT,
     unfold temporal.init function.comp at h,
     unfold map nth, rw -h, refl },
   { intro i,
     simp [temporal.init_drop,temporal.action_drop],
     existsi (ch $ τ i),
     split,
-    { note Hsaf := system_sem.safety _ _ sem i,
+    { have Hsaf := system_sem.safety _ _ sem i,
       rw action_drop at Hsaf,
       unfold map nth target_mch.action,
       apply (STEP (τ i) (τ $ succ i) Hsaf), },
     { unfold map nth target_mch.action function.comp,
       apply INV } },
   { intros l h,
-    pose t := t r r_nemp s₀ next,
-    assert H : ⟦λ s s', t.action (ch s) (object s) (object s')⟧ && •eq l ∘ ch
+    let t := t r r_nemp s₀ next,
+    have H : ⟦λ s s', t.action (ch s) (object s) (object s')⟧ && •eq l ∘ ch
           ⟹ (•mem l ∘ t.req ∘ object && ⟦t.action l on object⟧),
     { simp [init_eq_action,action_and_action],
       unfold comp,
@@ -153,7 +153,7 @@ lemma scheduling
   (sem : system_sem (sch.s))
 : ∃ τ : stream t.σ, fair t τ :=
 begin
-  assert H : t = scheduling.unity.t t.req t.req_nemp t.s₀ t.next,
+  have H : t = scheduling.unity.t t.req t.req_nemp t.s₀ t.next,
   { cases t, refl },
   rw H,
   apply @scheduling' lbl sch.s sch.sem t.σ _ _ t.s₀ _ _
