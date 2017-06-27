@@ -161,25 +161,27 @@ def assert_of' : Π {p q} {c : code p q}, current c → σ → Prop
   | .(p) ._ ._ (current.if_then_else_cond  p _ _ _ _ _ _)  := p
   | ._ ._ ._ (current.if_then_else_left  _ _ _ _ _ _ _ pc) := assert_of' pc
   | ._ ._ ._ (current.if_then_else_right _ _ _ _ _ _ _ pc) := assert_of' pc
-  | .(p) ._ ._ (current.while_cond _ p _ _ _)  := p
+  | .(inv) .(q) ._ (current.while_cond p inv q _ _)  := inv
   | ._ ._ ._ (current.while_body _ _ _ _ _ pc) := assert_of' pc
 
 def assert_of {p q} {c : code p q} : option (current c) → σ → Prop
   | none := q
   | (some pc) := assert_of' pc
 
-def next_assert' : Π {p q} {c : code p q}, current c → σ → Prop
-  | ._ .(q) ._ (current.action _ q _) s := q s
-  | ._ ._ ._ (current.seq_left  _ _ _ _ _ pc) s := next_assert' pc s
-  | ._ ._ ._ (current.seq_right _ _ _ _ _ pc) s := next_assert' pc s
-  | ._ .(q) ._ (current.if_then_else_cond  _ _ _ _ q _ _) s  := q s
-  | ._ ._ ._ (current.if_then_else_left  _ _ _ _ _ _ _ pc) s := next_assert' pc s
-  | ._ ._ ._ (current.if_then_else_right _ _ _ _ _ _ _ pc) s := next_assert' pc s
-  | ._ .(q) ._ (current.while_cond _ _ q _ _) s    := q s
-  | ._ ._ ._ (current.while_body _ _ _ _ _ pc) s := next_assert' pc s
+local attribute [instance] classical.prop_decidable
 
-def next_assert {p q} {c : code p q} : option (current c) → σ → Prop
-  | none := q
+noncomputable def next_assert' : Π {p q} {c : code p q}, current c → σ → σ → Prop
+  | ._ .(q) ._ (current.action _ q _) := λ _, q
+  | ._ ._ ._ (current.seq_left  _ _ _ _ _ pc) := next_assert' pc
+  | ._ ._ ._ (current.seq_right _ _ _ _ _ pc) := next_assert' pc
+  | .(p) .(q) ._ (current.if_then_else_cond  p t pa pb q _ _)  := λ s, if t s then pa else pb
+  | ._ ._ ._ (current.if_then_else_left  _ _ _ _ _ _ _ pc) := next_assert' pc
+  | ._ ._ ._ (current.if_then_else_right _ _ _ _ _ _ _ pc) := next_assert' pc
+  | .(inv) .(q) ._ (current.while_cond p inv q t _)  := λ s, if t s then p else q
+  | ._ ._ ._ (current.while_body _ _ _ _ _ pc) := next_assert' pc
+
+noncomputable def next_assert {p q} {c : code p q} : option (current c) → σ → σ → Prop
+  | none := λ _, q
   | (some pc) := next_assert' pc
 
 def first : Π {p q} (c : code p q), option (current c)
@@ -220,8 +222,6 @@ begin
       rw ih_1 }, }
 end
 
-local attribute [instance] classical.prop_decidable
-
 noncomputable def next' (s : σ) : ∀ {p q} {c : code p q}, current c → option (current c)
   | ._ ._ ._ (current.action p q l) := none
   | ._ ._ ._ (current.seq_left _ _ _ c₀ c₁ cur₀) :=
@@ -229,7 +229,7 @@ noncomputable def next' (s : σ) : ∀ {p q} {c : code p q}, current c → optio
     <|> seq_right c₀ <$> first c₁
   | ._ ._ ._ (current.seq_right _ _ _ c₀ c₁ cur₁) :=
         seq_right _ <$> next' cur₁
-  | ._ ._ ._ (current.if_then_else_cond _ _ _ p c b₀ b₁) :=
+  | .(p) .(q) ._ (current.if_then_else_cond p c pa pb q b₀ b₁) :=
       if c s
          then ite_left _ _ _ <$> first b₀
          else ite_right _ _ _ <$> first b₁
@@ -237,18 +237,110 @@ noncomputable def next' (s : σ) : ∀ {p q} {c : code p q}, current c → optio
       ite_left _ _ b₁ <$> next' cur₀
   | ._ ._ ._ (current.if_then_else_right _ _ _ _ _ b₀ b₁ cur₁) :=
       ite_right _ _ _ <$> next' cur₁
-  | ._ ._ ._ (current.while_cond _ _ q c b) :=
-      while_body q c <$> first b
+  | .(inv) .(q) ._ (current.while_cond p inv q c b) :=
+      if c s
+      then while_body q c <$> first b <|> some (while_cond _ _ b)
+      else none
   | ._ ._ ._ (current.while_body _ _ q c b cur) :=
-      while_body q c <$> next' cur
+          while_body q c <$> next' cur
+      <|> some (while_cond _ _ b)
 
 noncomputable def next (s : σ) {p q : pred} {c : code p q}
 : option (current c) → option (current c)
   | (some pc) := next' s pc
   | none := none
 
+lemma first_eq_none_imp_eq {p q : pred} {c : code p q}
+: first c = none → p = q :=
+begin
+  induction c ; unfold first,
+  { simp },
+  { contradiction, },
+  { destruct first a,
+    { intro h', simp [h'],
+      intro h'', rw [ih_1 h',ih_2 h''], },
+    { intros pc h,
+      simp [h], contradiction }, },
+  { contradiction },
+  { contradiction },
+end
+
 lemma assert_of_next {p q : pred} {c : code p q} (pc : option (current c)) (s : σ)
-: assert_of (next s pc) = next_assert pc :=
-sorry
+: assert_of (next s pc) = next_assert pc s :=
+begin
+  cases pc with pc,
+  { refl },
+  unfold next next_assert,
+  induction pc
+  ; try { refl }
+  ; unfold next' next_assert',
+  { rw -ih_1,
+    cases next' s a,
+    destruct first c₁,
+    { intros h₀,
+      simp [h₀],
+      unfold assert_of,
+      cases c₁ ; try { refl }
+      ; unfold first at h₀
+      ; try { contradiction },
+      { simp at h₀,
+        simp [first_eq_none_imp_eq h₀.left,first_eq_none_imp_eq  h₀.right] }, },
+    { intros pc h₀,
+      simp,
+      rw [h₀,fmap_some],
+      unfold assert_of assert_of',
+      change assert_of (some pc) = _,
+      rw [-h₀,assert_of_first] },
+    { simp, refl } },
+  { rw -ih_1,
+    cases next' s a ; refl },
+  { cases classical.em (t s) with h h,
+    { rw [if_pos h,if_pos h],
+      destruct first c₀,
+      { intros h, simp [h], have h := first_eq_none_imp_eq h,
+        unfold assert_of, subst pa },
+      { intros pc h, simp [h],
+        unfold assert_of assert_of',
+        change assert_of (some pc) = _,
+        rw [-h,assert_of_first], }, },
+    { rw [if_neg h,if_neg h],
+      destruct first c₁,
+      { intros h, simp [h],
+        have h := first_eq_none_imp_eq h,
+        unfold assert_of, subst pb },
+      { intros pc h, simp [h],
+        unfold assert_of assert_of',
+        change assert_of (some pc) = _,
+        rw [-h,assert_of_first], }, }, },
+  { rw -ih_1, clear ih_1,
+    cases next' s a with pc ; simp,
+    { refl },
+    { unfold assert_of assert_of', refl }, },
+  { rw -ih_1, clear ih_1,
+    cases next' s a with pc ; simp,
+    { refl },
+    { unfold assert_of assert_of', refl }, },
+  { cases classical.em (w s) with h h ;
+    destruct first c_1,
+    { intro h',
+      rw [if_pos h,if_pos h,h'],
+      have h'' := first_eq_none_imp_eq h', subst inv,
+      refl, },
+    { intros pc h',
+      rw [if_pos h,if_pos h,h'],
+      simp,
+      change assert_of (some pc) = _,
+      rw [-h',assert_of_first], },
+    { intros h',
+      rw [if_neg h,if_neg h], refl },
+    { intros pc h',
+      rw [if_neg h,if_neg h], refl }, },
+  { rw -ih_1, clear ih_1,
+    destruct next' s a,
+    { intros h',
+      simp [h'], refl },
+    { intros pc h',
+      simp [h'], refl }, },
+end
 
 end

@@ -24,11 +24,11 @@ parameters (c : code p.lbl p.first term)
 structure local_correctness : Prop :=
   (enabled : ∀ (pc : option $ current c) l, selects pc l → assert_of pc ⟹ p.guard l)
   (correct : ∀ (pc : option $ current c) l, selects pc l →
-       ∀ s s', assert_of pc s → p.step_of l s s' → next_assert pc s')
+       ∀ s s', assert_of pc s → p.step_of l s s' → next_assert pc s s')
   (cond_true : ∀ (pc : option $ current c) (H : is_control pc),
-       ∀ s, assert_of pc s → condition pc H s → next_assert pc s)
+       ∀ s s', assert_of pc s → condition pc H s → next_assert pc s s')
   (cond_false : ∀ (pc : option $ current c) (H : is_control pc),
-       ∀ s, assert_of pc s → ¬ condition pc H s → next_assert pc s)
+       ∀ s s', assert_of pc s → ¬ condition pc H s → next_assert pc s s')
 
 -- instance : scheduling.sched (control c ⊕ p.lbl) := _
 
@@ -94,10 +94,10 @@ begin
       cases l with l H, cases H with P H,
       rw -h,
       cases classical.em (condition (some e) P s.intl) with Hc Hnc,
-      { apply Hcorr.cond_true _ _ _ _ Hc,
+      { apply Hcorr.cond_true _ _ _ _ _ Hc,
         rw h,
         apply s.assertion, },
-      { apply Hcorr.cond_false _ _ _ _ Hnc,
+      { apply Hcorr.cond_false _ _ _ _ _ Hnc,
         rw h,
         apply s.assertion } },
     let ss' := state.mk (next s.intl s.pc) s.intl Hss',
@@ -162,7 +162,8 @@ def machine_of : nondet.program state :=
  , first := λ ⟨s₀,s₁,_⟩, s₀ = first c ∧ p.first s₁
  , first_fis :=
    begin cases p.first_fis with s Hs,
-         have Hss : assert_of (first c) s, admit,
+         have Hss : assert_of (first c) s,
+         { rw assert_of_first, apply Hs },
          let ss := state.mk (first c) s Hss,
          existsi ss,
          unfold machine_of._match_1,
