@@ -76,7 +76,7 @@ infixr ` ⟶ `:60 := p_impl
 infix ` ⟹ `:60 := p_entails
 notation `⦃ `:max act ` ⦄`:0 := ew act
 
-instance : has_neg (pred' α) := has_neg.mk p_not
+instance : has_neg (α → Prop) := has_neg.mk p_not
 
 @[simp]
 lemma p_and_comp (p q : pred' α) (f : β → α)

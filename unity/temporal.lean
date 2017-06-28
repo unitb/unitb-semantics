@@ -687,7 +687,7 @@ end
 
 
 lemma comp_map_app_eq_map (p : cpred β) (f : α → β) (τ : stream α)
-: (p ∘ map f) τ ↔ p (map f τ) :=
+: p (map f τ) ↔ (p ∘ map f) τ :=
 by refl
 
 lemma inf_often_trace_trading (τ : stream α) (f : α → β) (p : cpred β)
@@ -938,7 +938,7 @@ lemma congr_inf_often_trace {x : α} {τ : stream α} (f : α → β)
   (Hinj : injective f)
 : ([]<>•eq x) τ ↔ ([]<>•(eq (f x))) (map f τ) :=
 begin
-  rw [ -comp_map_app_eq_map ([]<>•eq (f x)) f τ ],
+  rw [ comp_map_app_eq_map ([]<>•eq (f x)) f τ ],
   simp [ (henceforth_trading f (<>•eq (f x))).symm  ],
   simp [ (eventually_trading f (•eq (f x))).symm ],
   simp [ (init_trading f (eq (f x))).symm ],
