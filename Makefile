@@ -13,7 +13,7 @@ logic: unity/logic.olean unity/refinement.olean
 
 code: unity/code/syntax.olean unity/code/semantics.olean
 
-models: unity/models/nondet.olean unity/models/det.olean unity/models/simple.olean unity/models/sched.olean
+models: unity/models/nondet.olean unity/models/det.olean unity/models/simple.olean unity/models/sched.olean unity/models/ghost.olean
 
 refinement: unity/models/refinement/resched_data_ref.olean unity/models/refinement/split.olean unity/models/refinement/split_merge.olean unity/models/refinement/reschedule.olean
 
