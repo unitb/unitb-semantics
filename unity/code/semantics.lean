@@ -1,5 +1,6 @@
 
 import unity.predicate
+import unity.temporal
 import unity.code.syntax
 import unity.code.instances
 import unity.code.lemmas
@@ -8,7 +9,7 @@ import unity.models.refinement.superposition
 namespace code.semantics
 
 section
-open code predicate
+open code predicate temporal
 
 parameters (σ : Type)
 -- def rel := σ → σ → Prop
@@ -177,17 +178,73 @@ open superposition
 
 def rel (l : option (machine_of.lbl)) : option (p.lbl) → Prop
   | (some e) := selects l e
-  | none     := l = none
+  | none     := is_control l ∨ l = none
 
 lemma ref_sim (ec : option (machine_of.lbl))
 : ⟦nondet.program.step_of machine_of ec⟧ ⟹
       ∃∃ (ea : {ea // rel ec ea}), ⟦nondet.program.step_of p (ea.val) on state.intl⟧ :=
-sorry
+begin
+  rw exists_action,
+  apply action_entails_action,
+  intros s s' H,
+  cases ec with pc,
+  { let x : {ea // rel _ p c Hcorr none ea},
+    { existsi none, unfold rel is_control, right, refl },
+    existsi x, unfold function.on_fun,
+    unfold machine_of nondet.program.step_of nondet.program.event
+           nondet.skip nondet.event.step_of
+           nondet.event.fine_sch nondet.event.coarse_sch
+           nondet.event.step  at H,
+    unfold nondet.program.step_of nondet.program.event
+           nondet.skip nondet.event.step_of
+           nondet.event.fine_sch nondet.event.coarse_sch
+           nondet.event.step,
+    apply exists_imp_exists' (take _, trivial) _ H, intro,
+    apply exists_imp_exists' (take _, trivial) _, intros _,
+    simp, intro, subst s, },
+  { destruct action_of pc,
+    { intros c Hact,
+      cases c with c Hc,
+      cases Hc with P Hc,
+      let x : {ea // rel _ p _ Hcorr (some pc) ea},
+      { existsi none, unfold rel is_control, left, apply P },
+      existsi x,
+      unfold function.on_fun nondet.program.step_of nondet.program.event
+             nondet.event.step_of,
+      unfold nondet.program.step_of nondet.program.event
+             nondet.event.step_of at H,
+      apply exists_imp_exists' (take _, trivial) _ H, intro,
+      apply exists_imp_exists' (take _, trivial) _, intros _,
+      intros H',
+      change _ = _,
+      unfold machine_of nondet.program.event' machine.event
+             nondet.event.step machine.step at H',
+      rw Hact at H',
+      have H : s'.intl = s.intl := H'.right,
+      rw [H], },
+    { intros e Hact,
+      cases e with e He,
+      let x : {ea // rel _ p _ Hcorr (some pc) ea},
+      { existsi (some e), apply He },
+      existsi x, unfold function.on_fun,
+      unfold machine_of nondet.program.step_of nondet.program.event
+             nondet.program.event' machine.event nondet.event.step_of
+             nondet.event.coarse_sch nondet.event.fine_sch
+             nondet.event.step at H,
+      cases H with Hc H, cases H with Hf H,
+      unfold machine.step at H,
+      rw Hact at H, unfold machine.step._match_1 machine.run_event at H,
+      rw Hc at He,
+      have Hen := Hcorr.enabled s.pc e He _ s.assertion,
+      exact ⟨Hen.left,Hen.right,H.right⟩, }, },
+end
 
 lemma ref_resched (ae : option (p.lbl))
 : evt_ref state.intl {ec // rel ec ae} machine_of (nondet.program.event p ae)
       (λ (ec : {ec // rel ec ae}), nondet.program.event machine_of (ec.val)) :=
-sorry
+begin
+  admit,
+end
 
 lemma code_refs_machine
 : refined state.intl p machine_of :=
