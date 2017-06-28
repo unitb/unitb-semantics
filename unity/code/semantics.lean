@@ -2,6 +2,8 @@
 import unity.predicate
 import unity.code.syntax
 import unity.code.instances
+import unity.code.lemmas
+import unity.models.refinement.superposition
 
 namespace code.semantics
 
@@ -171,5 +173,30 @@ def machine_of : nondet.program state :=
    end
  , event' := machine.event }
 
+open superposition
+
+def rel (l : option (machine_of.lbl)) : option (p.lbl) → Prop
+  | (some e) := selects l e
+  | none     := l = none
+
+lemma ref_sim (ec : option (machine_of.lbl))
+: ⟦nondet.program.step_of machine_of ec⟧ ⟹
+      ∃∃ (ea : {ea // rel ec ea}), ⟦nondet.program.step_of p (ea.val) on state.intl⟧ :=
+sorry
+
+lemma ref_resched (ae : option (p.lbl))
+: evt_ref state.intl {ec // rel ec ae} machine_of (nondet.program.event p ae)
+      (λ (ec : {ec // rel ec ae}), nondet.program.event machine_of (ec.val)) :=
+sorry
+
+lemma code_refs_machine
+: refined state.intl p machine_of :=
+{ sim_init := by { intros i, cases i, apply and.right, }
+, ref := rel
+, evt_sim := ref_sim
+, events := ref_resched }
+
+
 end
+
 end code.semantics
