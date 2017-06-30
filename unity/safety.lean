@@ -174,11 +174,9 @@ begin
   rw [not_or_iff_not_and_not,distrib_left_and],
   simp,
   intro h, right, revert h,
-  apply or.imp,
-  { apply and.imp_right,
-    apply and.right },
-  { apply and.imp_right,
-    apply and.left },
+  apply or.imp ; apply and.imp_right,
+  { begin [smt] by_cases ¬p₁ σ' end, },
+  { begin [smt] by_cases ¬p₁ σ' end },
 end
 
 lemma unless_disj' {p₀ q₀ p₁ q₁ : pred' σ}

@@ -108,8 +108,8 @@ lemma leads_to.nondet (s : program) {p q : pred' α}
 : leads_to s.nondet p q :=
 begin
   apply leads_to.subst _ s s.nondet _ _ h,
-  { intros p q, apply id },
-  { intros p q, apply id },
+  { intros p q H, apply H },
+  { intros p q H, apply H },
 end
 
 -- instance {α} [sched lbl] : system_sem (program lbl) :=

@@ -159,7 +159,7 @@ noncomputable def object : unity.target_mch (option ma.lbl) :=
 
 noncomputable def Ta' : stream object.σ :=
 let this : sched (option ma.lbl) :=
-by { apply scheduling.sched_option, apply hidden_state.ma_sched }
+by { apply scheduling.sched_option }
 in @fair_sched _ this _ object
 
 noncomputable def Ta : stream (unity.state (program α)) :=
