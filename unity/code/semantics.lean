@@ -3,6 +3,7 @@ import unity.predicate
 import unity.temporal
 import unity.code.syntax
 import unity.code.instances
+import unity.code.rules
 import unity.code.lemmas
 import unity.models.refinement.superposition
 
@@ -24,15 +25,6 @@ parameters (p : nondet.program σ)
 parameters {term : pred σ}
 parameters (c : code p.lbl p.first term)
 
-structure local_correctness : Prop :=
-  (enabled : ∀ (pc : option $ current c) l, selects pc l → assert_of pc ⟹ p.guard l)
-  (correct : ∀ (pc : option $ current c) l, selects pc l →
-       ∀ s s', assert_of pc s → p.step_of l s s' → next_assert pc s s')
-  (cond_true : ∀ (pc : option $ current c) (H : is_control pc),
-       ∀ s s', assert_of pc s → condition pc H s → next_assert pc s s')
-  (cond_false : ∀ (pc : option $ current c) (H : is_control pc),
-       ∀ s s', assert_of pc s → ¬ condition pc H s → next_assert pc s s')
-
 -- instance : scheduling.sched (control c ⊕ p.lbl) := _
 
 structure state :=
@@ -40,7 +32,7 @@ structure state :=
   (intl : σ)
   (assertion : assert_of pc intl)
 
-parameter Hcorr : local_correctness
+parameter Hcorr : local_correctness p c
 
 include Hcorr
 
@@ -97,10 +89,10 @@ begin
       cases l with l H, cases H with P H,
       rw -h,
       cases classical.em (condition (some e) P s.intl) with Hc Hnc,
-      { apply Hcorr.cond_true _ _ _ _ _ Hc,
+      { apply Hcorr.cond_true _ _ _ _ Hc,
         rw h,
         apply s.assertion, },
-      { apply Hcorr.cond_false _ _ _ _ _ Hnc,
+      { apply Hcorr.cond_false _ _ _ _ Hnc,
         rw h,
         apply s.assertion } },
     let ss' := state.mk (next s.intl s.pc) s.intl Hss',

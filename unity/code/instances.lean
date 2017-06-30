@@ -13,49 +13,49 @@ parameters {σ}
 
 def control_nodes : Π {p q : pred}, code lbl p q → ℕ
   | ._ ._ (code.skip _) := 0
-  | ._ ._ (code.action _ _ _) := 1
+  | ._ ._ (code.action _ _ _ _) := 1
   | ._ ._ (@code.seq ._ ._ p q r c₀ c₁) := control_nodes c₀ + control_nodes c₁
-  | ._ ._ (@code.if_then_else ._ ._ c pa pb q _ c₀ c₁) :=
+  | ._ ._ (@code.if_then_else ._ ._ c pa pb q _ _ c₀ c₁) :=
      control_nodes c₀ + control_nodes c₁ + 1
-  | ._ ._ (@code.while ._ ._ p inv q c b) :=
+  | ._ ._ (@code.while ._ ._ p inv q _ c b) :=
      control_nodes b + 1
 
 def to_fin : Π {p q : pred} {c : code lbl p q}, current c → fin (control_nodes c)
-  | ._ ._ ._ (current.action _ _ _) := ⟨0,zero_lt_one⟩
+  | ._ ._ ._ (current.action _ _ _ _) := ⟨0,zero_lt_one⟩
   | ._ ._ ._ (current.seq_left p q r c₀ c₁ pc) := fin.nest (to_fin pc)
   | ._ ._ ._ (current.seq_right p q r c₀ c₁ pc) := fin.shift (to_fin pc)
-  | ._ ._ ._ (current.if_then_else_cond p t pa pb q c₀ c₁) :=
+  | ._ ._ ._ (current.if_then_else_cond p t pa pb _ q c₀ c₁) :=
     (fin.max : fin (succ $ _ + _))
-  | ._ ._ ._ (current.if_then_else_left p t pa pb q c₀ c₁ pc) :=
+  | ._ ._ ._ (current.if_then_else_left p t pa pb q _ c₀ c₁ pc) :=
     (fin.nest $ fin.nest $ to_fin pc : fin (control_nodes c₀ + control_nodes c₁ + 1))
-  | ._ ._ ._ (current.if_then_else_right p t pa pb q c₀ c₁ pc) :=
+  | ._ ._ ._ (current.if_then_else_right p t pa pb q _ c₀ c₁ pc) :=
     (fin.nest $ fin.shift $ to_fin pc : fin (control_nodes c₀ + control_nodes c₁ + 1))
-  | ._ ._ ._ (current.while_cond p inv q w c) :=
+  | ._ ._ ._ (current.while_cond p inv q _ w c) :=
     (fin.max : fin (control_nodes c + 1))
-  | ._ ._ ._ (current.while_body p inv q w c pc) :=
+  | ._ ._ ._ (current.while_body p inv q _ w c pc) :=
     (fin.nest $ to_fin pc : fin (control_nodes c + 1))
 
 def from_fin : Π {p q} (c : code lbl p q), fin (control_nodes c) → current c
   | ._ ._ (code.skip _) ⟨_,P⟩ := by cases (nat.not_lt_zero _ P)
-  | ._ ._ (code.action p q l) _ := current.action p q l
+  | ._ ._ (code.action p q _ l) _ := current.action p q _ l
   | ._ ._ (@code.seq ._ ._ p q r c₀ c₁) m :=
     match fin.split m with
      | (sum.inl n) := seq_left  c₁ $ from_fin c₀ n
      | (sum.inr n) := seq_right c₀ $ from_fin c₁ n
     end
-  | ._ ._ (@code.if_then_else ._ ._ p pa pb q t c₀ c₁) n :=
+  | ._ ._ (@code.if_then_else ._ ._ p pa pb q ds t c₀ c₁) n :=
     match (fin.split n : fin (control_nodes c₀ + control_nodes c₁) ⊕ fin 1) with
      | (sum.inl n') :=
         match (fin.split n' : fin (control_nodes c₀) ⊕ fin (control_nodes c₁)) with
-         | (sum.inl n) := ite_left  _ _ c₁ $ from_fin c₀ n
-         | (sum.inr n) := ite_right _ _ c₀ $ from_fin c₁ n
+         | (sum.inl n) := ite_left  _ _ _ c₁ $ from_fin c₀ n
+         | (sum.inr n) := ite_right _ _ _ c₀ $ from_fin c₁ n
         end
-     | (sum.inr _) := ite_cond p t c₀ c₁
+     | (sum.inr _) := ite_cond p t ds c₀ c₁
     end
-  | ._ ._ (@code.while ._ ._ p inv q t b) n :=
+  | ._ ._ (@code.while ._ ._ p inv q _ t b) n :=
     match (fin.split n : fin (control_nodes b) ⊕ fin 1) with
-     | (sum.inl n') := while_body q t $ from_fin b n'
-     | (sum.inr _) := while_cond q t b
+     | (sum.inl n') := while_body q _ t $ from_fin b n'
+     | (sum.inr _) := while_cond q _ t b
     end
 
 section g_over_constr
@@ -82,14 +82,15 @@ by { unfold from_fin, simp [Hk], refl }
 
 lemma from_fin_eq_ite_left
   {p t pa pb q : pred}
+  {ds : set lbl}
   {c₀ : code lbl pa q} {c₁ : code lbl pb q}
   {n  : fin (control_nodes c₀ + control_nodes c₁ + 1)}
   {k  : fin (control_nodes c₀ + control_nodes c₁)}
   {k' : fin (control_nodes c₀)}
   (Hk : fin.split n = sum.inl k)
   (Hk' : fin.split k = sum.inl k')
-:   from_fin (if_then_else p t c₀ c₁) n
-  = ite_left p t c₁ (from_fin c₀ k') :=
+:   from_fin (if_then_else p ds t c₀ c₁) n
+  = ite_left p t ds c₁ (from_fin c₀ k') :=
 begin
   unfold from_fin, simp [Hk],
   unfold from_fin._match_2, simp [Hk'],
@@ -98,14 +99,15 @@ end
 
 lemma from_fin_eq_ite_right
   {p t pa pb q : pred}
+  {ds : set lbl}
   {c₀ : code lbl pa q} {c₁ : code lbl pb q}
   {n  : fin (control_nodes c₀ + control_nodes c₁ + 1)}
   {k  : fin (control_nodes c₀ + control_nodes c₁)}
   {k' : fin (control_nodes c₁)}
   (Hk : fin.split n = sum.inl k)
   (Hk' : fin.split k = sum.inr k')
-:   from_fin (if_then_else p t c₀ c₁) n
-  = ite_right p t c₀ (from_fin c₁ k') :=
+:   from_fin (if_then_else p ds t c₀ c₁) n
+  = ite_right p t ds c₀ (from_fin c₁ k') :=
 begin
   unfold from_fin, simp [Hk],
   unfold from_fin._match_2, simp [Hk'],
@@ -114,32 +116,35 @@ end
 
 lemma from_fin_eq_ite_cond
   {p t pa pb q : pred}
+  {ds : set lbl}
   {c₀ : code lbl pa q} {c₁ : code lbl pb q}
   {n  : fin (control_nodes c₀ + control_nodes c₁ + 1)}
   {k  : fin 1}
   (Hk : fin.split n = sum.inr k)
-:   from_fin (if_then_else p t c₀ c₁) n
-  = ite_cond p t c₀ c₁ :=
+:   from_fin (if_then_else p ds t c₀ c₁) n
+  = ite_cond p t ds c₀ c₁ :=
 by { unfold from_fin, simp [Hk], refl }
 
 lemma from_fin_eq_while_body
   {p t inv q : pred}
+  {ds : set lbl}
   {c₀ : code lbl p inv}
   {n  : fin (control_nodes c₀ + 1)}
   {k  : fin $ control_nodes c₀}
   (Hk : fin.split n = sum.inl k)
-:   from_fin (while q t c₀) n
-  = while_body q t (from_fin c₀ k) :=
+:   from_fin (while q ds t c₀) n
+  = while_body q ds t (from_fin c₀ k) :=
 by { unfold from_fin, simp [Hk], refl }
 
 lemma from_fin_eq_while_cond
   {p t inv q : pred}
+  {ds : set lbl}
   {c₀ : code lbl p inv}
   {n  : fin (control_nodes c₀ + 1)}
   {k  : fin 1}
   (Hk : fin.split n = sum.inr k)
-:   from_fin (while q t c₀) n
-  = while_cond q t c₀  :=
+:   from_fin (while q ds t c₀) n
+  = while_cond q ds t c₀  :=
 by { unfold from_fin, simp [Hk], refl }
 
 end g_over_constr

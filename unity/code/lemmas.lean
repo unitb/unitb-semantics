@@ -1,5 +1,6 @@
 import unity.predicate
 import unity.code.syntax
+import unity.code.rules
 
 universe variables u v
 
@@ -14,10 +15,8 @@ private def pred := σ → Prop
 
 parameters {σ}
 
-@[reducible]
-private def code := @code σ lbl
 
-lemma assert_of_first {p q} {c : code p q}
+lemma assert_of_first {p q : pred} {c : code lbl p q}
 : assert_of (first c) = p :=
 begin
   induction c
@@ -44,7 +43,7 @@ begin
       rw ih_1 }, }
 end
 
-lemma first_eq_none_imp_eq {p q : pred} {c : code p q}
+lemma first_eq_none_imp_eq {p q : pred} {c : code lbl p q}
 : first c = none → p = q :=
 begin
   induction c ; unfold first,
@@ -61,7 +60,7 @@ end
 
 local attribute [instance] classical.prop_decidable
 
-lemma assert_of_next {p q : pred} {c : code p q} (pc : option (current c)) (s : σ)
+lemma assert_of_next {p q : pred} {c : code lbl p q} (pc : option (current c)) (s : σ)
 : assert_of (next s pc) = next_assert pc s :=
 begin
   cases pc with pc,
@@ -140,3 +139,133 @@ begin
 end
 
 end
+
+section local_correctness
+
+local attribute [instance] classical.prop_decidable
+
+parameters (σ : Type)
+
+parameters (F : nondet.program σ)
+
+@[reducible]
+private def lbl := F.lbl
+
+@[reducible]
+private def pred := σ → Prop
+
+parameters {σ}
+
+variables {p q : pred}
+variable (c : code lbl p q)
+
+structure local_correctness (pc : option $ current c) : Prop :=
+  (enabled : ∀ l, selects pc l → assert_of pc ⟹ F.guard (some l))
+  (correct : ∀ l, selects pc l →
+       ∀ s s', assert_of pc s → F.step_of (some l) s s' → next_assert pc s s')
+  (cond_true : ∀ (H : is_control pc),
+       ∀ s, assert_of pc s → condition pc H s → next_assert pc s s)
+  (cond_false : ∀ (H : is_control pc),
+       ∀ s, assert_of pc s → ¬ condition pc H s → next_assert pc s s)
+
+lemma dd {p : pred} (pc : option (current (@code.skip _ lbl p)))
+: pc = none :=
+begin
+  cases pc with pc,
+  { refl },
+  { cases pc, }
+end
+
+lemma d {l l' : lbl} {p q : pred} {ds : set lbl}
+  (pc : option (current $ code.action p q ds l))
+  (H : selects pc l')
+: l' = l :=
+begin
+  cases pc with pc,
+  { cases H },
+  { cases pc, apply H, },
+end
+
+lemma assert_of_action {l : lbl} {p q : pred} {ds : set lbl}
+  (pc : current $ code.action p q ds l)
+: assert_of (some pc) = p :=
+begin
+  cases pc with pc, refl,
+end
+
+lemma next_assert_action {l : lbl} {p q : pred} {ds : set lbl}
+  (pc : current $ code.action p q ds l)
+  (s : σ)
+: next_assert (some pc) s = q :=
+begin
+  cases pc with pc, refl,
+end
+
+section
+
+variables H : correct F c
+include H
+
+lemma enabled_of_correct
+: ∀ (pc : current c) l, selects (some pc) l → assert_of (some pc) ⟹ F.guard (some l) :=
+sorry
+
+lemma correct_of_correct
+: ∀ (pc : current c) l, selects (some pc) l →
+       ∀ s s', assert_of (some pc) s → F.step_of (some l) s s' → next_assert (some pc) s s' :=
+sorry
+
+lemma cond_true_of_correct
+: ∀ (pc : current c) (H : is_control $ some pc),
+       ∀ s, assert_of (some pc) s → condition (some pc) H s → next_assert (some pc) s s :=
+sorry
+
+lemma cond_false_of_correct
+: ∀ (pc : current c) (H : is_control (some pc)),
+       ∀ s, assert_of (some pc) s → ¬ condition (some pc) H s → next_assert (some pc) s s :=
+begin
+  induction H
+  ; intros pc H s Hs Hc,
+  { cases pc, },
+  { cases pc, cases H, },
+  { cases pc with _ _ _ xx xx xx xx xx xx pc₀,
+    { unfold next_assert next_assert',
+      apply ih_1 _ H s Hs Hc },
+    { unfold next_assert next_assert',
+      apply ih_2 _ H s Hs Hc }, },
+  { cases pc
+    ; unfold next_assert next_assert',
+    { unfold condition condition' at Hc,
+      rw if_neg Hc,
+      apply a_3 _ ⟨Hs,Hc⟩, },
+    { unfold is_control is_control' at H,
+      apply ih_1 _ H s Hs Hc, },
+    { unfold is_control is_control' at H,
+      apply ih_2 _ H s Hs Hc, } },
+  { admit },
+end
+
+lemma local_correctness_none
+: local_correctness c none :=
+begin
+  apply local_correctness.mk,
+  { intros l Hl, cases Hl },
+  { intros l Hl, cases Hl },
+  { intros H', unfold is_control at H', cases H', },
+  { intros H', unfold is_control at H', cases H', },
+end
+
+example (pc : option $ current c) : local_correctness c pc :=
+begin
+  cases pc with pc,
+  { apply local_correctness_none },
+  apply local_correctness.mk,
+  { apply enabled_of_correct },
+  { apply correct_of_correct },
+  { apply cond_true_of_correct },
+  { apply cond_false_of_correct },
+end
+
+end
+
+end local_correctness
