@@ -32,7 +32,7 @@ structure state :=
   (intl : σ)
   (assertion : assert_of pc intl)
 
-parameter Hcorr : local_correctness p c
+parameter Hcorr : ∀ pc, local_correctness p c pc
 
 include Hcorr
 
@@ -47,7 +47,7 @@ include h₁
 
 theorem evt_guard
 : p.guard e s.intl :=
-Hcorr.enabled s.pc e h₀ s.intl s.assertion
+(Hcorr s.pc).enabled e h₀ s.intl s.assertion
 
 theorem evt_coarse_sch
 : p.coarse_sch_of e s.intl :=
@@ -89,10 +89,10 @@ begin
       cases l with l H, cases H with P H,
       rw -h,
       cases classical.em (condition (some e) P s.intl) with Hc Hnc,
-      { apply Hcorr.cond_true _ _ _ _ Hc,
+      { apply (Hcorr $ some e).cond_true _ _ _ Hc,
         rw h,
         apply s.assertion, },
-      { apply Hcorr.cond_false _ _ _ _ Hnc,
+      { apply (Hcorr $ some e).cond_false _ _ _ Hnc,
         rw h,
         apply s.assertion } },
     let ss' := state.mk (next s.intl s.pc) s.intl Hss',
@@ -109,7 +109,7 @@ begin
     cases (p.event l).fis s.intl CS FS with s' H,
     have Hss' : assert_of (next s.intl s.pc) s',
     { rw [assert_of_next],
-      apply Hcorr.correct _ _ hl s.intl _ _ ⟨CS,FS,H⟩,
+      apply (Hcorr _).correct _ hl s.intl _ _ ⟨CS,FS,H⟩,
       apply s.assertion },
     let ss' := state.mk (next s.intl s.pc) s' Hss',
     existsi ss',
@@ -227,7 +227,7 @@ begin
       unfold machine.step at H,
       rw Hact at H, unfold machine.step._match_1 machine.run_event at H,
       rw Hc at He,
-      have Hen := Hcorr.enabled s.pc e He _ s.assertion,
+      have Hen := (Hcorr s.pc).enabled e He _ s.assertion,
       exact ⟨Hen.left,Hen.right,H.right⟩, }, },
 end
 

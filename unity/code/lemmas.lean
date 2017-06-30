@@ -258,12 +258,12 @@ end
 example (pc : option $ current c) : local_correctness c pc :=
 begin
   cases pc with pc,
-  { apply local_correctness_none },
+  { apply local_correctness_none _ H },
   apply local_correctness.mk,
-  { apply enabled_of_correct },
-  { apply correct_of_correct },
-  { apply cond_true_of_correct },
-  { apply cond_false_of_correct },
+  { apply enabled_of_correct _ H },
+  { apply correct_of_correct _ H },
+  { apply cond_true_of_correct _ H },
+  { apply cond_false_of_correct _ H },
 end
 
 end
