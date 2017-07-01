@@ -5,7 +5,7 @@ import util.data.minimum
 
 import unity.logic
 import unity.scheduling.basic
-import unity.models.simple
+import unitb.models.simple
 
 namespace scheduling.finite
 

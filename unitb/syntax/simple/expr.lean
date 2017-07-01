@@ -1,7 +1,7 @@
 
 import unity.logic
 
-import unity.models.simple
+import unitb.models.simple
 
 import util.data.functor
 

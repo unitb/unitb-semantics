@@ -4,7 +4,7 @@ import data.set
 import unity.temporal
 import unity.refinement
 import unity.scheduling
-import unity.models.nondet
+import unitb.models.nondet
 
 import util.cast
 

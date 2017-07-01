@@ -1,7 +1,7 @@
 
 import data.set
 
-import unity.syntax.simple.expr
+import unitb.syntax.simple.expr
 
 import util.data.traversable
 

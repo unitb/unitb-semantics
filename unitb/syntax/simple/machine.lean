@@ -1,8 +1,8 @@
 
 import unity.logic
 
-import unity.models.simple
-import unity.syntax.simple.expr
+import unitb.models.simple
+import unitb.syntax.simple.expr
 
 import util.data.functor
 

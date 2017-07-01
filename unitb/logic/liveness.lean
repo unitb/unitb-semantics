@@ -1,9 +1,9 @@
 
 import data.stream
 
-import unity.predicate
-import unity.temporal
-import unity.safety
+import unitb.predicate
+import unitb.semantics.temporal
+import unitb.logic.safety
 
 import util.logic
 

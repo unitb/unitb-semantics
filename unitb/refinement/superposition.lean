@@ -1,5 +1,5 @@
 
-import unity.models.nondet
+import unitb.models.nondet
 import unity.refinement
 
 namespace superposition

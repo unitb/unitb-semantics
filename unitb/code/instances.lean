@@ -1,5 +1,5 @@
 
-import unity.code.syntax
+import unitb.code.syntax
 
 section finite
 

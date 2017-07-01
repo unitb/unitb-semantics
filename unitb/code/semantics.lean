@@ -1,11 +1,11 @@
 
 import unity.predicate
-import unity.temporal
+import unitb.semantics.temporal
 import unity.code.syntax
 import unity.code.instances
 import unity.code.rules
 import unity.code.lemmas
-import unity.models.refinement.superposition
+import unitb.refinement.superposition
 
 namespace code.semantics
 

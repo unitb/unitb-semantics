@@ -6,7 +6,7 @@ import util.data.perm
 import util.data.nat
 import util.data.minimum
 
-import unity.models.simple
+import unitb.models.simple
 import unity.scheduling.basic
 
 namespace scheduling.infinite

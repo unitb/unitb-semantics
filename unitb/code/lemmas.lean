@@ -1,6 +1,6 @@
-import unity.predicate
-import unity.code.syntax
-import unity.code.rules
+import unitb.predicate
+import unitb.code.syntax
+import unitb.code.rules
 
 universe variables u v
 

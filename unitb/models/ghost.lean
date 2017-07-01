@@ -3,7 +3,7 @@ import unity.logic
 import unity.scheduling
 import unity.temporal
 
-import unity.models.nondet
+import unitb.models.nondet
 
 import util.logic
 
