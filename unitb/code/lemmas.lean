@@ -262,28 +262,36 @@ lemma cond_true_of_correct
        ∀ s, assert_of (some pc) s → condition (some pc) H s → next_assert (some pc) s s :=
 begin
   induction H,
+  case correct.skip p'
   { intros pc l Hpc, cases pc, },
+  case correct.action p' q' l ds Hgrd Htrip
   { intros pc l' s, cases pc with pc, cases l' },
+  case correct.seq p' q' r' c₀ c₁ Hc₀ Hc₁
   { intros pc l',
     cases pc with pc pc
     ; unfold selects assert_of selects' assert_of'
     ; intros Hpc,
     { apply ih_1 _ _ Hpc },
     { apply ih_2 _ _ Hpc }, },
+  case correct.ite p' t pa pb q' ds c₀ c₁ Hc₀ Hc₁ Hpa Hpb
   { intros pc,
     cases pc with pc pc
     ; unfold condition assert_of condition' assert_of' next_assert next_assert'
              is_control is_control'
     ; intros Hpc s Hp Hc,
-    { rw if_pos Hc, apply a_2 _ ⟨Hp,Hc⟩, },
+    case current.if_then_else_cond
+    { rw if_pos Hc, apply Hpa _ ⟨Hp,Hc⟩, },
+    case current.if_then_else_left
     { apply ih_1 _ _ _ Hp Hc, },
+    case current.if_then_else_right
     { apply ih_2 _ _ _ Hp Hc, }, },
+  case correct.while t p' inv q' ds b c Htp Hntq Hcvr
   { intros pc,
     cases pc with pc pc
     ; unfold condition assert_of condition' assert_of' next_assert next_assert'
              is_control is_control'
     ; intros Hpc s Hp Hc,
-    { rw if_pos Hc, apply a_1 _ ⟨Hp,Hc⟩, },
+    { rw if_pos Hc, apply Htp _ ⟨Hp,Hc⟩, },
     { apply ih_1 _ _ _ Hp Hc, }, },
 end
 
@@ -292,28 +300,36 @@ lemma cond_false_of_correct
        ∀ s, assert_of (some pc) s → ¬ condition (some pc) H s → next_assert (some pc) s s :=
 begin
   induction H,
+  case correct.skip p'
   { intros pc l Hpc, cases pc, },
+  case correct.action p' q' l ds Hgrd Htrip
   { intros pc l' s, cases pc with pc, cases l' },
+  case correct.seq p' q' r' c₀ c₁ Hc₀ Hc₁
   { intros pc l',
     cases pc with pc pc
     ; unfold selects assert_of selects' assert_of'
     ; intros Hpc,
     { apply ih_1 _ _ Hpc },
     { apply ih_2 _ _ Hpc }, },
+  case correct.ite p' t pa pb q' ds c₀ c₁ Hc₀ Hc₁ Hpa Hpb
   { intros pc,
     cases pc with pc pc
     ; unfold condition assert_of condition' assert_of' next_assert next_assert'
              is_control is_control'
     ; intros Hpc s Hp Hc,
-    { rw if_neg Hc, apply a_3 _ ⟨Hp,Hc⟩, },
+    case current.if_then_else_cond
+    { rw if_neg Hc, apply Hpb _ ⟨Hp,Hc⟩, },
+    case current.if_then_else_left
     { apply ih_1 _ _ _ Hp Hc, },
+    case current.if_then_else_right
     { apply ih_2 _ _ _ Hp Hc, }, },
+  case correct.while t p' inv q' ds b c Htp Hntq Hcvr
   { intros pc,
     cases pc with pc pc
     ; unfold condition assert_of condition' assert_of' next_assert next_assert'
              is_control is_control'
     ; intros Hpc s Hp Hc,
-    { rw if_neg Hc, apply a_2 _ ⟨Hp,Hc⟩, },
+    { rw if_neg Hc, apply Hntq _ ⟨Hp,Hc⟩, },
     { apply ih_1 _ _ _ Hp Hc, }, },
 end
 
