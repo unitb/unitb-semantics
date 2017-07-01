@@ -32,7 +32,7 @@ structure state :=
   (intl : σ)
   (assertion : assert_of pc intl)
 
-parameter Hcorr : ∀ pc, local_correctness p c pc
+parameter Hcorr : ∀ pc, state_correctness p c pc
 
 include Hcorr
 

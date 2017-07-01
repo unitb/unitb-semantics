@@ -53,6 +53,6 @@ inductive correct : ∀ {p q : pred}, code lbl p q → Prop
       → (inv && t ⟹ p)
       → (inv && -t ⟹ q)
       → covered b = univ
-      → correct (while p ds t b)
+      → correct (while q ds t b)
 
 end

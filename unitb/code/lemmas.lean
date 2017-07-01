@@ -159,7 +159,7 @@ parameters {σ}
 variables {p q : pred}
 variable (c : code lbl p q)
 
-structure local_correctness (pc : option $ current c) : Prop :=
+structure state_correctness (pc : option $ current c) : Prop :=
   (enabled : ∀ l, selects pc l → assert_of pc ⟹ F.guard (some l))
   (correct : ∀ l, selects pc l →
        ∀ s s', assert_of pc s → F.step_of (some l) s s' → next_assert pc s s')
@@ -168,15 +168,7 @@ structure local_correctness (pc : option $ current c) : Prop :=
   (cond_false : ∀ (H : is_control pc),
        ∀ s, assert_of pc s → ¬ condition pc H s → next_assert pc s s)
 
-lemma dd {p : pred} (pc : option (current (@code.skip _ lbl p)))
-: pc = none :=
-begin
-  cases pc with pc,
-  { refl },
-  { cases pc, }
-end
-
-lemma d {l l' : lbl} {p q : pred} {ds : set lbl}
+lemma selects_action_imp_eq {l l' : lbl} {p q : pred} {ds : set lbl}
   (pc : option (current $ code.action p q ds l))
   (H : selects pc l')
 : l' = l :=
@@ -208,58 +200,139 @@ include H
 
 lemma enabled_of_correct
 : ∀ (pc : current c) l, selects (some pc) l → assert_of (some pc) ⟹ F.guard (some l) :=
-sorry
+begin
+  induction H,
+  { intros pc l Hpc, cases pc, },
+  { intros pc l' Hpc, cases pc with pc,
+    have Heq_l := selects_action_imp_eq _ Hpc, subst l',
+    unfold assert_of assert_of', apply a },
+  { intros pc l',
+    cases pc with pc pc
+    ; unfold selects assert_of selects' assert_of'
+    ; intros Hpc,
+    { apply ih_1 _ _ Hpc },
+    { apply ih_2 _ _ Hpc }, },
+  { intros pc l',
+    cases pc with pc pc
+    ; unfold selects assert_of selects' assert_of'
+    ; intros Hpc,
+    { cases Hpc },
+    { apply ih_1 _ _ Hpc },
+    { apply ih_2 _ _ Hpc }, },
+  { intros pc l',
+    cases pc with pc pc
+    ; unfold selects assert_of selects' assert_of'
+    ; intros Hpc,
+    { cases Hpc },
+    { apply ih_1 _ _ Hpc }, },
+end
 
 lemma correct_of_correct
 : ∀ (pc : current c) l, selects (some pc) l →
        ∀ s s', assert_of (some pc) s → F.step_of (some l) s s' → next_assert (some pc) s s' :=
-sorry
+begin
+  induction H,
+  { intros pc l Hpc, cases pc, },
+  { intros pc l' Hpc, cases pc with pc,
+    have Heq_l := selects_action_imp_eq _ Hpc, subst l',
+    unfold assert_of assert_of', apply a_1 },
+  { intros pc l',
+    cases pc with pc pc
+    ; unfold selects assert_of selects' assert_of'
+    ; intros Hpc,
+    { apply ih_1 _ _ Hpc },
+    { apply ih_2 _ _ Hpc }, },
+  { intros pc l',
+    cases pc with pc pc
+    ; unfold selects assert_of selects' assert_of'
+    ; intros Hpc,
+    { cases Hpc },
+    { apply ih_1 _ _ Hpc },
+    { apply ih_2 _ _ Hpc }, },
+  { intros pc l',
+    cases pc with pc pc
+    ; unfold selects assert_of selects' assert_of'
+    ; intros Hpc,
+    { cases Hpc },
+    { apply ih_1 _ _ Hpc }, },
+end
 
 lemma cond_true_of_correct
 : ∀ (pc : current c) (H : is_control $ some pc),
        ∀ s, assert_of (some pc) s → condition (some pc) H s → next_assert (some pc) s s :=
-sorry
+begin
+  induction H,
+  { intros pc l Hpc, cases pc, },
+  { intros pc l' s, cases pc with pc, cases l' },
+  { intros pc l',
+    cases pc with pc pc
+    ; unfold selects assert_of selects' assert_of'
+    ; intros Hpc,
+    { apply ih_1 _ _ Hpc },
+    { apply ih_2 _ _ Hpc }, },
+  { intros pc,
+    cases pc with pc pc
+    ; unfold condition assert_of condition' assert_of' next_assert next_assert'
+             is_control is_control'
+    ; intros Hpc s Hp Hc,
+    { rw if_pos Hc, apply a_2 _ ⟨Hp,Hc⟩, },
+    { apply ih_1 _ _ _ Hp Hc, },
+    { apply ih_2 _ _ _ Hp Hc, }, },
+  { intros pc,
+    cases pc with pc pc
+    ; unfold condition assert_of condition' assert_of' next_assert next_assert'
+             is_control is_control'
+    ; intros Hpc s Hp Hc,
+    { rw if_pos Hc, apply a_1 _ ⟨Hp,Hc⟩, },
+    { apply ih_1 _ _ _ Hp Hc, }, },
+end
 
 lemma cond_false_of_correct
 : ∀ (pc : current c) (H : is_control (some pc)),
        ∀ s, assert_of (some pc) s → ¬ condition (some pc) H s → next_assert (some pc) s s :=
 begin
-  induction H
-  ; intros pc H s Hs Hc,
-  { cases pc, },
-  { cases pc, cases H, },
-  { cases pc with _ _ _ xx xx xx xx xx xx pc₀,
-    { unfold next_assert next_assert',
-      apply ih_1 _ H s Hs Hc },
-    { unfold next_assert next_assert',
-      apply ih_2 _ H s Hs Hc }, },
-  { cases pc
-    ; unfold next_assert next_assert',
-    { unfold condition condition' at Hc,
-      rw if_neg Hc,
-      apply a_3 _ ⟨Hs,Hc⟩, },
-    { unfold is_control is_control' at H,
-      apply ih_1 _ H s Hs Hc, },
-    { unfold is_control is_control' at H,
-      apply ih_2 _ H s Hs Hc, } },
-  { admit },
+  induction H,
+  { intros pc l Hpc, cases pc, },
+  { intros pc l' s, cases pc with pc, cases l' },
+  { intros pc l',
+    cases pc with pc pc
+    ; unfold selects assert_of selects' assert_of'
+    ; intros Hpc,
+    { apply ih_1 _ _ Hpc },
+    { apply ih_2 _ _ Hpc }, },
+  { intros pc,
+    cases pc with pc pc
+    ; unfold condition assert_of condition' assert_of' next_assert next_assert'
+             is_control is_control'
+    ; intros Hpc s Hp Hc,
+    { rw if_neg Hc, apply a_3 _ ⟨Hp,Hc⟩, },
+    { apply ih_1 _ _ _ Hp Hc, },
+    { apply ih_2 _ _ _ Hp Hc, }, },
+  { intros pc,
+    cases pc with pc pc
+    ; unfold condition assert_of condition' assert_of' next_assert next_assert'
+             is_control is_control'
+    ; intros Hpc s Hp Hc,
+    { rw if_neg Hc, apply a_2 _ ⟨Hp,Hc⟩, },
+    { apply ih_1 _ _ _ Hp Hc, }, },
 end
 
-lemma local_correctness_none
-: local_correctness c none :=
+lemma state_correctness_none
+: state_correctness c none :=
 begin
-  apply local_correctness.mk,
+  apply state_correctness.mk,
   { intros l Hl, cases Hl },
   { intros l Hl, cases Hl },
   { intros H', unfold is_control at H', cases H', },
   { intros H', unfold is_control at H', cases H', },
 end
 
-example (pc : option $ current c) : local_correctness c pc :=
+lemma syntactic_imp_state_correctness (pc : option $ current c)
+: state_correctness c pc :=
 begin
   cases pc with pc,
-  { apply local_correctness_none _ H },
-  apply local_correctness.mk,
+  { apply state_correctness_none _ H },
+  apply state_correctness.mk,
   { apply enabled_of_correct _ H },
   { apply correct_of_correct _ H },
   { apply cond_true_of_correct _ H },
