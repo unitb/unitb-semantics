@@ -9,15 +9,15 @@ all:
 
 root: logic models refinement syntax util/data/array.olean code
 
-logic: unity/logic.olean unity/refinement.olean
+logic: unitb/logic/liveness.olean unitb/refinement/basic.olean
 
-code: unity/code/syntax.olean unity/code/semantics.olean
+code: unitb/code/syntax.olean unitb/code/semantics.olean
 
-models: unity/models/nondet.olean unity/models/det.olean unity/models/simple.olean unity/models/sched.olean unity/models/ghost.olean
+models: unitb/models/nondet.olean unitb/models/det.olean unitb/models/simple.olean unitb/models/sched.olean unitb/models/ghost.olean
 
-refinement: unity/models/refinement/resched_data_ref.olean unity/models/refinement/split.olean unity/models/refinement/split_merge.olean unity/models/refinement/reschedule.olean
+refinement: unitb/refinement/resched_data_ref.olean unitb/refinement/split.olean unitb/refinement/split_merge.olean unitb/refinement/reschedule.olean
 
-syntax: unity/syntax/exists.olean unity/syntax/simple/machine.olean
+syntax: unitb/syntax/exists.olean unitb/syntax/simple/machine.olean
 
 %.olean: %.lean $(shell lean $< --deps)
 	LEAN_PATH=$(LEAN_PATH) lean $(LEAN_OPT) $<
