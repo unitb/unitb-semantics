@@ -10,7 +10,11 @@ namespace nondet
 open predicate
 open unitb
 
-variables {α : Type}
+variables α : Type
+
+def pred := α → Prop
+
+variables {α}
 
 structure evt_ref (mc : program α) (ea ec : event α) : Prop :=
   (sim : ⟦ ec.step_of ⟧ ⟹ ⟦ ea.step_of ⟧)

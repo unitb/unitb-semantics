@@ -21,21 +21,26 @@ lemma assert_of_first {p q : pred} {c : code lbl p q}
 begin
   induction c
   ; try { refl },
+  case code.seq  p' q' r' c₀ c₁
   { unfold first,
-    destruct first a,
+    destruct first c₀,
+    case none
     { intro h,
       simp [h],
-      destruct first a_1,
+      destruct first c₁,
+      case none
       { intro h',
         simp [h'], unfold assert_of,
         simp [h'] at ih_2, unfold assert_of at ih_2,
         simp [h] at ih_1, unfold assert_of at ih_1,
-        subst r, subst q_1 },
+        subst r', subst q' },
+      case some
       { intros x h', simp [h'],
         unfold assert_of assert_of',
         rw h at ih_1, rw h' at ih_2,
         unfold assert_of at ih_1 ih_2,
-        subst p_1, rw ih_2, } },
+        subst p', rw ih_2, } },
+    case some
     { intros x h,
       simp [h],
       unfold assert_of assert_of',
@@ -46,16 +51,19 @@ end
 lemma first_eq_none_imp_eq {p q : pred} {c : code lbl p q}
 : first c = none → p = q :=
 begin
-  induction c ; unfold first,
+  induction c
+  ; unfold first
+  ; try { contradiction },
+  case code.skip
   { simp },
-  { contradiction, },
-  { destruct first a,
+  case code.seq p' q' r' c₀ c₁
+  { destruct first c₀,
+    case none
     { intro h', simp [h'],
       intro h'', rw [ih_1 h',ih_2 h''], },
+    case some
     { intros pc h,
       simp [h], contradiction }, },
-  { contradiction },
-  { contradiction },
 end
 
 local attribute [instance] classical.prop_decidable
@@ -69,26 +77,33 @@ begin
   induction pc
   ; try { refl }
   ; unfold next' next_assert',
+  case current.seq_left
   { rw -ih_1,
     cases next' s a,
-    destruct first c₁,
-    { intros h₀,
-      simp [h₀],
-      unfold assert_of,
-      cases c₁ ; try { refl }
-      ; unfold first at h₀
-      ; try { contradiction },
-      { simp at h₀,
-        simp [first_eq_none_imp_eq h₀.left,first_eq_none_imp_eq  h₀.right] }, },
-    { intros pc h₀,
-      simp,
-      rw [h₀,fmap_some],
-      unfold assert_of assert_of',
-      change assert_of (some pc) = _,
-      rw [-h₀,assert_of_first] },
+    case none
+    { destruct first c₁,
+      case none
+      { intros h₀,
+        simp [h₀],
+        unfold assert_of,
+        cases c₁ ; try { refl }
+        ; unfold first at h₀
+        ; try { contradiction },
+        { simp at h₀,
+          simp [first_eq_none_imp_eq h₀.left,first_eq_none_imp_eq  h₀.right] }, },
+      case some
+      { intros pc h₀,
+        simp,
+        rw [h₀,fmap_some],
+        unfold assert_of assert_of',
+        change assert_of (some pc) = _,
+        rw [-h₀,assert_of_first] } },
+    case some
     { simp, refl } },
+  case current.seq_right
   { rw -ih_1,
     cases next' s a ; refl },
+  case current.if_then_else_cond
   { cases classical.em (t s) with h h,
     { rw [if_pos h,if_pos h],
       destruct first c₀,
@@ -107,14 +122,17 @@ begin
         unfold assert_of assert_of',
         change assert_of (some pc) = _,
         rw [-h,assert_of_first], }, }, },
+  case current.if_then_else_left
   { rw -ih_1, clear ih_1,
     cases next' s a with pc ; simp,
     { refl },
     { unfold assert_of assert_of', refl }, },
+  case current.if_then_else_right
   { rw -ih_1, clear ih_1,
     cases next' s a with pc ; simp,
     { refl },
     { unfold assert_of assert_of', refl }, },
+  case current.while_cond
   { cases classical.em (w s) with h h ;
     destruct first c_1,
     { intro h',
@@ -130,6 +148,7 @@ begin
       rw [if_neg h,if_neg h], refl },
     { intros pc h',
       rw [if_neg h,if_neg h], refl }, },
+  case current.while_body
   { rw -ih_1, clear ih_1,
     destruct next' s a,
     { intros h',

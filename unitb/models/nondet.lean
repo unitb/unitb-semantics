@@ -15,7 +15,7 @@ open predicate
 parameter α : Type
 
 @[reducible]
-def pred := α → Prop
+private def pred := α → Prop
 
 structure event : Type :=
   (coarse_sch : pred)

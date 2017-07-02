@@ -10,7 +10,7 @@ import unitb.refinement.superposition
 namespace code.semantics
 
 section
-open code predicate temporal
+open code predicate temporal nondet
 
 parameters (σ : Type)
 -- def rel := σ → σ → Prop
@@ -180,6 +180,7 @@ begin
   apply action_entails_action,
   intros s s' H,
   cases ec with pc,
+  case none
   { let x : {ea // rel _ p c Hcorr none ea},
     { existsi none, unfold rel is_control, right, refl },
     existsi x, unfold function.on_fun,
@@ -194,7 +195,9 @@ begin
     apply exists_imp_exists' (take _, trivial) _ H, intro,
     apply exists_imp_exists' (take _, trivial) _, intros _,
     simp, intro, subst s, },
+  case some
   { destruct action_of pc,
+    case sum.inl
     { intros c Hact,
       cases c with c Hc,
       cases Hc with P Hc,
@@ -214,6 +217,7 @@ begin
       rw Hact at H',
       have H : s'.intl = s.intl := H'.right,
       rw [H], },
+    case sum.inr
     { intros e Hact,
       cases e with e He,
       let x : {ea // rel _ p _ Hcorr (some pc) ea},
@@ -231,12 +235,52 @@ begin
       exact ⟨Hen.left,Hen.right,H.right⟩, }, },
 end
 
-lemma ref_resched (ae : option (p.lbl))
-: evt_ref state.intl {ec // rel ec ae} machine_of (nondet.program.event p ae)
-      (λ (ec : {ec // rel ec ae}), nondet.program.event machine_of (ec.val)) :=
-begin
-  admit,
-end
+section ref_resched
+
+parameter ea : option p.lbl
+
+variable ec : { ec // rel ec ea }
+
+lemma evt_resched
+: ((p.event ea).coarse_sch && (p.event ea).fine_sch) ∘ state.intl && True
+    ↦
+      (machine_of.event ec).fine_sch  in  machine_of :=
+sorry
+
+lemma evt_delay
+: True && ((p.event ea).coarse_sch && (p.event ea).fine_sch) ∘ state.intl
+    ↦
+      True && (machine_of.event ec).coarse_sch
+   in machine_of :=
+sorry
+
+lemma evt_stable
+: unless_except machine_of
+      (True && (machine_of.event ec).coarse_sch)
+      (-((p.event ea).coarse_sch ∘ state.intl))
+      { e | ∃ (l : {ec // rel ec ea}), machine_of.event l = e } :=
+sorry
+
+lemma evt_sim
+:    ⟦event.step_of (program.event machine_of (ec.val))⟧
+ ⟹ ⟦event.step_of (program.event p ea) on state.intl⟧ :=
+sorry
+
+lemma evt_witness_fis (s : state)
+: ∃ (e : {ec // rel ec ea}), true :=
+sorry
+
+lemma ref_resched
+: evt_ref state.intl {ec // rel ec ea} machine_of (nondet.program.event p ea)
+      (λ (ec : {ec // rel ec ea}), nondet.program.event machine_of (ec.val)) :=
+{ witness := λ _, True
+, witness_fis := evt_witness_fis
+, resched := evt_resched
+, stable  := evt_stable
+, delay   := evt_delay
+, sim     := evt_sim }
+
+end ref_resched
 
 lemma code_refs_machine
 : refined state.intl p machine_of :=
