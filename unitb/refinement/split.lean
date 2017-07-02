@@ -90,7 +90,7 @@ begin
   have H : ((∃∃ e', <>[](• W ma mc R e e' && • CC mc e'.val))
                    || []<>((-•AC ma e) || ∃∃ e' : imp_lbl ma mc R e, ⟦ mc.step_of e'.val ⟧)) τ,
   { rw exists_action,
-    apply p_or_p_imp_p_or_right _ (unless_sem_exists' mc M₁.safety (R.events e).stable _),
+    apply p_or_p_imp_p_or_right _ (unless_sem_exists' M₁.safety (R.events e).stable _),
     { apply inf_often_entails_inf_often,
       apply p_or_p_imp_p_or_right' _,
       apply action_entails_action,

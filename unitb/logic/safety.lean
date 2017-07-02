@@ -63,6 +63,7 @@ parameter {α : Type u}
 variable [has_safety α]
 variable s : α
 def σ := state α
+variables {s}
 
 lemma unless_action {α} [has_safety α] {s : α} {p q : pred' (state α)}
   (h : unless s p q)
@@ -82,9 +83,9 @@ begin
 end
 
 lemma unless_weak_rhs {p q r : pred' σ}
-         (h : q ⟹ r)
-         (P₀ : unless s p q)
-         : unless s p r :=
+  (h : q ⟹ r)
+  (P₀ : unless s p q)
+: unless s p r :=
 begin
   apply forall_imp_forall _ P₀,
   intro s,
@@ -101,9 +102,9 @@ begin
 end
 
 lemma unless_conj_gen {p₀ q₀ p₁ q₁ : pred' σ}
-         (P₀ : unless s p₀ q₀)
-         (P₁ : unless s p₁ q₁)
-         : unless s (p₀ && p₁) ((q₀ && p₁) || (p₀ && q₁) || (q₀ && q₁)) :=
+  (P₀ : unless s p₀ q₀)
+  (P₁ : unless s p₁ q₁)
+: unless s (p₀ && p₁) ((q₀ && p₁) || (p₀ && q₁) || (q₀ && q₁)) :=
 begin
   intros s s' step H,
   have P₀ := P₀ s s' step,
@@ -137,7 +138,7 @@ theorem unless_conj {p₀ q₀ p₁ q₁ : pred' (state α)}
   (h₁ : unless s p₁ q₁)
 : unless s (p₀ && p₁) (q₀ || q₁) :=
 begin
-  apply unless_weak_rhs _ _ (unless_conj_gen _ h₀ h₁),
+  apply unless_weak_rhs _ (unless_conj_gen h₀ h₁),
   apply p_or_entails_of_entails,
   apply p_or_p_imp_p_or',
   { apply p_and_elim_left },
@@ -146,9 +147,9 @@ begin
 end
 
 lemma unless_disj_gen {p₀ q₀ p₁ q₁ : pred' σ}
-         (P₀ : unless s p₀ q₀)
-         (P₁ : unless s p₁ q₁)
-         : unless s (p₀ || p₁) ((q₀ && - p₁) || (- p₀ && q₁) || (q₀ && q₁)) :=
+  (P₀ : unless s p₀ q₀)
+  (P₁ : unless s p₁ q₁)
+: unless s (p₀ || p₁) ((q₀ && - p₁) || (- p₀ && q₁) || (q₀ && q₁)) :=
 begin
   intros σ σ' STEP h,
   cases h with h₀ h₁,
@@ -180,11 +181,11 @@ begin
 end
 
 lemma unless_disj' {p₀ q₀ p₁ q₁ : pred' σ}
-         (P₀ : unless s p₀ q₀)
-         (P₁ : unless s p₁ q₁)
-         : unless s (p₀ || p₁) (q₀ || q₁) :=
+  (P₀ : unless s p₀ q₀)
+  (P₁ : unless s p₁ q₁)
+: unless s (p₀ || p₁) (q₀ || q₁) :=
 begin
-  have h := unless_disj_gen _ P₀ P₁, revert h,
+  have h := unless_disj_gen P₀ P₁, revert h,
   apply unless_weak_rhs,
   intros i,
   apply or.rec,
@@ -257,8 +258,8 @@ begin
   { rw [p_exists_split_one,p_forall_split_one],
     have h' : ∀ i, unless s (restr p i) (restr p i && restr q i),
     { unfold restr, intro i, apply h },
-    have Hconj := unless_conj_gen _ (h fin.max) (IH h'),
-    apply unless_weak_rhs _ _ Hconj, clear Hconj,
+    have Hconj := unless_conj_gen (h fin.max) (IH h'),
+    apply unless_weak_rhs _ Hconj, clear Hconj,
     { intro, simp, clear h h' IH,
       generalize (∀ (x : fin n), restr p x i) PP, intro,
       generalize (∃ (x : fin n), restr q x i) QQ, intro,
@@ -276,8 +277,8 @@ begin
   { rw [p_exists_split_one,p_forall_split_one],
     have h' : ∀ i, unless s (restr p i) (restr q i),
     { unfold restr, intro i, apply h },
-    have Hconj := unless_conj_gen _ (h fin.max) (IH h'),
-    apply unless_weak_rhs _ _ Hconj, clear Hconj,
+    have Hconj := unless_conj_gen (h fin.max) (IH h'),
+    apply unless_weak_rhs _ Hconj, clear Hconj,
     { intro, simp,
       begin [smt] by_cases (q fin.max i), eblast end, } },
 end
@@ -286,8 +287,8 @@ lemma forall_unless {n} {p : fin n → pred' (state α)} {b : pred' (state α)}
   (h : ∀ i, unless s (p i) b)
 : unless s (∀∀ i, p i) b :=
 begin
-  have h : unless s (∀∀ i, p i) (∃∃ i : fin n, b) := forall_unless_exists _ h,
-  apply unless_weak_rhs _ _ h,
+  have h : unless s (∀∀ i, p i) (∃∃ i : fin n, b) := forall_unless_exists h,
+  apply unless_weak_rhs _ h,
   intro x, simp, apply Exists.rec _,
   intro , apply id,
 end
@@ -357,7 +358,7 @@ begin
   rw [shunting,-eventually_eventually ([] _),not_eventually,-henceforth_and],
   apply henceforth_imp_henceforth, intro j,
   rw [-shunting],
-  have H' := unless_sem' _ j sem H,
+  have H' := unless_sem' j sem H,
   apply H'
 end
 
@@ -412,7 +413,7 @@ lemma unless_sem_exists {τ : stream σ} {t} {p : t → pred' σ} {q : pred' σ}
 : ( []<>(∃∃ x, •p x) ⟶ (∃∃ x, <>[]•p x) || []<>•q ) τ :=
 begin
   have H₀ : ( []<>(∃∃ x, •p x) ⟶ (∃∃ x, <>[]•p x) || []<>(•q || ⟦ λ _, False ⟧) ) τ,
-  { apply unless_sem_exists' _ sem,
+  { apply unless_sem_exists' sem,
     simp [unless_eq_unless_except] at H,
     apply H, },
   have H₁ : action (λ _, False) = (False : cpred σ),

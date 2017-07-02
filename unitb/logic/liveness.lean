@@ -154,7 +154,7 @@ begin
       apply absurd (h _ hp) hq },
     rw h',
     apply system.transient_false },
-  apply impl_unless _ h
+  apply impl_unless h
 end
 
 parameter {s}
@@ -337,10 +337,10 @@ begin
     { have H : unless s r (r || b),
       { apply impl_unless, intro, apply or.inl },
       have H' : unless s p₀ (q₀ || b),
-      { apply unless_weak_rhs _ _ u₀,
+      { apply unless_weak_rhs _ u₀,
         intro, apply or.inl },
-      have H'' := unless_conj_gen _ u₀ S,
-      apply unless_weak_rhs _ _ H'',
+      have H'' := unless_conj_gen u₀ S,
+      apply unless_weak_rhs _ H'',
       intro i, unfold p_or p_and,
       intro hh, cases hh with hh₀ hh₀, cases hh₀ with hh₀ hh₀,
       { cases hh₀ with hh₀ hh₁, exact or.inl ⟨hh₀,hh₁⟩ },
@@ -401,7 +401,7 @@ begin
     have H₁ := leads_to.PSP H₀ (S fin.max),
     have H₂ : (∀∀ i, restr p i) && p fin.max ↦ (∀∀ i, restr p i) && q fin.max || b in s,
     { admit },
-    have H₄ := forall_unless _ S',
+    have H₄ := forall_unless S',
     have H₅ := leads_to.PSP (P fin.max) H₄,
     rw [p_or_over_and_right,-p_or_assoc,p_or_self,-p_or_over_and_right] at H₅,
     have H₃ : (∀∀ i, restr p i) && p fin.max ↦ (∀∀ i, restr p i) && q fin.max || b in s,
@@ -484,7 +484,7 @@ begin
     simp, },
     -- transient and unless
   { intros i hp,
-    have saf' := unless_sem' _ _ saf S (temporal.eventually_weaken _ hp),
+    have saf' := unless_sem' _ saf S (temporal.eventually_weaken _ hp),
     cases saf' with saf' saf',
     { have T' : ([]<>-•(p && -q)) τ,
       { rw [-or_self (([]<>-•(p && -q)) τ),or_iff_not_imp],
@@ -538,7 +538,7 @@ begin
   { intros t V lt wf p q P₀ S₀,
     apply inf_often_induction' V p q wf,
     { intro v,
-      apply unless_sem_str _ _ (S₀ v),
+      apply unless_sem_str _ (S₀ v),
       apply system_sem.safety _ _ sem, },
     { intro v,
       apply leads_to_sem (P₀ v) _ sem, } }

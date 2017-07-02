@@ -12,7 +12,8 @@ open unitb
 
 variables α : Type
 
-def pred := α → Prop
+@[reducible]
+private def pred := α → Prop
 
 variables {α}
 
@@ -26,7 +27,7 @@ structure evt_ref_piecewise (mc : program α) (ea ec : event α)
     {n : ℕ} (ccsch : fin n → pred α) : Prop :=
   (ccsch_def : ec.coarse_sch = (∀∀ i, ccsch i))
   (sim : ⟦ ec.step_of ⟧ ⟹ ⟦ ea.step_of ⟧)
-  (delay : ∀ i, ea.coarse_sch && ea.fine_sch  >~>  ccsch i || - ea.coarse_sch in mc)
+  (delay : ∀ i, ea.coarse_sch && ea.fine_sch  ↦  ccsch i || - ea.coarse_sch in mc)
   (stable : ∀ i, unless mc (ccsch i) (-ea.coarse_sch))
   (resched : ea.coarse_sch && ea.fine_sch  >~>  ec.fine_sch || - ea.coarse_sch in mc)
 
@@ -58,12 +59,34 @@ begin
   apply H',
 end
 
-lemma piecewise_event_refinement {mc : program α}
-  {ea ec : event α}
-  {n : ℕ} {ccsch : fin n → α → Prop}
-  (H : evt_ref_piecewise mc ea ec ccsch)
+section piecewise_event_refinement
+
+variables {mc : program α}
+variables {ea ec : event α}
+variables {n : ℕ}
+variables {ccsch : fin n → α → Prop}
+variables (H : evt_ref_piecewise mc ea ec ccsch)
+
+include H
+
+lemma piecewise_delay
+: ea.coarse_sch && ea.fine_sch  >~>  ec.coarse_sch || -ea.coarse_sch in mc :=
+begin
+  apply often_imp_often.basis,
+  rw H.ccsch_def,
+  have H' := leads_to.completion H.delay H.stable,
+  apply leads_to.weaken_lhs _ _ H', clear H H',
+  intro, simp, begin [smt] by_cases ea.coarse_sch i end
+end
+
+lemma piecewise_event_refinement
 : evt_ref mc ea ec :=
-sorry
+{ resched := H.resched
+, stable  := by { rw H.ccsch_def, apply forall_unless H.stable }
+, delay   := piecewise_delay H
+, sim     := H.sim }
+
+end piecewise_event_refinement
 
 lemma event_refinement {ma mc : program α}
    (BIJ : mc.lbl = ma.lbl)
@@ -123,7 +146,7 @@ begin
         rw [-p_or_to_fun,p_or_comm,-inf_often_p_or],
         apply (system_sem.often_imp_often_sem' _ M₁ (R.delay e)),
         apply CF_SCH },
-      have UNLESS := unless_sem_str _ M₁.safety (R.stable e') COARSE₂,
+      have UNLESS := unless_sem_str M₁.safety (R.stable e') COARSE₂,
       cases UNLESS with UNLESS H,
       { apply UNLESS },
       { have H' : (-<>[]•program.coarse_sch_of ma e) τ,
