@@ -21,7 +21,7 @@ class system (α : Type u) extends has_safety α : Type (u+1) :=
    (transient_false : ∀ {s} (p : pred' σ), transient s p False)
    (transient_antimono : ∀ {s : α} {p q p' q' : pred' σ},
          (p' ⟹ p) →
-         (p' && q' ⟹ q) →
+         (q' ⟹ q) →
          transient s p q →
          transient s p' q' )
 
@@ -37,15 +37,10 @@ def transient (p : pred' (state α)) : Prop
 def transient' (p q : pred' (state α)) : Prop
 := system.transient s p q
 
-lemma system.transient_str' {p q r : pred' (state α)}
-  (H : p && r ⟹ q)
-: transient' p q → transient' p r :=
-system.transient_antimono (by refl) H
-
 lemma system.transient_str {p q r : pred' (state α)}
   (H : r ⟹ q)
 : transient' p q → transient' p r :=
-system.transient_str' (p_and_entails_of_entails_right H)
+system.transient_antimono (by refl) H
 
 def init (p : pred' (state α)) : Prop
 := system.init s p
@@ -388,7 +383,7 @@ begin
     apply leads_to.basis' (b₀ && q'),
     { apply system.transient_antimono _ _ T,
       { intro, simp, begin [smt] by_cases b₀ i end },
-      { intro, simp, begin [smt] by_cases p₀ i end } },
+      { admit } },
     { admit },
     { admit }, },
   case leads_to.trans pp qq rr P₂ P₃
