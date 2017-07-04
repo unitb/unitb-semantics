@@ -260,17 +260,45 @@ instance prog_is_system : unitb.system program :=
 
 section soundness
 
+def fair' (s : program) (e : option s.lbl) (τ : stream α) : Prop :=
+(<>[]• s^.coarse_sch_of e) τ →
+([]<>•s.fine_sch_of e) τ →
+([]<>⟦ s.step_of e ⟧) τ
+
 structure program.ex (s : program) (τ : stream α) : Prop :=
     (init : s^.first (τ 0))
     (safety : unitb.saf_ex s τ)
-    (liveness : ∀ e, (<>[]• s^.coarse_sch_of e) τ →
-                     ([]<>•s.fine_sch_of e) τ →
-                     ([]<>⟦ s.step_of e ⟧) τ)
+    (liveness : ∀ e, fair' s e τ)
 
 open program
 
 variables {s : program} {p q : pred' α}
 variables (τ : stream α)
+
+lemma transient.semantics'
+  (h : ∀ e, fair' s e τ)
+  (T₀ : s.transient p q)
+: ([]<>•p) τ → ([]<>-•q) τ :=
+begin
+  cases (temporal.em' (•q) τ) with h_q ev_nq,
+  { unfold program.transient at T₀,
+    cases T₀ with ev T₀,
+    have Hc : (<>[]•s.coarse_sch_of ev) τ,
+    { apply stable_entails_stable' _ _ h_q,
+      apply T₀.enable },
+    intro Hp,
+    have Hf : ([]<>•s.fine_sch_of ev) τ,
+    { apply inf_often_entails_inf_often' _ _ Hp,
+      apply T₀.schedule, },
+    have live := h ev Hc Hf,
+    have act := coincidence h_q (h ev Hc Hf),
+    rw [-eventually_eventually],
+    apply inf_often_entails_inf_often _ _ act,
+    apply entails_imp_entails_left _ T₀.negate,
+    refl, },
+  { intro, apply ev_nq },
+end
+
 variables (h : ex s τ)
 include h
 
@@ -287,25 +315,7 @@ end
 lemma transient.semantics
   (T₀ : s.transient p q)
 : ([]<>•p) τ → ([]<>-•q) τ :=
-begin
-  cases (temporal.em' (•q) τ) with h_q ev_nq,
-  { unfold program.transient at T₀,
-    cases T₀ with ev T₀,
-    have Hc : (<>[]•s.coarse_sch_of ev) τ,
-    { apply stable_entails_stable' _ _ h_q,
-      apply T₀.enable },
-    intro Hp,
-    have Hf : ([]<>•s.fine_sch_of ev) τ,
-    { apply inf_often_entails_inf_often' _ _ Hp,
-      apply T₀.schedule, },
-    have live := h.liveness ev Hc Hf,
-    have act := coincidence h_q (h.liveness ev Hc Hf),
-    rw [-eventually_eventually],
-    apply inf_often_entails_inf_often _ _ act,
-    apply entails_imp_entails_left _ T₀.negate,
-    refl, },
-  { intro, apply ev_nq },
-end
+nondet.transient.semantics' τ h.liveness T₀
 
 end soundness
 
