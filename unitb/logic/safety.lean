@@ -75,7 +75,7 @@ begin
   apply h _ _ act hpnq
 end
 
-lemma impl_unless {p q : pred' σ} (h : p ⟹ q) : unless s p q :=
+lemma unless_imp {p q : pred' σ} (h : p ⟹ q) : unless s p q :=
 begin
   intros σ σ' h₀ h₁,
   cases h₁ with h₁ h₂,
@@ -201,9 +201,10 @@ begin
     apply and.elim_left },
 end
 
+@[refl]
 lemma unless_refl (p : pred' (state α)) : unless s p p :=
 begin
-  apply impl_unless,
+  apply unless_imp,
   apply λ _, id
 end
 

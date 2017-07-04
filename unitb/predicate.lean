@@ -224,6 +224,7 @@ lemma p_imp_entails_p_imp_right {p q q' : pred' α}
 : ( p ⟶ q ) ⟹ ( p ⟶ q' ) :=
 p_imp_entails_p_imp (by refl) hq
 
+@[simp]
 lemma p_or_self (p : pred' β) :
 p || p = p :=
 by { apply funext, intro, simp }
