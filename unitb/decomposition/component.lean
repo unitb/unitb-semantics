@@ -18,17 +18,20 @@ structure program : Type 2 :=
 
 parameter {α}
 
-def compatible {t : Type} (m : t → program) : Prop :=
-∀ i j, i ≠ j → ∀ s s', is_step (m i).mch s s' → (m i).asm s s'
+structure compatible {t : Type} (hasm : α → α → Prop) (m : t → program) : Prop :=
+  (step : ∀ i j, i ≠ j → ∀ s s', is_step (m j).mch s s' → (m i).asm s s')
+  (asm : ∀ i, ∀ s s', hasm s s' → (m i).asm s s')
 
 def compose {t : Type} (m : t → program) {s₀ : α}
   (hasm : α → α → Prop)
   (h₀ : ∀ i, (m i).mch.first s₀)
-  (h : compatible m)
+  (h : compatible hasm m)
+  [scheduling.sched t]
+  [∀ i, scheduling.sched (m i).mch.lbl]
 : program :=
 { mch :=
     { lbl := Σ i, (m i).mch.lbl
-    , lbl_is_sched := sorry
+    , lbl_is_sched := by apply_instance
     , first := λ s, ∀ i, (m i).mch.first s
     , first_fis := ⟨_,h₀⟩
     , event' := λ i, (m i.1).mch.event' i.2 }

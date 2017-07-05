@@ -6,16 +6,19 @@ universe variables u
 namespace decomposition
 section
 
-open predicate unitb function
+open predicate unitb function scheduling
 
 parameter {α  : Type}
 parameter {t : Type}
-parameter s : t → program α
+parameter [sched t]
+parameter {s : t → program α}
 parameter {s₀ : α}
-parameter {asm : α → α → Prop}
-parameter {h₀ : ∀ i, (s i).mch.first s₀}
-parameter {h : compatible s}
+parameter (asm : α → α → Prop)
+parameter (h₀ : ∀ i, (s i).mch.first s₀)
+parameter (h : compatible asm s)
 def s' := compose s asm h₀ h
+
+parameters {asm h₀ h}
 
 variables {i : t}
 variables {p q : pred' α}
@@ -51,10 +54,27 @@ begin
   intros σ σ' STEP,
   apply S,
   unfold unitb.step has_safety.step step,
-  unfold unitb.step has_safety.step step s' compose at STEP,
+  unfold unitb.step has_safety.step step at STEP,
   unfold program.mch program.asm nondet.is_step nondet.program.lbl at STEP,
-  unfold nondet.program.step_of nondet.program.event at STEP,
-  admit
+  unfold program.mch program.asm nondet.is_step nondet.program.lbl,
+  cases STEP,
+  case or.inl STEP
+  { cases STEP with ev STEP,
+    cases ev,
+    case some ev
+    { cases ev with j Hj,
+      cases classical.em (i = j) with Heq Hne,
+      { subst j,
+        left, existsi some Hj,
+        apply STEP },
+      { right, apply h.step _ _ Hne,
+        unfold nondet.is_step,
+        existsi some Hj,
+        apply STEP, }, },
+    case none
+    { left, existsi none, apply STEP } },
+  case or.inr STEP
+  { right, apply h.asm, apply STEP, },
 end
 
 theorem leads_to.subst {p q}

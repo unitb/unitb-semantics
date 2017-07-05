@@ -5,7 +5,7 @@ import unitb.logic
 import util.data.bijection
 import util.data.stream
 
-universe variables u
+universe variables u v
 
 namespace scheduling
 
@@ -50,7 +50,7 @@ structure fair (t : target_mch lbl) (τ : stream t.σ) : Prop :=
   -- (evts : stream lbl)
   -- (run_evts_eq_τ : run t evts = τ)
 
-class inductive sched (l : Type)
+class inductive sched (l : Type u)
   | fin : finite l → sched
   | inf : infinite l → sched
 
@@ -70,6 +70,24 @@ instance sched_sum : ∀ [sched lbl₀] [sched lbl₁], sched (lbl₀ ⊕ lbl₁
   | (sched.fin fin) (sched.inf inf') := sched.inf (by apply_instance)
   | (sched.inf inf) (sched.inf inf') := sched.inf (by apply_instance)
 
+def is_finite (l : Type u) : ∀ [sched l], Prop
+  | (sched.fin x) := true
+  | (sched.inf x) := false
+
+def is_infinite (l : Type u) : ∀ [sched l], Prop
+  | (sched.fin x) := false
+  | (sched.inf x) := true
+
+def is_empty (l : Type u) : ∀ [sched l], Prop
+  | (sched.fin fn) := @finite.count l fn = 0
+  | (sched.inf x)  := false
+
+local attribute [instance] classical.prop_decidable
+
+instance sched_sigma {t : Type u} {f : t → Type v} [∀ l, sched (f l)]
+: ∀ [sched lbl₀], sched (Σ i, f i)
+  | (sched.fin x) := sorry
+  | (sched.inf x) := sorry
 end
 
 namespace unitb
