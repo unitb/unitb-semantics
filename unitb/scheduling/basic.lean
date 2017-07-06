@@ -3,6 +3,7 @@ import data.stream
 import unitb.semantics.temporal
 import unitb.logic
 import util.logic
+import util.classical
 import util.data.array
 import util.data.bijection
 import util.data.stream
@@ -83,6 +84,18 @@ def is_infinite (l : Type u) : ∀ [sched l], Prop
 def is_empty (l : Type u) : ∀ [sched l], Prop
   | (sched.fin fn) := @finite.count l fn = 0
   | (sched.inf x)  := false
+
+lemma is_empty_elim {α : Sort v} {l : Type u} (x : l) [sched l]
+: is_empty l → α :=
+begin
+  intros H,
+  cases _inst_1 with Hinst ;
+  unfold is_empty at H,
+  { have y := Hinst.to_nat.f x,
+    rw H at y,
+    apply y.elim0 },
+  { cases H },
+end
 
 local attribute [instance] classical.prop_decidable
 
@@ -295,17 +308,82 @@ end
 
 end infinite_sigma
 
+section inf_embed
+
+parameters {t : Type u} {f : t → Type v}
+parameters [infinite t] [∀ l, sched (f l)]
+parameters h₀ : (∃ i, ∀ j : ℕ, i ≤ j → is_empty (f $ (infinite.to_nat t).g j))
+parameters h₁ : ∀ [finite { i // nonempty (f i)}], sched (Σ i : { i // nonempty (f i)}, f i.1)
+private noncomputable def n := classical.some h₀
+
+noncomputable def embedded_F : { i // nonempty (f i)} → fin n
+  | ⟨x,Hx⟩ :=
+begin
+  existsi (infinite.to_nat t).f x,
+  apply classical.by_contradiction,
+  intros h₁,
+  have H' := classical.some_spec h₀ _ (le_of_not_gt h₁),
+  rw bijection.f_inv at H',
+  cases Hx with i,
+  apply is_empty_elim i H'
+end
+
+def b_f : (Σ i, f i) → (Σ i : {i // nonempty (f i)}, f i.val)
+  | ⟨x,Hx⟩ := ⟨⟨x,nonempty.intro Hx⟩,Hx⟩
+
+def b_g : (Σ i : {i // nonempty (f i)}, f i.val) → (Σ i, f i)
+  | ⟨⟨x,_⟩,Hx⟩ := ⟨x,Hx⟩
+
+parameter (f)
+
+def bij_ne : bijection (Σ i, f i) (Σ i : {i // nonempty (f i)}, f (i.val)) :=
+bijection.mk b_f b_g
+(by { intro x, cases x, refl })
+(by { intro x, cases x with x, cases x, refl })
+
+parameter {f}
+
+include h₀ h₁
+
+noncomputable def embedded : sched (Σ i, f i) :=
+begin
+  let n := classical.some h₀,
+  have h : finite { i // nonempty (f i)},
+  { apply @finite_of_injective _ n (embedded_F h₀),
+    intros i j,
+    cases i with i₀ i₁, cases j with j₀ j₁,
+    unfold embedded_F, intros H,
+    injection H with H₀,
+    have H₁ := bijection.f_injective _ H₀,
+    subst j₀ },
+  have h₂ := @h₁ h,
+  have h₀ :=  (bij_ne f),
+  cases h₂ with Hfin Hinf,
+  { apply sched.fin,
+    have h₁ := Hfin.to_nat,
+    apply finite.mk Hfin.count (h₁ ∘ h₀), },
+  { apply sched.inf,
+    have h₁ := Hinf.to_nat,
+    apply infinite.mk (h₁ ∘ h₀), },
+end
+
+end inf_embed
+
+noncomputable instance sched_sigma_of_finite {t : Type u} {f : t → Type v}
+  [∀ l, sched (f l)] [finite t]
+: sched (Σ i, f i) := have sched t, by { apply sched.fin, apply_instance },
+                      if h : (∃ i, is_infinite (f i))
+                      then sched.inf (infinite_of_injective
+                                      (@injective_d _ _ this _)
+                                      (@injective_b _ _ this _ h) )
+                      else sched.fin (finite_of_injective
+                                      (@injective_fd _ _ this _ _inst_1 h) )
+
 noncomputable instance sched_sigma {t : Type u} {f : t → Type v} [∀ l, sched (f l)]
 : ∀ [sched t], sched (Σ i, f i)
-  | (sched.fin x) := have sched t, from sched.fin x,
-                     if h : (∃ i, is_infinite (f i))
-                     then sched.inf (infinite_of_injective
-                                     (@injective_d _ _ this _)
-                                     (@injective_b _ _ this _ h) )
-                     else sched.fin (finite_of_injective
-                                     (@injective_fd _ _ this x _inst_1 h) )
+  | (sched.fin _) := by { apply scheduling.sched_sigma_of_finite }
   | (sched.inf x) := if h : (∃ i, ∀ j : ℕ, i ≤ j → is_empty (f $ (@infinite.to_nat t x).g j))
-                     then sorry
+                     then @embedded _ _ x _ h (@scheduling.sched_sigma_of_finite _ _ _)
                      else sched.inf (infinite_of_injective
                                       (@injective_inf_to_nat _ _ x _)
                                       (@injective_inf_from_nat _ _ x _ h))

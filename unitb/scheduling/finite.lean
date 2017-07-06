@@ -53,7 +53,7 @@ end
 noncomputable def select (req : set lbl)
   (l : rrobin lbl)
 : rrobin lbl :=
-l ∘ rev (perm.rotate_right (first req l))
+l ∘ (perm.rotate_right (first req l)).rev
 
 lemma sch.select_inv
   (s : t.σ)
@@ -66,7 +66,7 @@ end
 
 def sch.first : sch_state :=
 { target := t.s₀
-, queue := rev (finite.to_nat _)
+, queue := bijection.rev (finite.to_nat _)
 , inv := sch.select_inv _ _ }
 
 noncomputable def sch.step : sch_state → sch_state

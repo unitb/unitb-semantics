@@ -76,7 +76,7 @@ end
 def sch.first : sch_state :=
 { q_len := 0
 , target := t.s₀
-, queue := rev (infinite.to_nat _)
+, queue := bijection.rev (infinite.to_nat _)
 , inv := sch.select_inv _ _ }
 
 noncomputable def sch.step (s : sch_state) : sch_state :=
