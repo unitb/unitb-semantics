@@ -5,7 +5,7 @@ LEAN_OPT =
 LEAN_PATH = $(shell pwd):/usr/local/bin/../lib/lean/library:$(shell printenv LEAN_PATH)
 
 all:
-	LEAN_PATH=$(LEAN_PATH) lean $(LEAN_OPT) --make > errors.txt
+	LEAN_PATH=$(LEAN_PATH) lean $(LEAN_OPT) --make util/ unitb/
 
 root: logic models refinement syntax decomposition util/data/array.olean code
 

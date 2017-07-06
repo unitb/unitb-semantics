@@ -84,10 +84,121 @@ def is_empty (l : Type u) : ∀ [sched l], Prop
 
 local attribute [instance] classical.prop_decidable
 
-instance sched_sigma {t : Type u} {f : t → Type v} [∀ l, sched (f l)]
-: ∀ [sched lbl₀], sched (Σ i, f i)
-  | (sched.fin x) := sorry
-  | (sched.inf x) := sorry
+open bijection
+
+def index_of {t : Type u} : ∀ [sched t], t → ℕ
+  | (sched.inf inst) x := inst.to_nat.f x
+  | (sched.fin inst) x := (inst.to_nat.f x).val
+
+lemma injective_index_of {t : Type u} [sched t]
+: injective (@index_of t _) :=
+begin
+  cases _inst_1
+  ; intros i j
+  ; unfold index_of,
+  case sched.fin ifin
+  { intros H,
+    have H' := fin.eq_of_veq H,
+    apply bijection.f_injective (finite.to_nat t) H', },
+  case sched.inf iinf
+  { apply bijection.f_injective },
+end
+
+def from_index {t : Type u} [inst : sched t] (Hinf : is_infinite t) (n : ℕ) : t :=
+have infinite t, by { cases inst, cases Hinf, apply a },
+(@infinite.to_nat t this).g n
+
+lemma injective_from_index {t : Type u} [sched t]
+  (Hinf : is_infinite t)
+: injective (from_index Hinf) :=
+by apply bijection.g_injective
+
+section d
+
+parameters {t : Type u} {f : t → Type v}
+variable [sched t]
+variable [∀ i, sched (f i)]
+variable H : ∃ (i : t), is_infinite (f i)
+
+def d' : (Σ (i : t), f i) → ℕ × ℕ
+  | ⟨x,y⟩ := (index_of x,index_of y)
+
+def d : (Σ (i : t), f i) → ℕ :=
+bij.prod.g ∘ d'
+
+lemma injective_d
+: injective d :=
+begin
+  unfold d,
+  apply @injective_comp _ _ _ (bij.prod).f d',
+  { apply bijection.f_injective bij.prod },
+  { intros i j,
+    cases i with i₀ i₁,
+    cases j with j₀ j₁,
+    unfold d',
+    intros H,
+    injection H with H₀ H₁,
+    have Hij : i₀ = j₀ := injective_index_of H₀,
+    subst j₀,
+    rw injective_index_of H₁, }
+end
+
+noncomputable def b (x : ℕ) : (Σ (i : t), f i) :=
+⟨classical.some H,from_index (classical.some_spec H) x⟩
+
+lemma injective_b
+: injective (b H) :=
+begin
+  intros i j,
+  unfold b,
+  intros H,
+  injection H with H₀ H₁,
+  have H₂ := eq_of_heq H₁, clear H₁,
+  unfold b._proof_1 from_index at H₂,
+  apply bijection.g_injective _ H₂,
+end
+
+end d
+
+section fg
+
+parameters {t : Type u} {f : t → Type v}
+parameter [sched t]
+parameter [finite t]
+parameter [∀ i, sched (f i)]
+parameter H : ¬ ∃ (i : t), is_infinite (f i)
+
+def m := finite.count t
+
+def n : ℕ := sorry
+
+def H' : ∀ (i : t), finite (f i) :=
+sorry
+
+lemma Hmn : ∀ i, (H' i).count ≤ n :=
+sorry
+
+def fd' : (Σ (i : t), f i) → fin m × fin n
+  | ⟨x,y⟩ := ((finite.to_nat t).f x,fin.nest' (Hmn x) $ (H' x).to_nat.f y)
+
+def fd : (Σ (i : t), f i) → fin (m * n) :=
+(@bij.prod.append.f m n) ∘ fd'
+
+
+end fg
+
+noncomputable instance sched_sigma {t : Type u} {f : t → Type v} [∀ l, sched (f l)]
+: ∀ [sched t], sched (Σ i, f i)
+  | (sched.fin x) := have sched t, from sched.fin x,
+                     if h : (∃ i, is_infinite (f i))
+                     then sched.inf (infinite_of_injective
+                                     (@injective_d _ _ this _)
+                                     (@injective_b _ _ this _ h) )
+                     else sched.fin sorry
+  | (sched.inf x) := if (∃ i, ∀ j : ℕ, i ≤ j → is_empty (f $ (@infinite.to_nat t x).g j))
+                     then sorry
+                     else sorry
+
 end
 
 namespace unitb

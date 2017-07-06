@@ -22,7 +22,7 @@ structure compatible {t : Type} (hasm : α → α → Prop) (m : t → program) 
   (step : ∀ i j, i ≠ j → ∀ s s', is_step (m j).mch s s' → (m i).asm s s')
   (asm : ∀ i, ∀ s s', hasm s s' → (m i).asm s s')
 
-def compose {t : Type} (m : t → program) {s₀ : α}
+noncomputable def compose {t : Type} (m : t → program) {s₀ : α}
   (hasm : α → α → Prop)
   (h₀ : ∀ i, (m i).mch.first s₀)
   (h : compatible hasm m)

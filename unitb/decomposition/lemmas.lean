@@ -16,7 +16,7 @@ parameter {s₀ : α}
 parameter (asm : α → α → Prop)
 parameter (h₀ : ∀ i, (s i).mch.first s₀)
 parameter (h : compatible asm s)
-def s' := compose s asm h₀ h
+noncomputable def s' := compose s asm h₀ h
 
 parameters {asm h₀ h}
 
