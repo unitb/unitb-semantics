@@ -2,6 +2,7 @@
 import data.stream
 import unitb.semantics.temporal
 import unitb.logic
+import util.data.array
 import util.data.bijection
 import util.data.stream
 
@@ -165,18 +166,37 @@ section fg
 parameters {t : Type u} {f : t → Type v}
 parameter [sched t]
 parameter [finite t]
-parameter [∀ i, sched (f i)]
+parameter [Hs : ∀ i, sched (f i)]
 parameter H : ¬ ∃ (i : t), is_infinite (f i)
-
+include H
 def m := finite.count t
 
-def n : ℕ := sorry
 
-def H' : ∀ (i : t), finite (f i) :=
-sorry
+@[instance]
+def H' (i : t) : finite (f i) :=
+begin
+  destruct (Hs i),
+  case sched.fin
+  { intros inst H', apply inst },
+  case sched.inf
+  { intros inst H',
+    exfalso,
+    apply H,
+    existsi i, rw H',
+    trivial }
+end
+
+def n : ℕ :=
+array.maximum ( array.mk (λ i, (H' $ (finite.to_nat t).g i).count) )
 
 lemma Hmn : ∀ i, (H' i).count ≤ n :=
-sorry
+begin
+  intro i,
+  unfold n,
+  rw -_inst_2.to_nat.f_inv i,
+  change (array.mk $ λ i, (H' H ((finite.to_nat t).g i)).count).read _ ≤ _,
+  apply array.le_maximum,
+end
 
 def fd' : (Σ (i : t), f i) → fin m × fin n
   | ⟨x,y⟩ := ((finite.to_nat t).f x,fin.nest' (Hmn x) $ (H' x).to_nat.f y)
@@ -184,6 +204,22 @@ def fd' : (Σ (i : t), f i) → fin m × fin n
 def fd : (Σ (i : t), f i) → fin (m * n) :=
 (@bij.prod.append.f m n) ∘ fd'
 
+lemma injective_fd
+: injective fd :=
+begin
+  unfold fd,
+  apply injective_comp,
+  { apply bijection.f_injective (bij.prod.append (m _) (n _)) },
+  { intros i j,
+    cases i with i₀ i₁, cases j with j₀ j₁,
+    unfold fd', intros H,
+    injection H with H₀ H₁,
+    have H₂ := bijection.f_injective _ H₀,
+    subst j₀,
+    have H₃ := fin.nest'_injective _ H₁,
+    have H₄ := bijection.f_injective _ H₃,
+    subst j₁ },
+end
 
 end fg
 
@@ -194,7 +230,8 @@ noncomputable instance sched_sigma {t : Type u} {f : t → Type v} [∀ l, sched
                      then sched.inf (infinite_of_injective
                                      (@injective_d _ _ this _)
                                      (@injective_b _ _ this _ h) )
-                     else sched.fin sorry
+                     else sched.fin (finite_of_injective
+                                     (@injective_fd _ _ this x _inst_1 h) )
   | (sched.inf x) := if (∃ i, ∀ j : ℕ, i ≤ j → is_empty (f $ (@infinite.to_nat t x).g j))
                      then sorry
                      else sorry

@@ -28,4 +28,4 @@ clean:
 	/usr/bin/find . -name "*.olean" -delete
 
 lines:
-	wc `/usr/bin/find . -name "*.lean"`
+	wc `git ls-files | grep .lean`
