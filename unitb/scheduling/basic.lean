@@ -2,6 +2,7 @@
 import data.stream
 import unitb.semantics.temporal
 import unitb.logic
+import util.logic
 import util.data.array
 import util.data.bijection
 import util.data.stream
@@ -171,6 +172,7 @@ parameter H : ¬ ∃ (i : t), is_infinite (f i)
 include H
 def m := finite.count t
 
+set_option pp.implicit false
 
 @[instance]
 def H' (i : t) : finite (f i) :=
@@ -223,6 +225,76 @@ end
 
 end fg
 
+section infinite_sigma
+
+parameter {t : Type u}
+parameter {f : t → Type v}
+parameter [infinite t]
+parameter [∀ i, sched (f i)]
+
+def inf_to_nat' : (Σ (i : t), f i) → ℕ × ℕ
+  | ⟨x,y⟩ := ((infinite.to_nat t).f x,index_of y)
+
+def inf_to_nat : (Σ (i : t), f i) → ℕ :=
+(bij.prod).f ∘ inf_to_nat'
+
+lemma injective_inf_to_nat
+: injective inf_to_nat :=
+begin
+  unfold inf_to_nat,
+  apply injective_comp,
+  { apply bijection.f_injective },
+  { intros i j,
+    cases i with i₀ i₁, cases j with j₀ j₁,
+    unfold inf_to_nat',
+    intros H,
+    injection H with H₀ H₁,
+    have H₂ := bijection.f_injective _ H₀,
+    subst j₀,
+    rw injective_index_of H₁, },
+end
+
+parameter H₀ : ¬ (∃ i, ∀ j : ℕ, i ≤ j → is_empty (f $ (infinite.to_nat t).g j))
+include H₀
+
+lemma H₁ (i : ℕ)
+: ∃ j : ℕ, i ≤ j ∧ ¬ is_empty (f $ (infinite.to_nat t).g j) :=
+begin
+  simp [not_exists_iff_forall_not,not_forall_iff_exists_not,not_imp_iff_and_not] at H₀,
+  apply exists_imp_exists _ (H₀ i),
+  intros j H, apply H
+end
+
+noncomputable def inf_from_nat : ℕ → (Σ (i : t), f i) :=
+begin
+  have H₁ := H₁ H₀, clear H₀,
+  let s := solutions H₁,
+  intros i,
+  let j := (infinite.to_nat t).g (s i),
+  existsi j,
+  destruct _inst_2 j ; intros _inst_3 Hinst,
+  { apply _inst_3.to_nat.g,
+    existsi 0,
+    apply lt_of_le_of_ne,
+    apply zero_le,
+    have H := solutions_spec H₁ i,
+    rw Hinst at H, unfold is_empty at H,
+    rw eq_comm at H, apply H },
+  { apply _inst_3.to_nat.g 0 },
+end
+
+lemma injective_inf_from_nat
+: injective inf_from_nat :=
+begin
+  unfold inf_from_nat, simp,
+  intros i j H,
+  injection H with H₀ H₁,
+  have H₂ := bijection.g_injective _ H₀,
+  apply solutions_injective _ H₂,
+end
+
+end infinite_sigma
+
 noncomputable instance sched_sigma {t : Type u} {f : t → Type v} [∀ l, sched (f l)]
 : ∀ [sched t], sched (Σ i, f i)
   | (sched.fin x) := have sched t, from sched.fin x,
@@ -232,9 +304,11 @@ noncomputable instance sched_sigma {t : Type u} {f : t → Type v} [∀ l, sched
                                      (@injective_b _ _ this _ h) )
                      else sched.fin (finite_of_injective
                                      (@injective_fd _ _ this x _inst_1 h) )
-  | (sched.inf x) := if (∃ i, ∀ j : ℕ, i ≤ j → is_empty (f $ (@infinite.to_nat t x).g j))
+  | (sched.inf x) := if h : (∃ i, ∀ j : ℕ, i ≤ j → is_empty (f $ (@infinite.to_nat t x).g j))
                      then sorry
-                     else sorry
+                     else sched.inf (infinite_of_injective
+                                      (@injective_inf_to_nat _ _ x _)
+                                      (@injective_inf_from_nat _ _ x _ h))
 
 end
 
