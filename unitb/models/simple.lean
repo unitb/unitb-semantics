@@ -35,7 +35,6 @@ lemma program.transient_impl (s : program) {p q : pred}
   (H : p ⟹ -q)
 : s.transient p q :=
 begin
-  unfold program.transient,
   intros σ hp hq,
   cases H _ hp hq,
 end
@@ -46,7 +45,6 @@ lemma program.transient_antimono (s : program) (p q p' q' : pred)
   (T₀ : s.transient p q)
 : s.transient p' q' :=
 begin
-  unfold program.transient,
   intros σ hp' hq',
   have h'' := T₀ σ (hp _ hp') (hq _ hq'),
   intro h₂, apply h'',
@@ -74,7 +72,7 @@ begin
   unfold unless,
   intros σ σ' S,
   have h' := h σ, clear h,
-  unfold unitb.step has_safety.step is_step program.step at S,
+  dunfold unitb.step has_safety.step is_step program.step at S,
   rw S,
   intros h,
   cases h,
@@ -89,8 +87,7 @@ lemma leads_to_step
 : p ↦ q in program.mk init step :=
 begin
   apply leads_to.basis,
-  { unfold transient system.transient program.transient program.step,
-    intros σ _ h,
+  { intros σ _ h,
     cases h with h₀ h₁,
     have h' := h _ h₀ h₁,
     simp [not_and_iff_not_or_not,not_not_iff_self],
@@ -143,11 +140,11 @@ lemma init_sem
   (I₀ : init s p)
 : (•p) τ :=
 begin
-  unfold init system.init program.init at I₀,
+  dunfold init system.init program.init at I₀,
   unfold temporal.init,
   have H' := H.left,
   unfold temporal.init at H',
-  rw -H', apply I₀,
+  rw ← H', apply I₀,
 end
 
 lemma transient.semantics
@@ -159,17 +156,17 @@ begin
   { apply eventually_weaken,
     apply ex.safety τ H },
   have H' := coincidence Hstep Hp,
-  rw -eventually_eventually,
+  rw ← eventually_eventually,
   apply inf_often_entails_inf_often _ _ H',
   { unfold p_entails, rw p_and_p_imp,
     intros τ Hs Hp,
     cases classical.em (•q $ τ) with Hq Hnq,
     { apply eventually_of_next,
-      unfold transient' system.transient program.transient at T₀,
+      dunfold transient' system.transient program.transient at T₀,
       unfold action is_step at Hs,
       rw [next_init,Hs],
       apply T₀ _ Hp Hq, },
-    { rw [-p_not_to_fun,not_init] at Hnq,
+    { rw [← p_not_to_fun,not_init] at Hnq,
       apply eventually_weaken _ Hnq }, },
 end
 

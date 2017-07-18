@@ -84,13 +84,13 @@ def list.map_has' {α : Type u}
 --   { existsi x,
 --     apply list.mem_append_right,
 --     apply list.mem_cons_self },
---   { rw [-list.nil_append xs,-list.cons_append,-list.append_assoc],
+--   { rw [← list.nil_append xs,← list.cons_append,← list.append_assoc],
 --     apply list.map_has' (ys ++ [x]) xs, },
 -- end
 
 def list.map_has {α : Type u} [_inst_1 : functor list]
 : ∀ (xs : list α), list (subtype (list.has xs)) :=
-begin intro xs, rw [-list.nil_append xs], apply list.map_has' end
+begin intro xs, rw [← list.nil_append xs], apply list.map_has' end
 
 def list.map_has_nil {α : Type u} (xs : list α)
 : (@list.nil α).map_has = [ ] :=
@@ -189,7 +189,7 @@ infix ≈ := rel
 -- begin
 --   unfold set.map, apply funext, intro i,
 --   unfold set_of, simp,
---   rw -iff_eq_eq,
+--   rw ← iff_eq_eq,
 --   split,
 --   { apply exists_imp_exists' f,
 --     intros a h, cases h with h₀ h₁,
@@ -236,7 +236,7 @@ begin
     induction h with i j h /- -/ i j k h₀ h₁,
     { apply tc.base,
       unfold close,
-      rw [or_comm,-and_assoc,and_comm (j ∈ s),and_assoc],
+      rw [or_comm,← and_assoc,and_comm (j ∈ s),and_assoc],
       apply h },
     { apply tc.trans _ _ _ ih_2 ih_1 }, },
 end
@@ -292,7 +292,7 @@ begin
   have h₂ := mem_of_mem_fmap h,
   cases h₂ with k h₂, cases h₂ with h₂ h₃,
   clear h,
-  rw -h₃ at Hi Hj,
+  rw ← h₃ at Hi Hj,
   unfold part_of at Hi Hj,
   simp [mem_union,mem_singleton,mem_sep],
   simp [mem_union,mem_singleton,mem_sep] at Hi Hj,
@@ -353,8 +353,8 @@ begin
     have h₂ := mem_of_mem_fmap h₀,
     cases h₂ with i h₂,
     cases h₂ with h₂ h₃,
-    rw [-h₃,part_of_eq_part_of h₀ h₁],
-    rw -h₃, apply mem_part_of _ h₂ },
+    rw [← h₃,part_of_eq_part_of h₀ h₁],
+    rw ← h₃, apply mem_part_of _ h₂ },
   { cases h with A h,
     cases h with h₀ h₂, cases h₀ with h₀ h₁,
     have h₂ := mem_of_mem_fmap h₀,

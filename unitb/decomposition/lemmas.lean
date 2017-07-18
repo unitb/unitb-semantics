@@ -33,7 +33,6 @@ begin
   cases e,
   case some e
   { existsi some (⟨i,e⟩ : Σ i, (s i).mch.lbl),
-    unfold s' compose program.mch nondet.program.lbl,
     apply nondet.program.falsify.mk,
     { apply Te.enable },
     { apply Te.schedule },

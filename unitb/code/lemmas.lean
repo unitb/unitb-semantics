@@ -78,7 +78,7 @@ begin
   ; try { refl }
   ; unfold next' next_assert',
   case current.seq_left
-  { rw -ih_1,
+  { rw ← ih_1,
     cases next' s a,
     case none
     { destruct first c₁,
@@ -97,11 +97,11 @@ begin
         rw [h₀,fmap_some],
         unfold assert_of assert_of',
         change assert_of (some pc) = _,
-        rw [-h₀,assert_of_first] } },
+        rw [← h₀,assert_of_first] } },
     case some
     { simp, refl } },
   case current.seq_right
-  { rw -ih_1,
+  { rw ← ih_1,
     cases next' s a ; refl },
   case current.if_then_else_cond
   { cases classical.em (t s) with h h,
@@ -112,7 +112,7 @@ begin
       { intros pc h, simp [h],
         unfold assert_of assert_of',
         change assert_of (some pc) = _,
-        rw [-h,assert_of_first], }, },
+        rw [← h,assert_of_first], }, },
     { rw [if_neg h,if_neg h],
       destruct first c₁,
       { intros h, simp [h],
@@ -121,17 +121,17 @@ begin
       { intros pc h, simp [h],
         unfold assert_of assert_of',
         change assert_of (some pc) = _,
-        rw [-h,assert_of_first], }, }, },
+        rw [← h,assert_of_first], }, }, },
   case current.if_then_else_left
-  { rw -ih_1, clear ih_1,
+  { rw ← ih_1, clear ih_1,
     cases next' s a with pc ; simp,
     { refl },
-    { unfold assert_of assert_of', refl }, },
+    { unfold assert_of assert_of', }, },
   case current.if_then_else_right
-  { rw -ih_1, clear ih_1,
+  { rw ← ih_1, clear ih_1,
     cases next' s a with pc ; simp,
     { refl },
-    { unfold assert_of assert_of', refl }, },
+    { unfold assert_of assert_of', }, },
   case current.while_cond
   { cases classical.em (w s) with h h ;
     destruct first c_1,
@@ -143,13 +143,13 @@ begin
       rw [if_pos h,if_pos h,h'],
       simp,
       change assert_of (some pc) = _,
-      rw [-h',assert_of_first], },
+      rw [← h',assert_of_first], },
     { intros h',
       rw [if_neg h,if_neg h], refl },
     { intros pc h',
       rw [if_neg h,if_neg h], refl }, },
   case current.while_body
-  { rw -ih_1, clear ih_1,
+  { rw ← ih_1, clear ih_1,
     destruct next' s a,
     { intros h',
       simp [h'], refl },
@@ -270,7 +270,7 @@ begin
     { apply ih_2 _ _ Hpc }, },
   { intros pc l',
     cases pc with pc pc
-    ; unfold selects assert_of selects' assert_of'
+    ; dunfold selects assert_of selects' assert_of'
     ; intros Hpc,
     { cases Hpc },
     { apply ih_1 _ _ Hpc }, },
@@ -295,7 +295,7 @@ begin
   case correct.ite p' t pa pb q' ds c₀ c₁ Hc₀ Hc₁ Hpa Hpb
   { intros pc,
     cases pc with pc pc
-    ; unfold condition assert_of condition' assert_of' next_assert next_assert'
+    ; dunfold condition assert_of condition' assert_of' next_assert next_assert'
              is_control is_control'
     ; intros Hpc s Hp Hc,
     case current.if_then_else_cond
@@ -307,8 +307,8 @@ begin
   case correct.while t p' inv q' ds b c Htp Hntq Hcvr
   { intros pc,
     cases pc with pc pc
-    ; unfold condition assert_of condition' assert_of' next_assert next_assert'
-             is_control is_control'
+    ; dunfold condition assert_of condition' assert_of' next_assert next_assert'
+              is_control is_control'
     ; intros Hpc s Hp Hc,
     { rw if_pos Hc, apply Htp _ ⟨Hp,Hc⟩, },
     { apply ih_1 _ _ _ Hp Hc, }, },

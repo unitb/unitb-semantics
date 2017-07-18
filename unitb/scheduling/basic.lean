@@ -169,7 +169,6 @@ begin
   intros H,
   injection H with H₀ H₁,
   have H₂ := eq_of_heq H₁, clear H₁,
-  unfold b._proof_1 from_index at H₂,
   apply bijection.g_injective _ H₂,
 end
 
@@ -208,7 +207,7 @@ lemma Hmn : ∀ i, (H' i).count ≤ n :=
 begin
   intro i,
   unfold n,
-  rw -_inst_2.to_nat.f_inv i,
+  rw ← _inst_2.to_nat.f_inv i,
   change (array.mk $ λ i, (H' H ((finite.to_nat t).g i)).count).read _ ≤ _,
   apply array.le_maximum,
 end
@@ -424,7 +423,7 @@ begin
   apply fair.mk,
   { have h := system_sem.init_sem τ sem INIT,
     unfold temporal.init function.comp at h,
-    unfold map nth, rw -h, refl },
+    unfold map nth, rw ← h, refl },
   { intro i,
     simp [temporal.init_drop,temporal.action_drop],
     existsi (ch $ τ i),

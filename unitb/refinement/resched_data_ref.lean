@@ -193,8 +193,8 @@ lemma init_simmed
 begin
   unfold Ta stream.map stream.nth,
   rw Ta_fair.init,
-  unfold object unitb.target_mch.s₀,
-  unfold mk_state sim_state.abs_state,
+  dunfold object unitb.target_mch.s₀,
+  dunfold mk_state sim_state.abs_state,
   rw and_comm,
   apply some_spec (object._proof_1 R Hc),
 end

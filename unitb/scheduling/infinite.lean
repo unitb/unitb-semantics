@@ -100,7 +100,7 @@ lemma pending_not_move (s : sch_state) (l : lbl)
   (h : succ s.q_len ≤ s.queue.g l)
 : ((sch.step s).queue).g l = s.queue.g l :=
 begin
-  unfold sch.step sch_state.queue shift,
+  dunfold sch.step sch_state.queue shift,
   cases decidable.em (first (req t s) s.queue < succ s.q_len) with h' h',
   { rw [dif_pos h',comp_g],
     unfold comp,
@@ -113,7 +113,7 @@ lemma shift_down (s : sch_state) (l : lbl)
   (h₁ : s.queue.g l < succ s.q_len)
 : succ (((sch.step s).queue).g l) = s.queue.g l :=
 begin
-  unfold sch.step sch_state.queue shift,
+  dunfold sch.step sch_state.queue shift,
   have h : first (req t s) s.queue < succ s.q_len := lt_trans h₀ h₁,
   rw [dif_pos h,comp_g], unfold comp,
   rw bijection.succ_rotate_right'_g_eq_self (s.queue.g l) _ h₀ h₁,
@@ -121,13 +121,13 @@ end
 
 lemma q_len_inc (s : sch_state)
 : (sch.step s).q_len = succ s.q_len :=
-by { rw -add_one_eq_succ, refl }
+by { rw ← add_one_eq_succ, refl }
 
 lemma not_req_not_move (s : sch_state) (l : lbl)
   (h : s.queue.g l < first (req s) s.queue)
 : (sch.step s).queue.g l = s.queue.g l :=
 begin
-  unfold sch.step sch_state.queue shift,
+  dunfold sch.step sch_state.queue shift,
   cases decidable.em (first (req t s) s.queue < succ s.q_len) with h' h',
   { rw [dif_pos h',comp_g],
     unfold comp,
@@ -173,9 +173,9 @@ begin
     -- h : s.q_len ≤ first (sch_state.req s) (s.queue)
   { have h' : s.q_len < s.queue.g l := lt_of_le_of_lt h Hlt,
     rw [pending_not_move _ _ _ h'],
-    unfold sch.step sch_state.q_len,
-    rw [add_one_eq_succ,-nat.add_sub_assoc h'
-       ,-nat.add_sub_assoc $ le_of_lt h'
+    dunfold sch.step sch_state.q_len,
+    rw [add_one_eq_succ,← nat.add_sub_assoc h'
+       ,← nat.add_sub_assoc $ le_of_lt h'
        ,sub_succ],
     apply pred_lt_self_of_pos,
     apply nat.sub_pos_of_lt,
@@ -184,7 +184,7 @@ begin
     -- h : s.q_len > first (sch_state.req s) (s.queue)
   { cases lt_or_ge (s.queue.g l) (succ s.q_len) with Hlt_len Hge_len,
       -- Hlt_len : (s.queue).g l < succ (s.q_len)
-    { rw [-shift_down _ s _ Hlt Hlt_len,q_len_inc],
+    { rw [← shift_down _ s _ Hlt Hlt_len,q_len_inc],
       { apply add_lt_add_of_lt_of_le,
         { apply lt_succ_self },
         { apply nat.sub_le_sub
@@ -263,7 +263,6 @@ lemma INIT
 begin
   unfold system.init program.init function.comp scheduler,
   unfold sch.first,
-  refl,
 end
 
 lemma STEP
@@ -278,9 +277,6 @@ begin
   existsi σ.inv,
   rw H,
   unfold function.comp scheduler program.step subtype.val sch.step,
-  cases σ, unfold subtype.val,
-  unfold sch.step sch_state.target,
-  refl,
 end
 
 lemma INV (σ : sch_state)

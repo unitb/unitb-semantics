@@ -96,14 +96,14 @@ lemma eq_next_or_rank_eq_or_rank_lt {s : sch_state} {l : lbl} (v : ℕ)
   ( l ∉ req s ∧ rank l (sch.step s) = v ) ∨
   rank l (sch.step s) < v :=
 begin
-  unfold sch.current select sch.step rank next sch_state.queue sch_state.target req,
+  dunfold sch.current select sch.step rank next sch_state.queue sch_state.target req,
   let target'  := (sch.step _ s).target,
   let queue' := (sch.step _ s).queue,
   cases s,
-  unfold sch.step sch_state.queue sch_state.target,
+  dunfold sch.step sch_state.queue sch_state.target,
   cases classical.em (queue.g l = first (t.req target) queue) with Heq Hne,
   { left,
-    unfold comp, symmetry,
+    symmetry,
     rw [bijection.inverse],
     symmetry, apply Heq, },
   cases lt_or_gt_of_ne Hne with Hlt Hgt
@@ -116,16 +116,16 @@ begin
         apply h₀ },
       have h₂ := minimum_le h₁,
       apply not_le_of_gt Hlt h₂, },
-    { unfold select comp sch.step sch_state.queue,
+    { dunfold select comp sch.step sch_state.queue,
       rw [comp_g], unfold comp,
       rw [rev_g,perm.rotate_right_f_gt_eq_self _ _ Hlt,h], } },
   { right,right,
     unfold comp select,
     rw [comp_g], unfold comp,
-    rw [rev_g,perm.rotate_right_f_lt_shifted _ _ Hgt,fin.pred_def,-h],
+    rw [rev_g,perm.rotate_right_f_lt_shifted _ _ Hgt,fin.pred_def,← h],
     apply pred_lt_self_of_pos,
     unfold gt at Hgt,
-    rw [fin.lt_def,-h] at Hgt,
+    rw [fin.lt_def,← h] at Hgt,
     apply lt_of_le_of_lt _ Hgt,
     apply zero_le },
 end
@@ -183,8 +183,8 @@ begin
   existsi σ.inv,
   rw H,
   unfold function.comp scheduler program.step subtype.val sch.step,
-  cases σ, unfold subtype.val,
-  unfold sch.step sch_state.target,
+  cases σ,
+  dunfold sch.step sch_state.target,
   refl,
 end
 

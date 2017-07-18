@@ -39,7 +39,7 @@ def map {α β : Type} (f : α → β) : expr α → expr β
 lemma id_map {α} (x : expr α) : map id x = x :=
 begin
   induction x
-  ; unfold map,
+  ; dunfold map,
   { refl }, { refl },
   { rw [ih_1,ih_2] },
 end
@@ -49,7 +49,7 @@ lemma map_comp {α β γ : Type} (g : α → β) (h : β → γ) (x : expr α)
 begin
   revert β γ g h,
   induction x ; intros β γ g h
-  ; unfold map,
+  ; dunfold map,
   { refl }, { refl },
   { rw [ih_1,ih_2] },
 end

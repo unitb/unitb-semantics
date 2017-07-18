@@ -94,7 +94,7 @@ lemma eventually_eventually (p : cpred β) : <><> p = <> p :=
 begin
   apply funext,
   intro x,
-  rw -iff_eq_eq,
+  rw ← iff_eq_eq,
   split
   ; unfold eventually
   ; intro h
@@ -113,9 +113,8 @@ lemma henceforth_henceforth (p : cpred β) : [][] p = [] p :=
 begin
   apply funext,
   intro x,
-  rw -iff_eq_eq,
+  rw ← iff_eq_eq,
   split
-  ; unfold eventually
   ; intro h,
   { intro i,
     have h' := h i 0,
@@ -130,7 +129,7 @@ lemma henceforth_drop {p : cpred β} {τ} (i : ℕ) :
 ([]p) τ → ([]p) (τ.drop i) :=
 begin
   intro h,
-  rw -henceforth_henceforth at h,
+  rw ← henceforth_henceforth at h,
   apply h,
 end
 
@@ -141,7 +140,7 @@ lemma hence_false : [](False : cpred β) = False :=
 begin
   apply funext,
   intro x,
-  rw -iff_eq_eq,
+  rw ← iff_eq_eq,
   split ; intro h,
   { cases h 0 },
   { cases h }
@@ -152,7 +151,7 @@ lemma event_false : <>(False : cpred β) = False :=
 begin
   apply funext,
   intro x,
-  rw -iff_eq_eq,
+  rw ← iff_eq_eq,
   split ; intro h,
   { cases h with _ h, cases h },
   { cases h }
@@ -163,7 +162,7 @@ lemma init_false : (•False) = (False : cpred β) :=
 begin
   apply funext,
   intro x,
-  rw -iff_eq_eq,
+  rw ← iff_eq_eq,
   split ; intro h,
   { cases h },
   { cases h }
@@ -174,7 +173,7 @@ lemma hence_true : [](True : cpred β) = True :=
 begin
   apply funext,
   intro x,
-  rw -iff_eq_eq,
+  rw ← iff_eq_eq,
   split ; intro h,
   { trivial },
   { intro, trivial }
@@ -185,7 +184,7 @@ lemma event_true : <>(True : cpred β) = True :=
 begin
   apply funext,
   intro x,
-  rw -iff_eq_eq,
+  rw ← iff_eq_eq,
   split ; intro h,
   { trivial },
   { apply exists.intro 0, trivial }
@@ -196,7 +195,7 @@ lemma init_true : (•True) = (True : cpred β) :=
 begin
   apply funext,
   intro x,
-  rw -iff_eq_eq,
+  rw ← iff_eq_eq,
   split ; intro h ; trivial,
 end
 
@@ -205,7 +204,6 @@ lemma init_exists {t} (p : t → pred' β)
 begin
   apply funext, intro,
   simp, unfold init p_exists,
-  refl
 end
 
 /- monotonicity -/
@@ -302,7 +300,7 @@ lemma eventually_of_leads_to' {p q : cpred β} {τ} (i : ℕ)
 : (<>p ⟶ <>q) (τ.drop i)  :=
 begin
   intro hp,
-  rw -eventually_eventually,
+  rw ← eventually_eventually,
   apply eventually_imp_eventually _ hp,
   apply @henceforth_drop _ _ τ i h,
 end
@@ -334,7 +332,7 @@ lemma not_henceforth (p : cpred β) : (- []p) = (<>-p) :=
 begin
   apply funext,
   intro x,
-  rw -iff_eq_eq,
+  rw ← iff_eq_eq,
   apply not_forall_iff_exists_not,
 end
 
@@ -362,7 +360,7 @@ lemma not_eventually {β} (p : cpred β) : (-<>p) = ([]-p) :=
 begin
   apply funext,
   intro x,
-  rw -iff_eq_eq,
+  rw ← iff_eq_eq,
   apply not_exists_iff_forall_not,
 end
 
@@ -391,7 +389,7 @@ begin
     simp, rw [p_or_comm,next_or,p_or_iff_not_imp] at h₂, simp at h₂,
     apply h₂,
     have h₃ := h₁ (i + 1),
-    rw [-p_not_eq_not,stream.drop_drop,init_drop] at h₃,
+    rw [← p_not_eq_not,stream.drop_drop,init_drop] at h₃,
     simp at h₃,
     simp [next_init,h₃], }
 end
@@ -399,7 +397,7 @@ end
 lemma induct' {β} (p : pred' β) {τ} (h : ([] (•p ⟶ ⊙•p)) τ)
 : [] (•p ⟶ []•p) $ τ :=
 begin
-  rw [-False_p_or ([]•p),-event_false,-init_false],
+  rw [← False_p_or ([]•p),← event_false,← init_false],
   apply induct_evt,
   simp [init_false,p_or_False,h],
 end
@@ -483,7 +481,7 @@ lemma inf_often_p_or {β} (p q : cpred β)
 : []<>(p || q) = []<>p || []<>q :=
 begin
   apply funext, intro, simp,
-  rw [-iff_eq_eq],
+  rw [← iff_eq_eq],
   split,
   { rw [or_iff_not_imp],
     intros h₀ h₁,
@@ -501,7 +499,7 @@ end
 
 lemma next_imp_next {p q : cpred β} (h : p ⟹ q)
 : ⊙ p ⟹ ⊙ q :=
-take τ, h _
+assume τ, h _
 
 lemma entail_contrapos {p q : pred' β} : p ⟹ q → (-q) ⟹ -p :=
 begin
@@ -527,7 +525,7 @@ lemma henceforth_and (p q : cpred β)
 begin
   apply funext, intro τ,
   simp,
-  rw [-iff_eq_eq],
+  rw [← iff_eq_eq],
   repeat { split ; intros }
   ; intros i ; try { simp, split },
   { apply (a i).left },
@@ -579,7 +577,7 @@ lemma eventually_exists (P : α → cpred β)
 : <>(∃∃ x, P x) = ∃∃ x, <>P x :=
 begin
   apply funext, intro τ,
-  rw -iff_eq_eq,
+  rw ← iff_eq_eq,
   unfold eventually p_exists,
   split
   ; intro H
@@ -611,7 +609,6 @@ begin
   apply funext, intro i,
   simp,
   unfold temporal.action,
-  refl
 end
 
 lemma or_action (A B : act β)
@@ -648,7 +645,7 @@ lemma henceforth_trading (f : α → β) (p : cpred β)
 : ([] (p ∘ map f)) = ([] p) ∘ map f :=
 begin
   apply funext, intro τ,
-  rw -iff_eq_eq,
+  rw ← iff_eq_eq,
   unfold comp henceforth,
   apply forall_congr, intro i,
   rw iff_eq_eq,
@@ -661,7 +658,7 @@ lemma eventually_trading (f : α → β) (p : cpred β)
 : (<> (p ∘ map f)) = (<> p) ∘ map f :=
 begin
   apply funext, intro τ,
-  rw -iff_eq_eq,
+  rw ← iff_eq_eq,
   unfold comp eventually,
   apply exists_congr, intro i,
   rw iff_eq_eq,
@@ -710,7 +707,7 @@ lemma inf_often_trace_action_init_trading (τ : stream α) (f : α → α → β
 : ([]<>⟦ λ σ σ', p (f σ σ') ⟧) τ = ([]<>•p) (λ i, f (τ i) (τ $ succ i)) :=
 begin
   unfold henceforth eventually,
-  rw -iff_eq_eq,
+  rw ← iff_eq_eq,
   apply forall_congr, intro i,
   apply exists_congr, intro j,
   simp [stream.drop_drop,action_drop,init_drop],
@@ -722,7 +719,7 @@ protected theorem leads_to_of_inf_often {α} (p q : cpred α) {τ : stream α}
 begin
   apply henceforth_entails_henceforth _ _ H,
   unfold p_entails,
-  rw [-p_and_p_imp],
+  rw [← p_and_p_imp],
   apply p_and_elim_left
 end
 
@@ -746,7 +743,7 @@ begin
   rw [eventually_p_or],
   apply p_or_p_imp_p_or_left,
   { apply eventually_of_leads_to' _ P₁ },
-  rw [-eventually_p_or],
+  rw [← eventually_p_or],
   apply P₀ _ h,
 end
 
@@ -798,7 +795,7 @@ begin
     have h' : (p && •flip lt x ∘ f) = (λ s, ∃v, flip lt x v ∧ (p s ∧ (•eq v ∘ f) s)),
     { apply funext,
       intro x,
-      rw -iff_eq_eq,
+      rw ← iff_eq_eq,
       simp, unfold function.comp init,
       rw [exists_one_point_right (f $ x 0),eq_true_intro rfl,and_true],
       intro, apply and.right ∘ and.right },
@@ -808,7 +805,7 @@ begin
   have h₃ := temporal.leads_to_disj h₂,
   have h₄ : (∃∃ (i : β), (λ (V : β), p && •eq V ∘ f) i) = p,
   { apply funext, intro i,
-    rw -iff_eq_eq, simp,
+    rw ← iff_eq_eq, simp,
     unfold function.comp init,
     rw [exists_one_point_right (f $ i 0),eq_true_intro rfl,and_true],
     intro, apply and.right },
@@ -843,7 +840,7 @@ begin
       apply funext, intro τ,
       simp, unfold init flip function.comp,
       rw [exists_one_point_right (V $ τ 0)],
-      simp [eq_true_intro $ @rfl _ (V $ τ 0)],
+      simp [eq_true_intro (@rfl _ (V $ τ 0))],
       intro,
       apply implies.trans and.elim_right,
       apply and.elim_right },
@@ -894,7 +891,7 @@ begin
   have Q : ∀ v, [](•EQ v ⟶ <>•(LT v || q) || []•EQ v) $ τ,
   { intro v,
     apply induct_evt,
-    rw [-init_p_or,next_init_eq_action,init_eq_action,-action_imp],
+    rw [← init_p_or,next_init_eq_action,init_eq_action,← action_imp],
     apply henceforth_entails_henceforth _ _ h₁,
     apply action_entails_action _ _ _,
     intros s s' h₂ h₃,
@@ -945,7 +942,7 @@ begin
   have H : eq (f x) ∘ f = eq x,
   { apply funext, intro y,
     unfold comp,
-    rw -iff_eq_eq,
+    rw ← iff_eq_eq,
     split,
     { apply Hinj },
     apply congr_arg },

@@ -42,7 +42,7 @@ def skip : event :=
 { coarse_sch := True
 , fine_sch := True
 , step := λ s _ _ s', s = s'
-, fis := take s _ _, ⟨s,rfl⟩ }
+, fis := assume s _ _, ⟨s,rfl⟩ }
 
 def program.event (s : program) : option s.lbl → event
   | none := skip
@@ -89,12 +89,12 @@ open temporal
 
 lemma step_of_none  (s : program) : s.step_of none = eq :=
 begin
-  unfold program.step_of program.event skip,
+  dunfold program.step_of program.event skip,
   apply funext, intro σ,
   apply funext, intro σ',
-  unfold event.step_of,
-  unfold event.coarse_sch event.fine_sch event.step,
-  unfold True lifted₀,
+  dunfold event.step_of,
+  dunfold event.coarse_sch event.fine_sch event.step,
+  dunfold True lifted₀,
   simp [exists_true],
 end
 
@@ -121,7 +121,6 @@ begin
   apply funext, intro σ,
   apply funext, intro σ',
   unfold is_step,
-  simp [exists_option],
 end
 
 lemma is_step_inst' (s : program) (ev : option s.lbl)
@@ -152,7 +151,7 @@ noncomputable def program.object_mch (p : program)
 { σ := α
 , s₀ := classical.some p.first_fis
 , req := λ s, { l | p.guard l s }
-, req_nemp := take x,
+, req_nemp := assume x,
   begin
     apply @set.ne_empty_of_mem _ _ none,
     simp [mem_set_of], exact ⟨trivial,trivial⟩,
@@ -181,13 +180,13 @@ begin
   rw [init_eq_action,action_and_action],
   apply action_entails_action,
   intro σ, intro σ',
-  unfold comp program.object_mch,
+  dunfold comp program.object_mch,
   unfold  target_mch.action target_mch.next target_mch.req,
   simp [mem_set_of],
   intro h, cases h with h₀ h₁,
   cases h₁ with P h₁,
   rw [h₁],
-  unfold program.step_of event.step_of program.object_mch._proof_3,
+  dunfold program.step_of event.step_of program.object_mch._proof_3,
   existsi h₀.left, existsi h₀.right,
   apply classical.some_spec,
 end
@@ -219,7 +218,7 @@ open event
 theorem program.transient_false {p : pred}
 : transient s p False :=
 begin
-  unfold program.transient,
+  dunfold program.transient,
   existsi none,
   apply falsify.mk,
   { intros σ h, apply trivial },
@@ -233,7 +232,7 @@ def program.transient_antimono (s : program) {p q p' q' : pred}
   (hq : q' ⟹ q)
 : s.transient p q → s.transient p' q' :=
 begin
-  unfold transient,
+  dunfold transient,
   apply exists_imp_exists,
   intros e h',
   apply falsify.mk,
@@ -281,7 +280,7 @@ lemma transient.semantics'
 : ([]<>•p) τ → ([]<>-•q) τ :=
 begin
   cases (temporal.em' (•q) τ) with h_q ev_nq,
-  { unfold program.transient at T₀,
+  { dunfold program.transient at T₀,
     cases T₀ with ev T₀,
     have Hc : (<>[]•s.coarse_sch_of ev) τ,
     { apply stable_entails_stable' _ _ h_q,
@@ -292,7 +291,7 @@ begin
       apply T₀.schedule, },
     have live := h ev Hc Hf,
     have act := coincidence h_q (h ev Hc Hf),
-    rw [-eventually_eventually],
+    rw [← eventually_eventually],
     apply inf_often_entails_inf_often _ _ act,
     apply entails_imp_entails_left _ T₀.negate,
     refl, },
@@ -307,7 +306,6 @@ lemma init_sem
 : (•p) τ :=
 begin
   unfold temporal.init,
-  unfold init program.init at I₀,
   apply I₀,
   apply h.init,
 end
@@ -375,18 +373,17 @@ begin
   cases H with Hp Hq,
   unfold step has_safety.step is_step at STEP,
   cases STEP with e STEP,
-  unfold program.step_of event.step_of at STEP,
   cases STEP with Hc STEP,
   cases STEP with Hf STEP,
   cases e with e,
-  { unfold program.event skip event.step at STEP,
+  { dunfold program.event skip event.step at STEP,
     subst σ',
     left, apply Hp },
   { apply ACT e _ Hc Hf _ _ STEP Hp Hq,
     intro Hin,
     apply EXP,
     clear ACT EXP,
-    unfold program.step_of event.step_of program.event,
+    dunfold program.step_of event.step_of program.event,
     existsi s.event' e, split, apply Hin,
     existsi Hc, existsi Hf,
     apply STEP }
@@ -431,7 +428,7 @@ begin
     apply entails_p_and_of_entails,
     { refl },
     { apply EN } },
-  unfold transient' system.transient program.transient,
+  dunfold transient' system.transient program.transient,
   existsi ev,
   apply falsify.mk,
     -- enablement

@@ -143,7 +143,7 @@ def condition' : Π {p q} {c : code p q} (pc : current c), is_control' pc → σ
 
 def condition {p q} {c : code p q} : ∀ pc : option $ current c, is_control pc → σ → Prop
   | (some pc) := condition' pc
-  | none := take h, by cases h
+  | none := assume h, by cases h
 
 def action_of : Π {p q} {c : code p q} (cur : current c),
 { p // ∃ P, condition (some cur) P = p }  ⊕ subtype (selects (some cur))

@@ -87,7 +87,7 @@ begin
   { have Hss' : assert_of (next s.intl s.pc) s.intl,
     { rw assert_of_next,
       cases l with l H, cases H with P H,
-      rw -h,
+      rw ← h,
       cases classical.em (condition (some e) P s.intl) with Hc Hnc,
       { apply (Hcorr $ some e).cond_true _ _ _ Hc,
         rw h,
@@ -100,8 +100,7 @@ begin
     unfold machine.step,
     split,
     { refl },
-    { rw Hl, unfold machine.step._match_1 machine.run_event,
-      refl } },
+    { rw Hl, unfold machine.step._match_1 machine.run_event } },
   { cases l with l hl,
     rw h at hl,
     have CS := evt_coarse_sch _ p c Hcorr l s hl trivial,
@@ -192,8 +191,8 @@ begin
            nondet.skip nondet.event.step_of
            nondet.event.fine_sch nondet.event.coarse_sch
            nondet.event.step,
-    apply exists_imp_exists' (take _, trivial) _ H, intro,
-    apply exists_imp_exists' (take _, trivial) _, intros _,
+    apply exists_imp_exists' (assume _, trivial) _ H, intro,
+    apply exists_imp_exists' (assume _, trivial) _, intros _,
     simp, intro, subst s, },
   case some
   { destruct action_of pc,
@@ -208,12 +207,12 @@ begin
              nondet.event.step_of,
       unfold nondet.program.step_of nondet.program.event
              nondet.event.step_of at H,
-      apply exists_imp_exists' (take _, trivial) _ H, intro,
-      apply exists_imp_exists' (take _, trivial) _, intros _,
+      apply exists_imp_exists' (assume _, trivial) _ H, intro,
+      apply exists_imp_exists' (assume _, trivial) _, intros _,
       intros H',
       change _ = _,
-      unfold machine_of nondet.program.event' machine.event
-             nondet.event.step machine.step at H',
+      dunfold machine_of nondet.program.event' machine.event
+              nondet.event.step machine.step at H',
       rw Hact at H',
       have H : s'.intl = s.intl := H'.right,
       rw [H], },
@@ -223,12 +222,12 @@ begin
       let x : {ea // rel _ p _ Hcorr (some pc) ea},
       { existsi (some e), apply He },
       existsi x, unfold function.on_fun,
-      unfold machine_of nondet.program.step_of nondet.program.event
-             nondet.program.event' machine.event nondet.event.step_of
-             nondet.event.coarse_sch nondet.event.fine_sch
-             nondet.event.step at H,
+      dunfold machine_of nondet.program.step_of nondet.program.event
+              nondet.program.event' machine.event nondet.event.step_of
+              nondet.event.coarse_sch nondet.event.fine_sch
+              nondet.event.step at H,
       cases H with Hc H, cases H with Hf H,
-      unfold machine.step at H,
+      dunfold machine.step at H,
       rw Hact at H, unfold machine.step._match_1 machine.run_event at H,
       rw Hc at He,
       have Hen := (Hcorr s.pc).enabled e He _ s.assertion,

@@ -44,12 +44,6 @@ begin
   apply forall_congr_eq, intro P,
   generalize (p σ ∧ ¬q σ → p σ' ∨ q σ') r,
   simp,
-  intro,
-  rw [-iff_eq_eq],
-  split
-  ; intro hr ; intros
-  ; apply hr,
-  trivial,
 end
 
 def saf_ex {α} [has_safety α] (s : α) : cpred (state α) :=
@@ -70,7 +64,6 @@ lemma unless_action {α} [has_safety α] {s : α} {p q : pred' (state α)}
 : ⟦ λ σ σ', (p σ ∧ ¬ q σ) ⟧ ⟹ ( ⟦ step s ⟧ ⟶  ⟦ λ _, p || q ⟧ ) :=
 begin
   intros τ,
-  unfold temporal.action,
   intros hpnq act,
   apply h _ _ act hpnq
 end
@@ -160,16 +153,16 @@ begin
   simp at h₀,
   have h₄ : p₀ σ ∧ ¬q₀ σ ∨ p₁ σ ∧ ¬q₁ σ,
   { have h₄ := and.intro h₀ h₁,
-    rw -distrib_right_or at h₄,
+    rw ← distrib_right_or at h₄,
     have h₅ := and.intro h₂ h₃,
-    rw [or_comm,-distrib_right_or] at h₅,
+    rw [or_comm,← distrib_right_or] at h₅,
     rw [distrib_left_or],
     exact ⟨h₄,h₅⟩, },
   have STEP₀ := or.imp (P₀ _ _ STEP) (P₁ _ _ STEP) h₄,
   have STEP₁ : (p₀ σ' ∨ p₁ σ') ∨ q₀ σ' ∨ q₁ σ',
   { revert STEP₀,
     apply iff.mp, simp, },
-  rw [-or_not_and (p₀ σ' ∨ p₁ σ')] at STEP₁,
+  rw [← or_not_and (p₀ σ' ∨ p₁ σ')] at STEP₁,
   revert STEP₁,
   apply or.imp_right,
   rw [not_or_iff_not_and_not,distrib_left_and],
@@ -228,7 +221,7 @@ begin
   intros σ σ' h,
   rw and_shunting,
   intros h₀ hr,
-  rw [p_or_comm,-p_or_not_and,p_and_comm] at h₀,
+  rw [p_or_comm,← p_or_not_and,p_and_comm] at h₀,
   cases h₀ with hq hpnq,
   { apply or.imp_left (or.intro_right _) (S₁ _ _ h _),
     exact ⟨hq,hr⟩ },
@@ -321,13 +314,11 @@ begin
       { apply sem } },
     unfold action at GOAL,
     cases GOAL with hp hq,
-    { unfold action,
-        -- The order of i,j,k changes slightly between
+    {   -- The order of i,j,k changes slightly between
         -- invokations of lean. The next line aims to fix that
       try { simp }, try { simp at hp },
       apply hp },
     { have hnq' := henceforth_str' (k+j+1) H',
-      unfold action,
       simp [drop_drop,not_init] at hnq',
       unfold drop init at hq hnq',
       simp at hnq' hq,
@@ -356,9 +347,9 @@ lemma unless_sem_str {τ : stream σ} {p q : pred' σ}
     (H : unless s p q)
 : ([]<>•p ⟶ <>[]•p || []<>•q) τ :=
 begin
-  rw [shunting,-eventually_eventually ([] _),not_eventually,-henceforth_and],
+  rw [shunting,← eventually_eventually ([] _),not_eventually,← henceforth_and],
   apply henceforth_imp_henceforth, intro j,
-  rw [-shunting],
+  rw [← shunting],
   have H' := unless_sem' j sem H,
   apply H'
 end
@@ -370,7 +361,7 @@ lemma unless_sem_exists' {τ : stream σ} {t} {p : t → pred' σ} {q : pred' σ
 : ( []<>(∃∃ x, •p x) ⟶ (∃∃ x, <>[]•p x) || []<>(•q || ⟦ evt ⟧) ) τ :=
 begin
   intro H₀,
-  rw [p_or_comm,-p_not_p_imp],
+  rw [p_or_comm,← p_not_p_imp],
   intro H₁,
   simp [p_not_p_exists,not_henceforth,not_eventually] at H₁,
   unfold eventually at H₁,
@@ -389,7 +380,7 @@ begin
   ; simp [drop_drop] at H₂,
   { apply H₂, },
   { simp [drop_drop] at ih_1,
-    rw [drop_succ,-tail_drop],
+    rw [drop_succ,← tail_drop],
     simp [drop_drop],
     unfold tail,
     let σ := (drop (i + (j + k)) τ 0),

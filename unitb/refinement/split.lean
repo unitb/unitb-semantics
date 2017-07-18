@@ -37,7 +37,6 @@ begin
   intros H,
   cases H with ce H,
   existsi (R.abs ce),
-  unfold program.event, unfold program.event at H,
   apply R.evt_sim _ _ H,
 end
 
@@ -106,8 +105,8 @@ begin
     apply inf_often_of_leads_to (system_sem.leads_to_sem H' _ M₁),
     simp,
     have H' := ew_eq_true (R.events e).witness_fis,
-    rw [-p_and_over_p_exists_right
-       ,-p_and_over_p_exists_right],
+    rw [← p_and_over_p_exists_right
+       ,← p_and_over_p_exists_right],
     simp [H'],
     apply abs_coarse_and_fine ma mc _ M₁ _ abs_coarse abs_fine, },
   simp at H,

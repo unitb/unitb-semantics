@@ -94,7 +94,7 @@ by refl
 lemma p_not_True : (- True) = (False : pred' α) :=
 begin
   apply funext, intro x,
-  rw [-p_not_eq_not],
+  rw [← p_not_eq_not],
   simp,
 end
 
@@ -102,7 +102,7 @@ end
 lemma p_not_False : (- False) = (True : pred' α) :=
 begin
   apply funext, intro x,
-  rw [-p_not_eq_not],
+  rw [← p_not_eq_not],
   simp,
 end
 
@@ -150,7 +150,7 @@ end
 @[refl]
 lemma entails_refl (p : pred' β)
 : p ⟹ p :=
-take _, id
+assume _, id
 
 lemma p_or_p_imp_p_or' {p p' q q' : pred' α}
   (hp : p ⟹ p')
@@ -188,13 +188,13 @@ lemma p_imp_p_imp_p_imp {p p' q q' : pred' α} {τ}
   (hp : (p' ⟶ p) τ)
   (hq : (q ⟶ q') τ)
 : ( p ⟶ q ) τ → ( p' ⟶ q' ) τ :=
-take hpq, hq ∘ hpq ∘ hp
+assume hpq, hq ∘ hpq ∘ hp
 
 lemma p_imp_entails_p_imp {p p' q q' : pred' α}
   (hp : p' ⟹ p)
   (hq : q ⟹ q')
 : ( p ⟶ q ) ⟹ ( p' ⟶ q' ) :=
-take τ hpq, hq _ ∘ hpq ∘ hp _
+assume τ hpq, hq _ ∘ hpq ∘ hp _
 
 lemma p_imp_p_imp_p_imp_left {p p' q : pred' α} {τ}
   (hp : (p' ⟶ p) τ)
@@ -266,7 +266,7 @@ lemma mutual_entails {p q : pred' β}
 : p = q :=
 begin
   apply funext, intro,
-  rw -iff_eq_eq,
+  rw ← iff_eq_eq,
   split,
   { apply h₀ },
   { apply h₁ },
@@ -275,7 +275,7 @@ end
 @[simp]
 lemma False_entails (p : pred' β)
 : False ⟹ p :=
-take x, false.elim
+assume x, false.elim
 
 lemma p_and_p_not_self (p : pred' β)
 : p && -p = False :=
@@ -361,7 +361,7 @@ begin apply funext, intro x, simp end
 lemma p_and_p_imp (p q r : pred' β) : p && q ⟶ r = p ⟶ (q ⟶ r) :=
 begin
   apply funext, intro x, simp,
-  rw -iff_eq_eq,
+  rw ← iff_eq_eq,
   split
   ; intros h h' ; intros
   ; apply h
@@ -373,76 +373,76 @@ end
 @[simp]
 lemma p_or_intro_left (p q : pred' β)
 : p ⟹ p || q :=
-take _, or.intro_left _
+assume _, or.intro_left _
 
 @[simp]
 lemma p_or_intro_right (p q : pred' β)
 : q ⟹ p || q :=
-take _, or.intro_right _
+assume _, or.intro_right _
 
 lemma p_or_entails_of_entails {p q r : pred' β}
   (h₀ : p ⟹ r)
   (h₁ : q ⟹ r)
 : p || q ⟹ r :=
-take _, or.rec (h₀ _) (h₁ _)
+assume _, or.rec (h₀ _) (h₁ _)
 
 lemma entails_p_or_of_entails_left {p q r : pred' β}
   (h₀ : p ⟹ q)
 : p ⟹ q || r :=
-take x, (or.intro_left _) ∘ (h₀ x)
+assume x, (or.intro_left _) ∘ (h₀ x)
 
 lemma entails_p_or_of_entails_right {p q r : pred' β}
   (h₀ : p ⟹ r)
 : p ⟹ q || r :=
-take x, (or.intro_right _) ∘ (h₀ x)
+assume x, (or.intro_right _) ∘ (h₀ x)
 
 lemma entails_p_and_of_entails {p q r : pred' β}
   (h₀ : p ⟹ q)
   (h₁ : p ⟹ r)
 : p ⟹ q && r :=
-take x Hp, ⟨h₀ _ Hp,h₁ _ Hp⟩
+assume x Hp, ⟨h₀ _ Hp,h₁ _ Hp⟩
 
 lemma p_and_entails_of_entails_left {p q r : pred' β}
   (h₁ : p ⟹ r)
 : p && q ⟹ r :=
-take x Hp, h₁ _ Hp.left
+assume x Hp, h₁ _ Hp.left
 
 lemma p_and_entails_of_entails_right {p q r : pred' β}
   (h₁ : q ⟹ r)
 : p && q ⟹ r :=
-take x Hp, h₁ _ Hp.right
+assume x Hp, h₁ _ Hp.right
 
 @[simp]
 lemma p_and_elim_left (p q : pred' β)
 : p && q ⟹ p :=
-take x, and.left
+assume x, and.left
 
 @[simp]
 lemma p_and_elim_right (p q : pred' β)
 : p && q ⟹ q :=
-take x, and.right
+assume x, and.right
 
 @[trans]
 lemma entails_trans (q : pred' β) {p r : pred' β}
   (h₀ : p ⟹ q)
   (h₁ : q ⟹ r)
 : p ⟹ r :=
-take x, h₁ x ∘ h₀ x
+assume x, h₁ x ∘ h₀ x
 
 lemma p_and_entails_p_and_left (p q x : pred' β)
   (h : p ⟹ q)
 : p && x ⟹ q && x :=
-take x, and.imp_left (h x)
+assume x, and.imp_left (h x)
 
 lemma p_and_entails_p_and_right {p q : pred' β} (x : pred' β)
   (h : p ⟹ q)
 : x && p ⟹ x && q :=
-take x, and.imp_right (h x)
+assume x, and.imp_right (h x)
 
 lemma p_not_entails_p_not_right {p q : pred' β}
   (h : q ⟹ p)
 : - p ⟹ - q :=
-take x, mt (h x)
+assume x, mt (h x)
 
 lemma entails_of_eq (p q : pred' β)
   (h : p = q)
@@ -451,12 +451,12 @@ by simp [h]
 
 lemma p_and_entails_p_or (p q : pred' β)
 : p && q ⟹ p || q :=
-take x, or.intro_left _ ∘ and.left
+assume x, or.intro_left _ ∘ and.left
 
 lemma True_p_imp (p : pred' β)
 : True ⟶ p = p :=
 begin
-  apply funext, intro, rw [-iff_eq_eq],
+  apply funext, intro, rw [← iff_eq_eq],
   split
   ; intro h
   ; try { intro }
@@ -481,7 +481,7 @@ lemma p_and_over_p_exists_right {t} (p : t → pred' β) (q : pred' β)
 : (∃∃ x, p x) && q = (∃∃ x, p x && q) :=
 begin
   apply funext, intro i,
-  rw -iff_eq_eq,
+  rw ← iff_eq_eq,
   simp,
   split
   ; intro h
@@ -494,7 +494,7 @@ lemma shunting (p q r : pred' β)
 : p ⟶ q || r = (p && - q) ⟶ r :=
 begin
   apply funext, intro i,
-  simp, rw -iff_eq_eq,
+  simp, rw ← iff_eq_eq,
   split ; intros h₀ h₁,
   { cases h₁ with h₁ h₂,
     cases h₀ h₁ with h₃ h₃,
@@ -508,7 +508,7 @@ end
 lemma p_not_p_imp (p q : pred' β)
 : (-p) ⟶ q = p || q :=
 begin
-  rw [-True_p_and (-p),-shunting,True_p_imp],
+  rw [← True_p_and (-p),← shunting,True_p_imp],
 end
 
 lemma p_or_entails_p_or_right (p q x : pred' β)
@@ -523,7 +523,7 @@ lemma p_or_not_and (p q : pred' β)
 begin
   apply funext, intro,
   simp,
-  rw [-or_not_and (p _) (q _)],
+  rw [← or_not_and (p _) (q _)],
   simp
 end
 
@@ -579,7 +579,7 @@ lemma p_exists_variable_change
 begin
   apply funext, intro i, simp,
   unfold p_entails at Hf Hg,
-  rw [-ew_p_forall] at Hf Hg,
+  rw [← ew_p_forall] at Hf Hg,
   rw exists_variable_change _ _ f g,
   apply Hf,
   apply Hg,

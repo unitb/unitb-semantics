@@ -257,11 +257,11 @@ by { apply funext, intro x, refl }
 
 lemma eval_pair_post (s s' : state_t var) (p : expr var)
 : eval (pair s s') (post p) = eval s' p :=
-by { unfold post, rw [-eval_trade,pair_primed] }
+by { unfold post, rw [← eval_trade,pair_primed] }
 
 lemma eval_pair_pre (s s' : state_t var) (p : expr var)
 : eval (pair s s') (pre p) = eval s p :=
-by { unfold pre, rw [-eval_trade,pair_unprimed] }
+by { unfold pre, rw [← eval_trade,pair_unprimed] }
 
 lemma valid_trade {var' : Type} (s : state_t var') (p : prop var) (f : var → var')
 : valid (s ∘ f) p = valid s (f <$> p) :=
@@ -275,18 +275,18 @@ begin
   { refl },
   { rw ih_1, refl },
   { rw [ih_1,ih_2], refl },
-  { rw [-iff_eq_eq],
+  { rw [← iff_eq_eq],
     apply forall_congr, intro x,
     rw [add_comp,ih_1], refl, }
 end
 
 lemma valid_pair_post (s s' : state_t var) (p : prop var)
 : valid (pair s s') (post p) = valid s' p :=
-by { unfold post, rw [-valid_trade,pair_primed] }
+by { unfold post, rw [← valid_trade,pair_primed] }
 
 lemma valid_pair_pre (s s' : state_t var) (p : prop var)
 : valid (pair s s') (pre p) = valid s p :=
-by { unfold pre, rw [-valid_trade,pair_unprimed] }
+by { unfold pre, rw [← valid_trade,pair_unprimed] }
 
 section meaning
 
@@ -309,7 +309,6 @@ begin
   unfold valid eval,
   rw eval_from_empty,
   unfold rel.meaning,
-  refl,
 end
 
 end meaning_first_valid
@@ -324,9 +323,9 @@ begin
   intro l,
   unfold holds maintain_inv
      sequent.goal sequent.asm sequent.lbl sequent.var at h₁,
-  rw -valid_pair_post s,
+  rw ← valid_pair_post s,
   apply h₁ l,
-  clear l, intro l,
+  intro l,
   cases l with l l
   ; unfold inv_act_asm ast.simple.union,
   { rw valid_pair_pre,
@@ -349,12 +348,10 @@ lemma transient_is_sound (q : prop var)
   (h : holds (check_transient p q))
 : unitb.transient (meaning' p h₀ h₁) (valid' p q) :=
 begin
-  unfold valid',
   intros σ h₀ h₁,
-  unfold valid' meaning' simple.program.step subtype.val,
-  unfold valid' meaning' simple.program.step subtype.val at h₀,
+  dunfold valid' meaning' simple.program.step subtype.val,
   unfold check_transient holds sequent.var sequent.lbl sequent.asm sequent.goal at h,
-  rw -valid_pair_post σ.val,
+  rw ← valid_pair_post σ.val,
   unfold post has_map.map prop.fmap valid at h,
   apply h,
   intro l, cases l with l
@@ -364,7 +361,7 @@ begin
   { rw valid_pair_pre, apply σ.property },
   { unfold valid rel.meaning,
     rw [eval_pair_post,eval_pair_pre],
-    unfold eval, refl, }
+    refl, }
 end
 
 lemma transient_is_sound' (l : p.tr_lbl)

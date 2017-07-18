@@ -44,7 +44,6 @@ def program.falsify_action (s : program lbl α) (p q : pred α) (ev : option lbl
   (h : s.falsify ev p q)
 : •q ⟹ ( ⟦ s.action_of ev ⟧ ⟶ ⟦ λ _, - q ⟧ ) :=
 begin
-  unfold program.transient at h,
   intros τ Hq H₁,
   unfold temporal.action program.action_of at H₁,
   unfold temporal.action,
@@ -119,7 +118,6 @@ lemma init_sem
   (I₀ : init s p)
 : (•p) τ :=
 begin
-  unfold init system.init program.init at I₀,
   unfold temporal.init,
   rw h.init,
   apply I₀
@@ -134,7 +132,7 @@ begin
   cases T₀ with ev T₀,
   cases temporal.em' (• q) τ with hq hnq,
   { have occ := coincidence hq (h.liveness ev),
-    rw -eventually_eventually,
+    rw ← eventually_eventually,
     apply henceforth_entails_henceforth _ _ occ,
     apply eventually_entails_eventually,
     apply T₀.negate },
@@ -174,7 +172,7 @@ begin
     intro l,
     apply entails_trans _ (H _),
     revert l,
-    rw [-p_exists_entails_eq_p_forall_entails,exists_action], refl },
+    rw [← p_exists_entails_eq_p_forall_entails,exists_action], refl },
   { intro e,
     apply inf_often_entails_inf_often _ _ (h.fair e _),
     { apply H },

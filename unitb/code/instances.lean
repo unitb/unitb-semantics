@@ -68,7 +68,7 @@ lemma from_fin_eq_seq_left
   (Hk : fin.split n = sum.inl k)
 :   from_fin (code.seq c₀ c₁) n
   = seq_left c₁ (from_fin c₀ k) :=
-by { unfold from_fin, simp [Hk], refl }
+by { dunfold from_fin, simp [Hk], refl }
 
 lemma from_fin_eq_seq_right
   {p q r : pred}
@@ -78,7 +78,7 @@ lemma from_fin_eq_seq_right
   (Hk : fin.split n = sum.inr k)
 :   from_fin (code.seq c₀ c₁) n
   = seq_right c₀ (from_fin c₁ k) :=
-by { unfold from_fin, simp [Hk], refl }
+by { dunfold from_fin, simp [Hk], refl }
 
 lemma from_fin_eq_ite_left
   {p t pa pb q : pred}
@@ -92,8 +92,8 @@ lemma from_fin_eq_ite_left
 :   from_fin (if_then_else p ds t c₀ c₁) n
   = ite_left p t ds c₁ (from_fin c₀ k') :=
 begin
-  unfold from_fin, simp [Hk],
-  unfold from_fin._match_2, simp [Hk'],
+  dunfold from_fin, simp [Hk],
+  dunfold from_fin._match_2, simp [Hk'],
   refl,
 end
 
@@ -109,8 +109,8 @@ lemma from_fin_eq_ite_right
 :   from_fin (if_then_else p ds t c₀ c₁) n
   = ite_right p t ds c₀ (from_fin c₁ k') :=
 begin
-  unfold from_fin, simp [Hk],
-  unfold from_fin._match_2, simp [Hk'],
+  dunfold from_fin, simp [Hk],
+  dunfold from_fin._match_2, simp [Hk'],
   refl,
 end
 
@@ -123,7 +123,7 @@ lemma from_fin_eq_ite_cond
   (Hk : fin.split n = sum.inr k)
 :   from_fin (if_then_else p ds t c₀ c₁) n
   = ite_cond p t ds c₀ c₁ :=
-by { unfold from_fin, simp [Hk], refl }
+by { dunfold from_fin, simp [Hk], refl }
 
 lemma from_fin_eq_while_body
   {p t inv q : pred}
@@ -134,7 +134,7 @@ lemma from_fin_eq_while_body
   (Hk : fin.split n = sum.inl k)
 :   from_fin (while q ds t c₀) n
   = while_body q ds t (from_fin c₀ k) :=
-by { unfold from_fin, simp [Hk], refl }
+by { dunfold from_fin, simp [Hk], refl }
 
 lemma from_fin_eq_while_cond
   {p t inv q : pred}
@@ -145,7 +145,7 @@ lemma from_fin_eq_while_cond
   (Hk : fin.split n = sum.inr k)
 :   from_fin (while q ds t c₀) n
   = while_cond q ds t c₀  :=
-by { unfold from_fin, simp [Hk], refl }
+by { dunfold from_fin, simp [Hk], refl }
 
 end g_over_constr
 
@@ -153,9 +153,9 @@ lemma from_fin_inv {p q} {c : code lbl p q} (n : fin (control_nodes c))
 : to_fin (from_fin c n) = n :=
 begin
   induction c
-  ; unfold control_nodes at n,
+  ; dunfold control_nodes at n,
   { apply fin.elim0 n, },
-  { unfold from_fin to_fin
+  { dunfold from_fin to_fin
   ; apply fin.eq_of_veq,
     unfold fin.val,
     apply le_antisymm (zero_le _),
@@ -163,35 +163,35 @@ begin
     apply n.is_lt },
   { destruct fin.split n
     ; intros k Hk,
-    { rw [from_fin_eq_seq_left Hk], unfold to_fin,
+    { rw [from_fin_eq_seq_left Hk], dunfold to_fin,
       rw [ih_1,fin.nest_eq_iff_eq_split,Hk], },
-    { rw [from_fin_eq_seq_right Hk], unfold to_fin,
+    { rw [from_fin_eq_seq_right Hk], dunfold to_fin,
       rw [ih_2,fin.shift_eq_iff_eq_split,Hk], }, },
   { destruct fin.split n
     ; intros k Hk,
     destruct fin.split k
     ; intros k' Hk',
-    { rw [from_fin_eq_ite_left Hk Hk'], unfold to_fin,
+    { rw [from_fin_eq_ite_left Hk Hk'], dunfold to_fin,
       simp [ih_1,fin.nest_eq_iff_eq_split,Hk],
       apply congr_arg,
       simp [fin.nest_eq_iff_eq_split,Hk'] },
-    { rw [from_fin_eq_ite_right Hk Hk'], unfold to_fin,
+    { rw [from_fin_eq_ite_right Hk Hk'], dunfold to_fin,
       simp [ih_2,fin.nest_eq_iff_eq_split,Hk],
       apply congr_arg,
       simp [fin.shift_eq_iff_eq_split,Hk'] },
-    { rw [from_fin_eq_ite_cond Hk], unfold to_fin,
+    { rw [from_fin_eq_ite_cond Hk], dunfold to_fin,
       apply fin.split_injective _ n,
       simp [Hk,eq_comm],
-      rw [-fin.shift_eq_iff_eq_split,fin.all_eq_zero k],
+      rw [← fin.shift_eq_iff_eq_split,fin.all_eq_zero k],
       apply fin.eq_of_veq, simp [fin.val_shift_zero], refl }, },
   { destruct fin.split n
     ; intros k Hk,
-    { rw [from_fin_eq_while_body Hk], unfold to_fin,
+    { rw [from_fin_eq_while_body Hk], dunfold to_fin,
       rw [ih_1,fin.nest_eq_iff_eq_split,Hk], },
-    { rw [from_fin_eq_while_cond Hk], unfold to_fin,
+    { rw [from_fin_eq_while_cond Hk], dunfold to_fin,
       apply fin.split_injective _ n,
       simp [Hk,eq_comm],
-      rw [-fin.shift_eq_iff_eq_split,fin.all_eq_zero k],
+      rw [← fin.shift_eq_iff_eq_split,fin.all_eq_zero k],
       apply fin.eq_of_veq, simp [fin.val_shift_zero], refl, }, }
 end
 
@@ -199,31 +199,31 @@ lemma to_fin_inv {p q} {c : code lbl p q} (pc : current c)
 : from_fin c (to_fin pc) = pc :=
 begin
   induction pc
-  ; unfold to_fin
+  ; dunfold to_fin
   ; try { refl },
-  { unfold from_fin, simp [fin.split_nest],
-    unfold from_fin._match_1,
+  { dunfold from_fin, simp [fin.split_nest],
+    dunfold from_fin._match_1,
     simp [ih_1] },
-  { unfold from_fin, simp [fin.split_shift],
-    unfold from_fin._match_1,
+  { dunfold from_fin, simp [fin.split_shift],
+    dunfold from_fin._match_1,
     simp [ih_1] },
-  { unfold from_fin, simp [fin.shift_zero,fin.split_shift],
-    unfold from_fin._match_2, refl },
-  { unfold from_fin, simp [fin.split_nest],
-    unfold from_fin._match_2,
+  { dunfold from_fin, simp [fin.shift_zero,fin.split_shift],
+    dunfold from_fin._match_2, refl },
+  { dunfold from_fin, simp [fin.split_nest],
+    dunfold from_fin._match_2,
     simp [fin.split_nest],
-    unfold from_fin._match_3,
+    dunfold from_fin._match_3,
     simp [ih_1] },
-  { unfold from_fin, simp [fin.split_nest],
-    unfold from_fin._match_2,
+  { dunfold from_fin, simp [fin.split_nest],
+    dunfold from_fin._match_2,
     simp [fin.split_shift],
-    unfold from_fin._match_3,
+    dunfold from_fin._match_3,
     simp [ih_1] },
-  { unfold from_fin,
+  { dunfold from_fin,
     simp [fin.shift_zero,fin.split_shift],
     refl },
-  { unfold from_fin, simp [fin.split_nest],
-    unfold from_fin._match_4,
+  { dunfold from_fin, simp [fin.split_nest],
+    dunfold from_fin._match_4,
     simp [ih_1] },
 end
 

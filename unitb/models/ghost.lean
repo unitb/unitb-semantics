@@ -53,7 +53,7 @@ def skip : event abs :=
 , fine_sch := True
 , step := λ s _ _ s', s = s'
 , abs_step := λ s _ _ s', s = s'
-, fis := take s _ _, ⟨s,rfl⟩ }
+, fis := assume s _ _, ⟨s,rfl⟩ }
 
 def program.event (s : program) : option s.lbl → event s.abs
   | none := skip
@@ -102,12 +102,12 @@ open temporal
 
 lemma step_of_none  (s : program) : s.step_of none = eq :=
 begin
-  unfold program.step_of program.event skip,
+  dunfold program.step_of program.event skip,
   apply funext, intro σ,
   apply funext, intro σ',
-  unfold event.step_of,
-  unfold event.coarse_sch event.fine_sch event.step,
-  unfold True lifted₀,
+  dunfold event.step_of,
+  dunfold event.coarse_sch event.fine_sch event.step,
+  dunfold True lifted₀,
   simp [exists_true],
 end
 
@@ -133,7 +133,7 @@ begin
   apply congr_arg,
   apply funext, intro σ,
   apply funext, intro σ',
-  unfold is_step,
+  dunfold is_step,
   simp [exists_option],
 end
 
@@ -281,7 +281,7 @@ structure program.ex (s : program) (τ : stream α) : Prop :=
 --     assert Hf : ([]<>•s.fine_sch_of ev) τ,
 --     { apply T₀.schedule _ h h_p, },
 --     note act := coincidence h_p (h.liveness ev Hc Hf),
---     rw [-eventually_eventually],
+--     rw [← eventually_eventually],
 --     apply henceforth_entails_henceforth _ _ act,
 --     apply eventually_entails_eventually _ ,
 --     apply T₀.negate },
@@ -319,7 +319,7 @@ structure program.ex (s : program) (τ : stream α) : Prop :=
 --     destruct (τ i),
 --     { intros h,
 --       existsi (τ i),
---       rw -h at Hc Hf,
+--       rw ← h at Hc Hf,
 --       unfold  step_of event.step_of,
 --       existsi Hc, existsi Hf,
 --       apply s.run_enabled, },
@@ -341,7 +341,7 @@ structure program.ex (s : program) (τ : stream α) : Prop :=
 --       unfold req_of enabled,
 --       change (([]<>•mem e) (λ (i : ℕ), {l : option (s.lbl) | s.guard l (run s τ i)})),
 --       change (([]<>•mem e) ((λ (σ : α), {l : option (s.lbl) | s.guard l σ}) ∘ (run s τ))),
---       rw -inf_often_trace_init_trading,
+--       rw ← inf_often_trace_init_trading,
 --       apply Hg, },
 --     cases (Heq inf_evts i) with j Heq,
 --     rw [stream.drop_drop,init_drop,stream.fst_zip',stream.snd_zip'] at Heq,
