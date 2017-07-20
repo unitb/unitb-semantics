@@ -123,6 +123,14 @@ begin
 end
 
 @[simp]
+lemma p_and_True (p : pred' α)
+: p && True = p :=
+begin
+  apply funext, intro x,
+  simp,
+end
+
+@[simp]
 lemma True_p_or (p : pred' α)
 : True || p = True :=
 begin

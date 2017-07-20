@@ -58,7 +58,7 @@ theorem evt_fine_sch
 evt_guard.right
 
 def machine.run_event (s' : state) : Prop :=
-(p.event e).step s.intl evt_coarse_sch evt_fine_sch s'.intl
+(p.event $ some e).step s.intl evt_coarse_sch evt_fine_sch s'.intl
 
 end event
 
@@ -240,18 +240,33 @@ parameter ea : option p.lbl
 
 variable ec : { ec // rel ec ea }
 
+lemma evt_leads_to
+: ((p.event ea).coarse_sch && (p.event ea).fine_sch) ∘ state.intl
+    ↦
+      (machine_of.event ec).coarse_sch && (machine_of.event ec).fine_sch
+   in machine_of :=
+sorry
+
 lemma evt_resched
 : ((p.event ea).coarse_sch && (p.event ea).fine_sch) ∘ state.intl && True
     ↦
       (machine_of.event ec).fine_sch  in  machine_of :=
-sorry
+begin
+  simp,
+  apply unitb.leads_to.strengthen_rhs _ _ (evt_leads_to _ _ _ _ _ ec),
+  apply p_and_elim_right
+end
 
 lemma evt_delay
 : True && ((p.event ea).coarse_sch && (p.event ea).fine_sch) ∘ state.intl
     ↦
       True && (machine_of.event ec).coarse_sch
    in machine_of :=
-sorry
+begin
+  simp,
+  apply unitb.leads_to.strengthen_rhs _ _ (evt_leads_to _ _ _ _ _ ec),
+  apply p_and_elim_left
+end
 
 lemma evt_stable
 : unless_except machine_of
@@ -263,7 +278,82 @@ sorry
 lemma evt_sim
 :    ⟦event.step_of (program.event machine_of (ec.val))⟧
  ⟹ ⟦event.step_of (program.event p ea) on state.intl⟧ :=
-sorry
+begin
+  apply action_entails_action,
+  intros s s',
+  dunfold machine_of machine_of._match_1 program.event function.on_fun,
+  cases ec with ec Hec,
+  cases ea,
+  case some ea
+  { dunfold rel at Hec,
+    cases ec with ec
+    ; dunfold program.event,
+    { cases Hec },
+    { unfold program.event' event.step_of,
+      have Hgrd : (machine.event _ p _ Hcorr ec).coarse_sch s
+                → (p.event' ea).guard (s.intl),
+      { unfold machine.event,
+        unfold nondet.event.coarse_sch, intro H,
+        rw H at Hec,
+        apply (Hcorr s.pc).enabled _ Hec,
+        apply s.assertion },
+      have Hcs : (machine.event _ p _ Hcorr ec).coarse_sch s
+               → (p.event' ea).coarse_sch (s.intl),
+      { apply and.left ∘ Hgrd },
+      apply exists_imp_exists' Hcs,
+      intros Hcs,
+      have Hfs : (machine.event _ p _ Hcorr ec).fine_sch s → (p.event' ea).fine_sch (s.intl),
+      { intro H, apply (Hgrd Hcs).right },
+      apply exists_imp_exists' Hfs,
+      intros Hfs, dunfold machine.event,
+      simp [machine.step],
+      destruct action_of ec,
+      case sum.inr
+      { intros ea' Hea, simp [Hea],
+        cases ea' with ea' Hea',
+        simp [machine.step._match_1],
+        unfold machine.run_event program.event,
+        have H := selects_and_selects_imp_eq _ Hec Hea',
+        subst ea',
+        intro H, apply H.left, },
+      case sum.inl
+      { intros pc Hea, rw Hea,
+        simp [machine.step._match_1],
+        intros H, rw H.left,
+        cases pc with pc P, cases P with P₀ P₁,
+        cases not_selects_and_is_control Hec P₀, } } },
+  case none
+  { cases ec with ec ;
+    simp [program.event],
+    { unfold event.step_of,
+      have Hcs : nondet.skip.coarse_sch s → nondet.skip.coarse_sch s.intl,
+      { apply id },
+      apply exists_imp_exists' Hcs, intros Hcs',
+      have Hfs : nondet.skip.fine_sch s → nondet.skip.fine_sch s.intl,
+      { apply id },
+      apply exists_imp_exists' Hfs, intros Hfs',
+      simp [nondet.skip],
+      intro h, rw h },
+    { unfold rel at Hec,
+      cases Hec with Hec,
+      { unfold event.step_of,
+        apply exists_imp_exists' _, intro Hcs,
+        apply exists_imp_exists' _, intro Hfs,
+        { unfold machine.event nondet.event.step machine.step,
+          destruct (action_of ec),
+          case sum.inr
+          { intros ea Hea₀,
+            cases ea with ea Hea₁,
+            cases not_selects_and_is_control Hea₁ Hec },
+          case sum.inl
+          { intros ea Hea,
+            simp [Hea,machine.step._match_1],
+            intro H, rw H.left,
+            apply rfl } },
+        { apply id },
+        { intro, trivial }, },
+      { contradiction } } }
+end
 
 lemma evt_witness_fis (s : state)
 : ∃ (e : {ec // rel ec ea}), true :=

@@ -23,6 +23,13 @@ structure event : Type :=
   (step : ∀ s, coarse_sch s → fine_sch s → pred)
   (fis : ∀ s CS FS, ∃ s', step s CS FS s')
 
+parameter {α}
+
+def event.guard (e : event) : pred :=
+e.coarse_sch && e.fine_sch
+
+parameter α
+
 structure program : Type 2 :=
   (lbl : Type)
   (lbl_is_sched : scheduling.sched lbl)

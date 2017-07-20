@@ -197,6 +197,14 @@ begin
   { cases pc, apply H, },
 end
 
+lemma selects_and_selects_imp_eq {l l' : lbl} {p q : pred}
+  {c : code lbl p q}
+  {pc : option (current c)}
+  (H  : selects pc l)
+  (H' : selects pc l')
+: l' = l :=
+sorry
+
 lemma assert_of_action {l : lbl} {p q : pred} {ds : set lbl}
   (pc : current $ code.action p q ds l)
 : assert_of (some pc) = p :=
@@ -372,6 +380,26 @@ begin
   { apply correct_of_correct _ H },
   { apply cond_true_of_correct _ H },
   { apply cond_false_of_correct _ H },
+end
+
+omit H
+parameters {F}
+variable {c}
+
+lemma not_selects_and_is_control
+  {pc : option $ current c} {l : lbl}
+  (h₀ : selects pc l)
+  (h₁ : is_control pc )
+: false :=
+begin
+  cases pc with pc,
+  { unfold is_control at h₁, cases h₁ },
+  unfold is_control at h₁,
+  unfold selects at h₀,
+  induction pc
+  ; try { cases h₁ }
+  ; try { cases h₀ }
+  ; apply ih_1 h₁ h₀
 end
 
 end
