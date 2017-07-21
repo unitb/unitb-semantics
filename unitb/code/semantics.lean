@@ -7,6 +7,8 @@ import unitb.code.rules
 import unitb.code.lemmas
 import unitb.refinement.superposition
 
+import util.data.subtype
+
 namespace code.semantics
 
 section
@@ -273,7 +275,26 @@ lemma evt_stable
       (True && (machine_of.event ec).coarse_sch)
       (-((p.event ea).coarse_sch ∘ state.intl))
       { e | ∃ (l : {ec // rel ec ea}), machine_of.event l = e } :=
-sorry
+begin
+  apply unless_except_rule,
+  intros e s Hc Hf s' Hexcp H₀ H₁ H₂,
+  simp [function.comp],
+  simp [mem_set_of,not_exists_iff_forall_not] at Hexcp,
+  have Hexcp' := Hexcp ec,
+  dunfold program.event machine_of coe lift_t has_lift_t.lift,
+  dunfold coe_t has_coe_t.coe coe_b has_coe.coe,
+  cases ec with ec Hec,
+  cases ec with ec,
+  { unfold program.event,
+    right, trivial, },
+  unfold program.event program.event' machine.event event.coarse_sch,
+  unfold coe lift_t has_lift_t.lift coe_t has_coe_t.coe coe_b has_coe.coe at Hexcp',
+  dunfold machine_of program.event program.event' at Hexcp',
+  dsimp [program.event,machine_of,machine.event] at H₁ Hc,
+  simp at H₁, rw ← Hc at H₁,
+  exfalso, apply Hexcp',
+  injection H₁, subst ec,
+end
 
 lemma evt_sim
 :    ⟦event.step_of (program.event machine_of (ec.val))⟧
