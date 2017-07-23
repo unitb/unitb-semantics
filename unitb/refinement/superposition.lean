@@ -25,6 +25,54 @@ structure evt_ref (lbl : Type) (mc : program α') (ea : event α) (ecs : lbl →
                                    { e | ∃ l, ecs l = e })
   (resched : ∀ ec, (ea.coarse_sch && ea.fine_sch) ∘ abs && witness ec ↦ (ecs ec).fine_sch in mc)
 
+structure evt_ref_wk (lbl : Type) (mc : program α') (ea : event α) (ecs : lbl → event α')
+: Type :=
+  (witness : lbl → α' → Prop)
+  (sim : ∀ ec, ⟦ (ecs ec).step_of ⟧ ⟹ ⟦ ea.step_of on abs ⟧)
+  (delay : (ea.coarse_sch && ea.fine_sch) ∘ abs
+            ↦
+           -(ea.coarse_sch ∘ abs)
+            || ∃∃ ec, witness ec && (ecs ec).coarse_sch && (ecs ec).fine_sch in mc)
+  (stable : ∀ ec, unless_except mc (witness ec && (ecs ec).coarse_sch) (-(ea.coarse_sch ∘ abs))
+                                   { e | ∃ l, ecs l = e })
+
+lemma evt_ref_wk_of_evt_ref
+  (lbl : Type) (mc : program α')
+  (ea : event α)
+  (ecs : lbl → event α')
+  (H : evt_ref lbl mc ea ecs)
+: evt_ref_wk lbl mc ea ecs :=
+begin
+  apply evt_ref_wk.mk H.witness,
+  { apply H.sim },
+  { have Hsch : ∀ ec, H.witness ec && (ea.coarse_sch && ea.fine_sch) ∘ abs
+               ↦
+              -(ea.coarse_sch ∘ abs)
+              || H.witness ec && (ecs ec).coarse_sch && (ecs ec).fine_sch in mc,
+    { intro ec,
+      have P₀ : H.witness ec && (ea.coarse_sch && ea.fine_sch) ∘ abs
+                 ↦
+                H.witness ec && (ecs ec).coarse_sch || (ecs ec).fine_sch in mc,
+      { have H' := leads_to.gen_disj (H.delay ec) (H.resched ec),
+        rw [p_and_comm,p_or_self,p_and_comm] at H',
+        apply H', },
+      have P₁ : H.witness ec && (ecs ec).coarse_sch || (ecs ec).fine_sch
+               ↦
+              -(ea.coarse_sch ∘ abs)
+              || H.witness ec && (ecs ec).coarse_sch && (ecs ec).fine_sch in mc,
+      { admit },
+      apply leads_to.trans _ P₀ P₁ },
+    have Hsch' := leads_to.gen_disj' Hsch,
+    have H₀ : (∃∃ (ec : lbl), H.witness ec && (ea.coarse_sch ∘ abs && ea.fine_sch ∘ abs))
+            = (ea.coarse_sch && ea.fine_sch) ∘ abs,
+    { rw [← p_and_over_p_exists_right,ew_eq_true H.witness_fis],
+      simp },
+    simp [H₀] at Hsch',
+    simp [p_or_over_p_exists_left _ _ H.witness_fis],
+    apply Hsch', },
+  { apply H.stable },
+end
+
 parameters (ma : program α) (mc : program α')
 
 structure refined : Type :=

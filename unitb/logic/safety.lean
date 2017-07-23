@@ -229,16 +229,28 @@ begin
     apply S₀ _ _ h hpnq, }
 end
 
+lemma exists_unless' {t} {p : t → pred' (state α)} {q : pred' (state α)}
+  {A : act (state α)}
+  (h : ∀ i, unless' s (p i) q A)
+: unless' s (∃∃ i, p i) q A :=
+begin
+  intros σ σ' STEP Hact,
+  apply and.rec,
+  intros h₀ h₁, cases h₀ with x h₀,
+  have h₂ := h x _ _ STEP Hact ⟨h₀,h₁⟩,
+  apply or.imp_left _ h₂,
+  apply Exists.intro x,
+end
+
 lemma exists_unless {t} {p : t → pred' (state α)} {q : pred' (state α)}
   (h : ∀ i, unless s (p i) q)
 : unless s (∃∃ i, p i) q :=
 begin
-  intros σ σ' STEP,
-  apply and.rec,
-  intros h₀ h₁, cases h₀ with x h₀,
-  have h₂ := h x _ _ STEP ⟨h₀,h₁⟩,
-  apply or.imp_left _ h₂,
-  apply Exists.intro x,
+  rw unless_eq_unless_except,
+  apply exists_unless',
+  intro,
+  rw [← unless_eq_unless_except],
+  apply h
 end
 
 lemma forall_unless_exists_str {n} {p q : fin n → pred' (state α)}

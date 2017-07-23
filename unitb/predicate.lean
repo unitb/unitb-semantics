@@ -485,6 +485,15 @@ lemma ew_imp_ew {p q : pred' β}
 : ⦃ p ⦄ → ⦃ q ⦄ :=
 forall_imp_forall H
 
+lemma p_or_over_p_exists_left {t} (p : t → pred' β) (q : pred' β) {w : t → pred' β}
+  (h : ⦃ ∃∃ x : t, w x ⦄)
+: q || (∃∃ x, p x) = (∃∃ x, q || p x) :=
+begin
+  apply funext, intro,
+  have _inst : nonempty t := nonempty_of_exists (h x),
+  simp [distrib_or_over_exists_left]
+end
+
 lemma p_and_over_p_exists_right {t} (p : t → pred' β) (q : pred' β)
 : (∃∃ x, p x) && q = (∃∃ x, p x && q) :=
 begin
