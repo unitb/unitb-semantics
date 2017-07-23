@@ -34,6 +34,7 @@ structure state :=
   (intl : σ)
   (assertion : assert_of pc intl)
 
+parameter {σ}
 parameter Hcorr : ∀ pc, state_correctness p c pc
 
 include Hcorr
@@ -105,8 +106,8 @@ begin
     { rw Hl, unfold machine.step._match_1 machine.run_event } },
   { cases l with l hl,
     rw h at hl,
-    have CS := evt_coarse_sch _ p c Hcorr l s hl trivial,
-    have FS := evt_fine_sch _ _ c Hcorr l s hl trivial,
+    have CS := evt_coarse_sch p c Hcorr l s hl trivial,
+    have FS := evt_fine_sch _ c Hcorr l s hl trivial,
     cases (p.event l).fis s.intl CS FS with s' H,
     have Hss' : assert_of (next s.intl s.pc) s',
     { rw [assert_of_next],
@@ -182,7 +183,7 @@ begin
   intros s s' H,
   cases ec with pc,
   case none
-  { let x : {ea // rel _ p c Hcorr none ea},
+  { let x : {ea // rel p c Hcorr none ea},
     { existsi none, unfold rel is_control, right, refl },
     existsi x, unfold function.on_fun,
     unfold machine_of nondet.program.step_of nondet.program.event
@@ -202,7 +203,7 @@ begin
     { intros c Hact,
       cases c with c Hc,
       cases Hc with P Hc,
-      let x : {ea // rel _ p _ Hcorr (some pc) ea},
+      let x : {ea // rel p _ Hcorr (some pc) ea},
       { existsi none, unfold rel is_control, left, apply P },
       existsi x,
       unfold function.on_fun nondet.program.step_of nondet.program.event
@@ -221,7 +222,7 @@ begin
     case sum.inr
     { intros e Hact,
       cases e with e He,
-      let x : {ea // rel _ p _ Hcorr (some pc) ea},
+      let x : {ea // rel p _ Hcorr (some pc) ea},
       { existsi (some e), apply He },
       existsi x, unfold function.on_fun,
       dunfold machine_of nondet.program.step_of nondet.program.event
@@ -242,12 +243,58 @@ parameter ea : option p.lbl
 
 variable ec : { ec // rel ec ea }
 
+section leads_to
+
+variable pc : current c
+variables p' q' : pred σ
+variables c' : code p.lbl p' q'
+variables H : subtree c' c
+variables e : p.lbl
+
+-- idea:
+-- for all pc prefix
+lemma evt_leads_to_aux
+: (λ s : state, within H s.pc)
+    ↦
+  (λ s : state, exits H s.pc ∨ selects s.pc e)
+   in machine_of :=
+sorry
+
+end leads_to
+
 lemma evt_leads_to
 : ((p.event ea).coarse_sch && (p.event ea).fine_sch) ∘ state.intl
     ↦
       (machine_of.event ec).coarse_sch && (machine_of.event ec).fine_sch
    in machine_of :=
-sorry
+begin
+  cases ea with ea,
+  { admit },
+  let m := machine_of p c Hcorr,
+  have H : (λ s : state, ↑ (within subtree.rfl s.pc))
+         ↦ (m.event ec).coarse_sch && (m.event ec).fine_sch
+       in m,
+  { have H := evt_leads_to_aux _ c Hcorr _ _ c subtree.rfl ea,
+         -- we need an existential on the RHS of ↦
+    apply unitb.leads_to.strengthen_rhs _ _ H,
+    apply p_or_entails_of_entails,
+    { admit },
+    { intros s H₀,
+      simp, split,
+      { revert m, dsimp,
+        cases ec with ec Hec,
+        cases ec with ec,
+        { admit },
+        dsimp [machine_of,coe_eq_subtype_val],
+        dunfold program.event program.event' machine.event event.coarse_sch,
+        admit
+        /- apply ec.property -/ },
+      have H₁ := (Hcorr s.pc).enabled ea H₀ s.intl,
+      admit } },
+  apply unitb.leads_to.weaken_lhs _ _ H,
+  simp [within_rfl],
+  apply entails_True,
+end
 
 lemma evt_resched
 : ((p.event ea).coarse_sch && (p.event ea).fine_sch) ∘ state.intl && True
@@ -255,7 +302,7 @@ lemma evt_resched
       (machine_of.event ec).fine_sch  in  machine_of :=
 begin
   simp,
-  apply unitb.leads_to.strengthen_rhs _ _ (evt_leads_to _ _ _ _ _ ec),
+  apply unitb.leads_to.strengthen_rhs _ _ (evt_leads_to _ _ _ _ ec),
   apply p_and_elim_right
 end
 
@@ -266,7 +313,7 @@ lemma evt_delay
    in machine_of :=
 begin
   simp,
-  apply unitb.leads_to.strengthen_rhs _ _ (evt_leads_to _ _ _ _ _ ec),
+  apply unitb.leads_to.strengthen_rhs _ _ (evt_leads_to _ _ _ _ ec),
   apply p_and_elim_left
 end
 
@@ -281,14 +328,12 @@ begin
   simp [function.comp],
   simp [mem_set_of,not_exists_iff_forall_not] at Hexcp,
   have Hexcp' := Hexcp ec,
-  dunfold program.event machine_of coe lift_t has_lift_t.lift,
-  dunfold coe_t has_coe_t.coe coe_b has_coe.coe,
+  dunfold program.event machine_of,
   cases ec with ec Hec,
   cases ec with ec,
   { unfold program.event,
     right, trivial, },
   unfold program.event program.event' machine.event event.coarse_sch,
-  unfold coe lift_t has_lift_t.lift coe_t has_coe_t.coe coe_b has_coe.coe at Hexcp',
   dunfold machine_of program.event program.event' at Hexcp',
   dsimp [program.event,machine_of,machine.event] at H₁ Hc,
   simp at H₁, rw ← Hc at H₁,
@@ -311,19 +356,19 @@ begin
     ; dunfold program.event,
     { cases Hec },
     { unfold program.event' event.step_of,
-      have Hgrd : (machine.event _ p _ Hcorr ec).coarse_sch s
+      have Hgrd : (machine.event p _ Hcorr ec).coarse_sch s
                 → (p.event' ea).guard (s.intl),
       { unfold machine.event,
         unfold nondet.event.coarse_sch, intro H,
         rw H at Hec,
         apply (Hcorr s.pc).enabled _ Hec,
         apply s.assertion },
-      have Hcs : (machine.event _ p _ Hcorr ec).coarse_sch s
+      have Hcs : (machine.event p _ Hcorr ec).coarse_sch s
                → (p.event' ea).coarse_sch (s.intl),
       { apply and.left ∘ Hgrd },
       apply exists_imp_exists' Hcs,
       intros Hcs,
-      have Hfs : (machine.event _ p _ Hcorr ec).fine_sch s → (p.event' ea).fine_sch (s.intl),
+      have Hfs : (machine.event p _ Hcorr ec).fine_sch s → (p.event' ea).fine_sch (s.intl),
       { intro H, apply (Hgrd Hcs).right },
       apply exists_imp_exists' Hfs,
       intros Hfs, dunfold machine.event,
@@ -376,6 +421,7 @@ begin
       { contradiction } } }
 end
 
+-- guard of ea ⇒ (∃ _, _)
 lemma evt_witness_fis (s : state)
 : ∃ (e : {ec // rel ec ea}), true :=
 sorry

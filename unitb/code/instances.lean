@@ -24,11 +24,11 @@ def to_fin : Π {p q : pred} {c : code lbl p q}, current c → fin (control_node
   | ._ ._ ._ (current.action _ _ _ _) := ⟨0,zero_lt_one⟩
   | ._ ._ ._ (current.seq_left p q r c₀ c₁ pc) := fin.nest (to_fin pc)
   | ._ ._ ._ (current.seq_right p q r c₀ c₁ pc) := fin.shift (to_fin pc)
-  | ._ ._ ._ (current.if_then_else_cond p t pa pb _ q c₀ c₁) :=
+  | ._ ._ ._ (current.ite_cond p t pa pb _ q c₀ c₁) :=
     (fin.max : fin (succ $ _ + _))
-  | ._ ._ ._ (current.if_then_else_left p t pa pb q _ c₀ c₁ pc) :=
+  | ._ ._ ._ (current.ite_left p t pa pb q _ c₀ c₁ pc) :=
     (fin.nest $ fin.nest $ to_fin pc : fin (control_nodes c₀ + control_nodes c₁ + 1))
-  | ._ ._ ._ (current.if_then_else_right p t pa pb q _ c₀ c₁ pc) :=
+  | ._ ._ ._ (current.ite_right p t pa pb q _ c₀ c₁ pc) :=
     (fin.nest $ fin.shift $ to_fin pc : fin (control_nodes c₀ + control_nodes c₁ + 1))
   | ._ ._ ._ (current.while_cond p inv q _ w c) :=
     (fin.max : fin (control_nodes c + 1))

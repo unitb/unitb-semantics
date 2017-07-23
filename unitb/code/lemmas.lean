@@ -103,7 +103,7 @@ begin
   case current.seq_right
   { rw ← ih_1,
     cases next' s a ; refl },
-  case current.if_then_else_cond
+  case current.ite_cond
   { cases classical.em (t s) with h h,
     { rw [if_pos h,if_pos h],
       destruct first c₀,
@@ -122,12 +122,12 @@ begin
         unfold assert_of assert_of',
         change assert_of (some pc) = _,
         rw [← h,assert_of_first], }, }, },
-  case current.if_then_else_left
+  case current.ite_left
   { rw ← ih_1, clear ih_1,
     cases next' s a with pc ; simp,
     { refl },
     { unfold assert_of assert_of', }, },
-  case current.if_then_else_right
+  case current.ite_right
   { rw ← ih_1, clear ih_1,
     cases next' s a with pc ; simp,
     { refl },
@@ -306,11 +306,11 @@ begin
     ; dunfold condition assert_of condition' assert_of' next_assert next_assert'
              is_control is_control'
     ; intros Hpc s Hp Hc,
-    case current.if_then_else_cond
+    case current.ite_cond
     { rw if_pos Hc, apply Hpa _ ⟨Hp,Hc⟩, },
-    case current.if_then_else_left
+    case current.ite_left
     { apply ih_1 _ _ _ Hp Hc, },
-    case current.if_then_else_right
+    case current.ite_right
     { apply ih_2 _ _ _ Hp Hc, }, },
   case correct.while t p' inv q' ds b c Htp Hntq Hcvr
   { intros pc,
@@ -344,11 +344,11 @@ begin
     ; unfold condition assert_of condition' assert_of' next_assert next_assert'
              is_control is_control'
     ; intros Hpc s Hp Hc,
-    case current.if_then_else_cond
+    case current.ite_cond
     { rw if_neg Hc, apply Hpb _ ⟨Hp,Hc⟩, },
-    case current.if_then_else_left
+    case current.ite_left
     { apply ih_1 _ _ _ Hp Hc, },
-    case current.if_then_else_right
+    case current.ite_right
     { apply ih_2 _ _ _ Hp Hc, }, },
   case correct.while t p' inv q' ds b c Htp Hntq Hcvr
   { intros pc,
@@ -401,6 +401,10 @@ begin
   ; try { cases h₀ }
   ; apply ih_1 h₁ h₀
 end
+
+lemma within_rfl (pc : option $ current c)
+: ↑ (within subtree.rfl pc) = true :=
+sorry
 
 end
 
