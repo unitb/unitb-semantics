@@ -699,6 +699,15 @@ lemma inf_often_trace_action_trading (τ : stream α) (f : α → β) (p : act �
 : ([]<>⟦ p on f ⟧) τ = ([]<>⟦ p ⟧) (map f τ) :=
 by rw [action_trading,eventually_trading,henceforth_trading]
 
+lemma stable_trace_trading (τ : stream α) (f : α → β) (p : cpred β)
+: (<>[](p ∘ map f)) τ = (<>[]p) (map f τ) :=
+by rw [henceforth_trading,eventually_trading]
+
+lemma stable_trace_init_trading (τ : stream α) (f : α → β) (p : β → Prop)
+: (<>[]•(p ∘ f)) τ = (<>[]•p) (map f τ) :=
+by rw [init_trading,henceforth_trading,eventually_trading]
+
+
 -- lemma stable_trace_init_trading (τ : stream α) (f : α → β) (p : β → Prop)
 -- : (<>[]•(p ∘ f)) τ = (<>[]•p) (f ∘ τ) :=
 -- by rw [init_trading,henceforth_trading,eventually_trading]

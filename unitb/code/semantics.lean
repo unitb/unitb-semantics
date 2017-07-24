@@ -443,8 +443,7 @@ lemma code_refs_machine
 { sim_init := by { intros i, cases i, apply and.right, }
 , ref := rel
 , evt_sim := ref_sim
-, events := ref_resched }
-
+, events := λ e, evt_ref_wk_of_evt_ref _ _ _ _ _ (ref_resched e) }
 
 end
 
