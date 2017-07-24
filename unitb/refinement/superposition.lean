@@ -51,20 +51,11 @@ begin
   { have Hsch : ∀ ec, H.witness ec && (ea.coarse_sch && ea.fine_sch) ∘ abs
                ↦
               -(ea.coarse_sch ∘ abs)
-              || H.witness ec && (ecs ec).coarse_sch && (ecs ec).fine_sch in mc,
+              || H.witness ec && (ecs ec).coarse_sch in mc,
     { intro ec,
-      have P₀ : H.witness ec && (ea.coarse_sch && ea.fine_sch) ∘ abs
-                 ↦
-                H.witness ec && (ecs ec).coarse_sch || (ecs ec).fine_sch in mc,
-      { have H' := leads_to.gen_disj (H.delay ec) (H.resched ec),
-        rw [p_and_comm,p_or_self,p_and_comm] at H',
-        apply H', },
-      have P₁ : H.witness ec && (ecs ec).coarse_sch || (ecs ec).fine_sch
-                 ↦
-                -(ea.coarse_sch ∘ abs)
-                || H.witness ec && (ecs ec).coarse_sch && (ecs ec).fine_sch in mc,
-      { admit },
-      apply leads_to.trans _ P₀ P₁ },
+      have H' := H.delay ec, revert H',
+      apply leads_to.strengthen_rhs,
+      apply p_or_intro_right },
     have Hsch' := leads_to.gen_disj' Hsch,
     have H₀ : (∃∃ (ec : lbl), H.witness ec && (ea.coarse_sch ∘ abs && ea.fine_sch ∘ abs))
             = (ea.coarse_sch && ea.fine_sch) ∘ abs,
@@ -73,14 +64,14 @@ begin
     simp [H₀] at Hsch',
     simp [p_or_over_p_exists_left _ _ H.witness_fis],
     apply often_imp_often.basis,
-    revert Hsch',
-    apply leads_to.strengthen_rhs,
-    apply p_exists_entails_p_exists,
-    intros e,
-    apply p_or_entails_p_or_right,
-    apply p_and_elim_left },
+    apply Hsch', },
   { apply H.stable },
-  { admit }
+  { intro ce,
+    have P₀ := H.resched ce,
+    apply often_imp_often.basis,
+    revert P₀,
+    apply leads_to.weaken_lhs,
+    apply p_and_elim_left }
 end
 
 parameters (ma : program α) (mc : program α')
