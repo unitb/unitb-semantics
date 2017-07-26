@@ -270,23 +270,42 @@ def within' {p q : pred} {c : code p q}
   | ._ ._ ._ (subtree.while ds t p' q' inv c' P)
              (current.while_body ._ ._ ._ ._ ._ ._ pc) := within' P pc
   | ._ ._ ._ (subtree.while ds t p' q' inv c' P)
-             (current.while_cond ._ ._ ._ ._ ._ ._) := ff
+             (current.while_cond .(q') .(inv) .(p') .(ds) .(t) .(c')) := ff
+
+def exit' {p q : pred} {c : code p q}
+: ∀ {p' q'} {c' : code p' q'} (P : subtree c c'), option (current c')
+  | ._ ._ ._ subtree.rfl := none
+  | ._ ._ ._ (subtree.seq_left p' q' r' c₀ c₁ P)  :=
+        (seq_left c₁ <$> exit' P)
+    <|> (seq_right c₀ <$> first c₁)
+  | ._ ._ ._ (subtree.seq_right p' q' r' c₀ c₁ P) :=
+        seq_right c₀ <$> exit' P
+  | ._ ._ ._ (subtree.ite_left  ds t p' pa pb c₀ c₁ P) :=
+        ite_left p' t ds c₁ <$> exit' P
+  | ._ ._ ._ (subtree.ite_right ds t p' pa pb c₀ c₁ P) :=
+        ite_right p' t ds c₀ <$> exit' P
+  | ._ ._ ._ (subtree.while ds t p' q' inv c' P)       :=
+        while_body p' ds t <$> exit' P
 
 set_option eqn_compiler.lemmas true
 
-def exits' {p q : pred} {c : code p q}
-: ∀ {p' q'} {c' : code p' q'} (P : subtree c c') (pc : current c'), bool :=
-sorry
+lemma exit'_rfl
+: ∀ {p' q'} {c' : code p' q'}, exit' (subtree.rfl : subtree c' c') = none :=
+begin
+  intros,
+  cases c' ; refl,
+end
+
 
 def within {p q : pred} {c : code p q} {p' q'} {c' : code p' q'} (P : subtree c c')
-: option (current c') → bool
-  | (some pc) := within' P pc || exits' P pc
-  | none := ff
+: option (current c') → Prop
+  | (some pc) := within' P pc ∨ exit' P = some pc
+  | none := false
 
 def exits {p q : pred} {c : code p q} {p' q'} {c' : code p' q'} (P : subtree c c')
-: option (current c') → bool
-  | (some pc) := sorry
-  | none := sorry
+  (pc : option (current c')) : Prop :=
+exit' P = pc
+
 
 lemma within_whole {p q : pred} {c : code p q}
   (pc : option (current c))

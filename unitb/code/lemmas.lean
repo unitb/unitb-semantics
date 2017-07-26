@@ -403,7 +403,7 @@ begin
 end
 
 lemma within_rfl (pc : option $ current c)
-: ↑ (within subtree.rfl pc) = true :=
+: within subtree.rfl pc :=
 sorry
 
 end
