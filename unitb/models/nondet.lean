@@ -73,6 +73,11 @@ lemma program.coarse_sch_of_none (s : program)
 : s.coarse_sch_of none = True :=
 by refl
 
+@[simp]
+lemma program.coarse_sch_of_some (s : program) (e : s.lbl)
+: s.coarse_sch_of (some e) = (s.event' e).coarse_sch :=
+by refl
+
 def program.fine_sch_of (s : program) (act : option s.lbl) : α → Prop :=
 (s.event act).fine_sch
 
@@ -88,6 +93,17 @@ def program.take_step (s : program)
 
 def program.step_of (s : program) (act : option s.lbl) : α → α → Prop :=
 (s.event act).step_of
+
+@[simp]
+lemma program.step_of_none (s : program)
+: s.step_of none = eq :=
+begin
+  apply funext, intro σ,
+  apply funext, intro σ',
+  dunfold program.step_of program.event skip event.step_of,
+  dsimp [event.coarse_sch,event.fine_sch],
+  simp [exists_true],
+end
 
 def is_step (s : program) (σ σ' : α) : Prop :=
 ∃ ev, s.step_of ev σ σ'
@@ -368,6 +384,14 @@ open unitb
 
 def unless_except (s : program) (p q : pred' α) (evts : set event) : Prop :=
 unless' s p q (λ σ σ', ∃ e : event, e ∈ evts ∧ e.step_of σ σ')
+
+lemma unless_except_imp_unless {F : program} {p q : pred' α} (exp : set event)
+  (S : unless F p q)
+: unless_except F p q exp :=
+begin
+  intros s s' STEP Hexcp,
+  apply S _ _ STEP,
+end
 
 theorem unless_except_rule {s : program} {p q : pred' α} (exp : set event)
   (ACT : ∀ (e : s.lbl) σ Hc Hf σ',

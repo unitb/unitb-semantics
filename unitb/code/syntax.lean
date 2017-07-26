@@ -288,4 +288,9 @@ def exits {p q : pred} {c : code p q} {p' q'} {c' : code p' q'} (P : subtree c c
   | (some pc) := sorry
   | none := sorry
 
+lemma within_whole {p q : pred} {c : code p q}
+  (pc : option (current c))
+: within subtree.rfl pc :=
+sorry
+
 end

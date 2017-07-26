@@ -293,6 +293,15 @@ begin
   apply P.right P.left
 end
 
+@[simp]
+lemma p_or_p_not_self (p : pred' β)
+: p || -p = True :=
+begin
+  apply mutual_entails,
+  { simp },
+  { intros s _, apply classical.em }
+end
+
 lemma p_and_p_or_p_not_self (p q : pred' β)
 : p && (q || -p) = p && q :=
 by simp [p_and_over_or_left,p_and_p_not_self]
@@ -431,11 +440,20 @@ lemma p_and_elim_right (p q : pred' β)
 assume x, and.right
 
 @[trans]
-lemma entails_trans (q : pred' β) {p r : pred' β}
+lemma entails_trans {p : pred' β} (q : pred' β) {r : pred' β}
   (h₀ : p ⟹ q)
   (h₁ : q ⟹ r)
 : p ⟹ r :=
 assume x, h₁ x ∘ h₀ x
+
+lemma p_not_comp (p : pred' α) (f : β → α)
+: (-(p ∘ f) : pred' β) = (-p : pred' α) ∘ f :=
+by { apply funext, intro, refl }
+
+lemma comp_entails_comp {p q : pred' β} (f : α → β)
+  (H : p ⟹ q)
+: p ∘ f ⟹ q ∘ f :=
+assume x, H (f x)
 
 lemma p_and_entails_p_and_left (p q x : pred' β)
   (h : p ⟹ q)
@@ -535,6 +553,12 @@ begin
   apply or.imp_left (h _),
 end
 
+lemma p_or_entails_p_or {p p' q q' : pred' β}
+  (H₀ : p  ⟹ q )
+  (H₁ : p' ⟹ q')
+: p || p' ⟹ q || q' :=
+assume i, or.imp (H₀ _) (H₁ _)
+
 lemma p_or_not_and (p q : pred' β)
 : p || (- p && q) = p || q :=
 begin
@@ -543,6 +567,10 @@ begin
   rw [← or_not_and (p _) (q _)],
   simp
 end
+
+lemma p_exists_intro {t : Type u'} {p : t → pred' β} (x : t)
+: p x ⟹ (∃∃ x, p x) :=
+assume s h, ⟨x,h⟩
 
 lemma p_exists_entails_p_exists {t : Type u'} (p q : t → pred' β)
 : (∀ x, p x ⟹ q x) → (∃∃ x, p x) ⟹ (∃∃ x, q x) :=

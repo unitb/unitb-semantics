@@ -360,6 +360,19 @@ begin
     apply ih_1 i, },
 end
 
+lemma leads_to.trading {p q r : pred' (state α)}
+  (P : p && -q ↦ r in s)
+: p ↦ q || r in s :=
+begin
+  have P₀ : p && q ↦ q in s,
+  { apply leads_to.impl,
+    apply p_and_elim_right },
+  have P₁ := leads_to.gen_disj P₀ P,
+  rw [←  p_and_over_or_left] at P₁,
+  simp at P₁,
+  apply P₁,
+end
+
 lemma True_leads_to_True
 : True ↦ True in s :=
 leads_to.trivial

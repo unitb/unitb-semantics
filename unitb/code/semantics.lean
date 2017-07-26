@@ -7,6 +7,7 @@ import unitb.code.rules
 import unitb.code.lemmas
 import unitb.refinement.superposition
 
+import util.logic
 import util.data.subtype
 
 namespace code.semantics
@@ -26,6 +27,8 @@ parameters (σ : Type)
 parameters (p : nondet.program σ)
 parameters {term : pred σ}
 parameters (c : code p.lbl p.first term)
+
+parameter Hterm : ∀ ae : p.lbl, term ⟹ -p.coarse_sch_of ae
 
 -- instance : scheduling.sched (control c ⊕ p.lbl) := _
 
@@ -153,7 +156,7 @@ def machine.event (cur : current c) : nondet.event state :=
 --   , step := λ s _ _ s', machine.test s s'
 --   , fis  := λ s _ _, machine.test_fis s }
 
-def machine_of : nondet.program state :=
+def mch_of : nondet.program state :=
  { lbl := current c
  , lbl_is_sched := by apply_instance
  , first := λ ⟨s₀,s₁,_⟩, s₀ = first c ∧ p.first s₁
@@ -163,20 +166,52 @@ def machine_of : nondet.program state :=
          { rw assert_of_first, apply Hs },
          let ss := state.mk (first c) s Hss,
          existsi ss,
-         unfold machine_of._match_1,
+         unfold mch_of._match_1,
          exact ⟨rfl,Hs⟩
    end
  , event' := machine.event }
 
+@[simp]
+lemma coarse_sch_of_mch_of_some (e : mch_of.lbl)
+: mch_of.coarse_sch_of (some e) = (λ s : state, some e = s.pc) :=
+by { cases e ; refl }
+
+lemma event_mch_of_some (e : mch_of.lbl)
+: mch_of.event (some e) = machine.event e :=
+by { cases e ; refl }
+
+
+@[simp]
+lemma fine_sch_of_mch_of (e : option mch_of.lbl)
+: mch_of.fine_sch_of e = True :=
+by { cases e ; refl }
+
+@[simp]
+lemma step_of_mch_of (e : mch_of.lbl) (s : state)
+: mch_of.step_of (some e) s = (λ s', ∃ Hc : some e = s.pc, machine.step e s Hc s') :=
+begin
+  apply funext, intro s',
+  dunfold code.semantics.mch_of program.step_of program.event program.event',
+  dunfold code.semantics.machine.event nondet.event.step_of,
+  dunfold event.coarse_sch event.fine_sch event.step,
+  apply iff.to_eq,
+  apply exists_congr ,
+  intro Hc ,
+  dsimp [True_eq_true] ,
+  rw exists_true,
+end
+                -- ¬ a_csch ∨
+                -- i ∈ W ∧ c_csch.i  unless  ¬ a_csch
+
 open superposition
 
-def rel (l : option (machine_of.lbl)) : option (p.lbl) → Prop
+def rel (l : option mch_of.lbl) : option p.lbl → Prop
   | (some e) := selects l e
   | none     := is_control l ∨ l = none
 
-lemma ref_sim (ec : option (machine_of.lbl))
-: ⟦nondet.program.step_of machine_of ec⟧ ⟹
-      ∃∃ (ea : {ea // rel ec ea}), ⟦nondet.program.step_of p (ea.val) on state.intl⟧ :=
+lemma ref_sim (ec : option mch_of.lbl)
+: ⟦mch_of.step_of ec⟧ ⟹
+      ∃∃ (ea : {ea // rel ec ea}), ⟦p.step_of (ea.val) on state.intl⟧ :=
 begin
   rw exists_action,
   apply action_entails_action,
@@ -186,7 +221,7 @@ begin
   { let x : {ea // rel p c Hcorr none ea},
     { existsi none, unfold rel is_control, right, refl },
     existsi x, unfold function.on_fun,
-    unfold machine_of nondet.program.step_of nondet.program.event
+    unfold mch_of nondet.program.step_of nondet.program.event
            nondet.skip nondet.event.step_of
            nondet.event.fine_sch nondet.event.coarse_sch
            nondet.event.step  at H,
@@ -214,7 +249,7 @@ begin
       apply exists_imp_exists' (assume _, trivial) _, intros _,
       intros H',
       change _ = _,
-      dunfold machine_of nondet.program.event' machine.event
+      dunfold mch_of nondet.program.event' machine.event
               nondet.event.step machine.step at H',
       rw Hact at H',
       have H : s'.intl = s.intl := H'.right,
@@ -225,7 +260,7 @@ begin
       let x : {ea // rel p _ Hcorr (some pc) ea},
       { existsi (some e), apply He },
       existsi x, unfold function.on_fun,
-      dunfold machine_of nondet.program.step_of nondet.program.event
+      dunfold mch_of nondet.program.step_of nondet.program.event
               nondet.program.event' machine.event nondet.event.step_of
               nondet.event.coarse_sch nondet.event.fine_sch
               nondet.event.step at H,
@@ -257,105 +292,110 @@ lemma evt_leads_to_aux
 : (λ s : state, within H s.pc)
     ↦
   (λ s : state, exits H s.pc ∨ selects s.pc e)
-   in machine_of :=
+   in mch_of :=
 sorry
 
 end leads_to
 
+open unitb
+include Hterm
+
 lemma evt_leads_to
-: ((p.event ea).coarse_sch && (p.event ea).fine_sch) ∘ state.intl
+: (p.coarse_sch_of ea && (p.event ea).fine_sch) ∘ state.intl
     ↦
-      (machine_of.event ec).coarse_sch && (machine_of.event ec).fine_sch
-   in machine_of :=
+      -(p.coarse_sch_of ea ∘ state.intl)
+      || ∃∃ ec : { ec // rel ec ea }, mch_of.coarse_sch_of ec.val
+   in mch_of :=
 begin
   cases ea with ea,
-  { admit },
-  let m := machine_of p c Hcorr,
-  have H : (λ s : state, ↑ (within subtree.rfl s.pc))
-         ↦ (m.event ec).coarse_sch && (m.event ec).fine_sch
-       in m,
-  { have H := evt_leads_to_aux _ c Hcorr _ _ c subtree.rfl ea,
-         -- we need an existential on the RHS of ↦
-    apply unitb.leads_to.strengthen_rhs _ _ H,
-    apply p_or_entails_of_entails,
+  { apply unitb.leads_to.impl,
+    apply entails_p_or_of_entails_right,
+    intros s h, simp,
+    let ec : {ec // rel p c Hcorr ec none},
+    { existsi none, apply or.inr, refl },
+    existsi ec, revert ec,
+    simp },
+  have H := evt_leads_to_aux p c Hcorr _ _ c subtree.rfl ea,
+  revert H,
+  apply unitb.leads_to.monotonicity,
+  { intros s q,
+    apply within_whole },
+  apply p_or_entails_p_or,
+  { apply entails_trans (term ∘ state.intl) _ _,
     { admit },
-    { intros s H₀,
-      simp, split,
-      { revert m, dsimp,
-        cases ec with ec Hec,
-        cases ec with ec,
-        { admit },
-        dsimp [machine_of,coe_eq_subtype_val],
-        dunfold program.event program.event' machine.event event.coarse_sch,
-        admit
-        /- apply ec.property -/ },
-      have H₁ := (Hcorr s.pc).enabled ea H₀ s.intl,
-      admit } },
-  apply unitb.leads_to.weaken_lhs _ _ H,
-  simp [within_rfl],
-  apply entails_True,
+    { rw p_not_comp,
+      apply comp_entails_comp _ _,
+      apply Hterm } },
+  { intros s h,
+    let ec : {ec // rel p c Hcorr ec (some ea)},
+    { existsi s.pc, apply h, },
+    apply p_exists_intro ec,
+    revert ec, simp,
+    destruct s.pc,
+    { intros h, simp [h], },
+    { intros ec Hec, simp [Hec], }, },
 end
 
 lemma evt_resched
-: ((p.event ea).coarse_sch && (p.event ea).fine_sch) ∘ state.intl && True
-    ↦
-      (machine_of.event ec).fine_sch  in  machine_of :=
+: (p.coarse_sch_of ea && p.fine_sch_of ea) ∘ state.intl && True
+  && mch_of.coarse_sch_of ec
+    >~>
+      mch_of.fine_sch_of ec  in  mch_of :=
 begin
   simp,
-  apply unitb.leads_to.strengthen_rhs _ _ (evt_leads_to _ _ _ _ ec),
-  apply p_and_elim_right
+  apply unitb.often_imp_often.basis,
+  apply unitb.leads_to.trivial,
 end
 
 lemma evt_delay
-: True && ((p.event ea).coarse_sch && (p.event ea).fine_sch) ∘ state.intl
-    ↦
-      True && (machine_of.event ec).coarse_sch
-   in machine_of :=
+: (p.coarse_sch_of ea && (p.event ea).fine_sch) ∘ state.intl
+    >~>
+      -(p.coarse_sch_of ea ∘ state.intl)
+      || ∃∃ ec : { ec // rel ec ea }, True && mch_of.coarse_sch_of ec.val
+   in mch_of :=
 begin
   simp,
-  apply unitb.leads_to.strengthen_rhs _ _ (evt_leads_to _ _ _ _ ec),
-  apply p_and_elim_left
+  apply often_imp_often.basis,
+  apply evt_leads_to p c Hterm Hcorr ea,
 end
 
 lemma evt_stable
-: unless_except machine_of
-      (True && (machine_of.event ec).coarse_sch)
-      (-((p.event ea).coarse_sch ∘ state.intl))
-      { e | ∃ (l : {ec // rel ec ea}), machine_of.event l = e } :=
+: unless_except mch_of
+      (True && mch_of.coarse_sch_of ec)
+      (-(p.coarse_sch_of ea ∘ state.intl))
+      { e | ∃ (l : {ec // rel ec ea}), mch_of.event l = e } :=
 begin
   apply unless_except_rule,
   intros e s Hc Hf s' Hexcp H₀ H₁ H₂,
   simp [function.comp],
   simp [mem_set_of,not_exists_iff_forall_not] at Hexcp,
   have Hexcp' := Hexcp ec,
-  dunfold program.event machine_of,
   cases ec with ec Hec,
   cases ec with ec,
-  { unfold program.event,
-    right, trivial, },
-  unfold program.event program.event' machine.event event.coarse_sch,
-  dunfold machine_of program.event program.event' at Hexcp',
-  dsimp [program.event,machine_of,machine.event] at H₁ Hc,
-  simp at H₁, rw ← Hc at H₁,
-  exfalso, apply Hexcp',
+  { right, trivial, },
+  dsimp [program.event,mch_of,machine.event] at H₁ Hc,
+  exfalso, apply Hexcp', clear Hexcp' Hexcp,
+  simp at H₁,
+  unfold program.event,
+  dunfold machine.event event.coarse_sch at H₁,
+  rw ← Hc at H₁,
   injection H₁, subst ec,
 end
 
 lemma evt_sim
-:    ⟦event.step_of (program.event machine_of (ec.val))⟧
- ⟹ ⟦event.step_of (program.event p ea) on state.intl⟧ :=
+:    ⟦mch_of.step_of (ec.val)⟧
+ ⟹ ⟦p.step_of ea on state.intl⟧ :=
 begin
   apply action_entails_action,
   intros s s',
-  dunfold machine_of machine_of._match_1 program.event function.on_fun,
+  dunfold function.on_fun,
   cases ec with ec Hec,
   cases ea,
   case some ea
   { dunfold rel at Hec,
-    cases ec with ec
-    ; dunfold program.event,
+    cases ec with ec,
     { cases Hec },
-    { unfold program.event' event.step_of,
+    { simp,
       have Hgrd : (machine.event p _ Hcorr ec).coarse_sch s
                 → (p.event' ea).guard (s.intl),
       { unfold machine.event,
@@ -368,10 +408,9 @@ begin
       { apply and.left ∘ Hgrd },
       apply exists_imp_exists' Hcs,
       intros Hcs,
-      have Hfs : (machine.event p _ Hcorr ec).fine_sch s → (p.event' ea).fine_sch (s.intl),
-      { intro H, apply (Hgrd Hcs).right },
-      apply exists_imp_exists' Hfs,
-      intros Hfs, dunfold machine.event,
+      have Hfs : (p.event' ea).fine_sch (s.intl),
+      { apply (Hgrd Hcs).right },
+      intro H, existsi Hfs, revert H,
       simp [machine.step],
       destruct action_of ec,
       case sum.inr
@@ -391,46 +430,30 @@ begin
   case none
   { cases ec with ec ;
     simp [program.event],
-    { unfold event.step_of,
-      have Hcs : nondet.skip.coarse_sch s → nondet.skip.coarse_sch s.intl,
+    { have Hcs : nondet.skip.coarse_sch s → nondet.skip.coarse_sch s.intl,
       { apply id },
-      apply exists_imp_exists' Hcs, intros Hcs',
-      have Hfs : nondet.skip.fine_sch s → nondet.skip.fine_sch s.intl,
-      { apply id },
-      apply exists_imp_exists' Hfs, intros Hfs',
-      simp [nondet.skip],
-      intro h, rw h },
+      intros Hcs', subst s, },
     { unfold rel at Hec,
-      cases Hec with Hec,
-      { unfold event.step_of,
-        apply exists_imp_exists' _, intro Hcs,
-        apply exists_imp_exists' _, intro Hfs,
-        { unfold machine.event nondet.event.step machine.step,
+      cases Hec,
+      case or.inl Hec
+        { intro H, cases H with Hc Hstep,
           destruct (action_of ec),
           case sum.inr
-          { intros ea Hea₀,
-            cases ea with ea Hea₁,
-            cases not_selects_and_is_control Hea₁ Hec },
+            { intros ea Hea₀,
+              cases ea with ea Hea₁,
+              cases not_selects_and_is_control Hea₁ Hec },
           case sum.inl
-          { intros ea Hea,
-            simp [Hea,machine.step._match_1],
-            intro H, rw H.left,
-            apply rfl } },
-        { apply id },
-        { intro, trivial }, },
-      { contradiction } } }
+            { intros ea Hea,
+              simp [Hea,machine.step,machine.step._match_1] at Hstep,
+              rw Hstep.left  } },
+      case or.inr Hec
+        { contradiction } } }
 end
 
--- guard of ea ⇒ (∃ _, _)
-lemma evt_witness_fis (s : state)
-: ∃ (e : {ec // rel ec ea}), true :=
-sorry
-
 lemma ref_resched
-: evt_ref state.intl {ec // rel ec ea} machine_of (nondet.program.event p ea)
-      (λ (ec : {ec // rel ec ea}), nondet.program.event machine_of (ec.val)) :=
+: evt_ref_wk state.intl {ec // rel ec ea} mch_of (p.event ea)
+      (λ (ec : {ec // rel ec ea}), mch_of.event (ec.val)) :=
 { witness := λ _, True
-, witness_fis := evt_witness_fis
 , resched := evt_resched
 , stable  := evt_stable
 , delay   := evt_delay
@@ -439,11 +462,11 @@ lemma ref_resched
 end ref_resched
 
 lemma code_refs_machine
-: refined state.intl p machine_of :=
+: refined state.intl p mch_of :=
 { sim_init := by { intros i, cases i, apply and.right, }
 , ref := rel
 , evt_sim := ref_sim
-, events := λ e, evt_ref_wk_of_evt_ref _ _ _ _ _ (ref_resched e) }
+, events := ref_resched }
 
 end
 
