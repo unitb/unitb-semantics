@@ -199,8 +199,8 @@ lemma mem_check_liveness_iff_mem_check_liveness_flat
 : s ∈ check_liveness p ↔ s ∈ check_liveness_flat p :=
 begin
   unfold check_liveness check_liveness_flat,
-  generalize (p.liveness) k,
-  intro k, cases k with n ps,
+  generalize : p.liveness = k,
+  cases k with n ps,
   unfold sigma.snd,
   induction ps with k p ps IH,
   { refl, },

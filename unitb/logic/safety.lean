@@ -42,7 +42,7 @@ begin
   apply forall_congr_eq, intro σ,
   apply forall_congr_eq, intro σ',
   apply forall_congr_eq, intro P,
-  generalize (p σ ∧ ¬q σ → p σ' ∨ q σ') r,
+  generalize : (p σ ∧ ¬q σ → p σ' ∨ q σ') = r,
   simp,
 end
 
@@ -267,8 +267,8 @@ begin
     have Hconj := unless_conj_gen (h fin.max) (IH h'),
     apply unless_weak_rhs _ Hconj, clear Hconj,
     { intro, simp, clear h h' IH,
-      generalize (∀ (x : fin n), restr p x i) PP, intro,
-      generalize (∃ (x : fin n), restr q x i) QQ, intro,
+      generalize : (∀ (x : fin n), restr p x i) = PP,
+      generalize : (∃ (x : fin n), restr q x i) = QQ,
       begin [smt] by_cases (p fin.max i), by_cases PP, by_cases QQ, eblast end, } },
 end
 

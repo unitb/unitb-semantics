@@ -52,7 +52,7 @@ begin
   apply p_exists_entails_p_exists' _ _ (λ l, cast R.bij l), intros e τ H,
   simp,
   have H'' : option.cast (some e) (R.bij) = some (cast (R.bij) e),
-  { generalize R.bij P, intro P,
+  { generalize : R.bij = P,
     rw cast_some },
   have H' := R.sim' (some e) τ H,
   rw H'' at H',
