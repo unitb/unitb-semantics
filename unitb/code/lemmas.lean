@@ -406,6 +406,23 @@ lemma within_rfl (pc : option $ current c)
 : within subtree.rfl pc :=
 sorry
 
+lemma next_counter_action {p q : pred} {ds} {l : lbl} {p' q'} {c' : code lbl p' q'}
+  (s : σ)
+  (H : subtree (code.action p q ds l) c')
+: next s (some $ counter H) = exit' H :=
+begin
+  unfold next,
+  induction H,
+  { simp, refl },
+  all_goals { simp [counter,next',ih_1] },
+end
+
+lemma counter_action_of_within {p q : pred} {ds} {l : lbl} {p' q'} {c' : code lbl p' q'}
+  {H : subtree (code.action p q ds l) c'}
+  {pc : option $ current c'}
+  (Hpc : within H pc)
+  (Hnex : ¬ exits H pc)
+: some (counter H) = pc := sorry
 end
 
 end local_correctness

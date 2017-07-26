@@ -180,7 +180,6 @@ lemma event_mch_of_some (e : mch_of.lbl)
 : mch_of.event (some e) = machine.event e :=
 by { cases e ; refl }
 
-
 @[simp]
 lemma fine_sch_of_mch_of (e : option mch_of.lbl)
 : mch_of.fine_sch_of e = True :=
@@ -200,8 +199,13 @@ begin
   dsimp [True_eq_true] ,
   rw exists_true,
 end
-                -- ¬ a_csch ∨
-                -- i ∈ W ∧ c_csch.i  unless  ¬ a_csch
+
+lemma step_event'_mch_of_imp_pc_eq_next (e : mch_of.lbl) (s s' : state)
+  (Hc : mch_of.coarse_sch_of (some e) s)
+  (Hf : mch_of.fine_sch_of (some e) s)
+  (H : (mch_of.event' e).step s Hc Hf s')
+: s'.pc = next s.intl s.pc :=
+H.left
 
 open superposition
 
@@ -293,7 +297,47 @@ lemma evt_leads_to_aux
     ↦
   (λ s : state, exits H s.pc ∨ selects s.pc e)
    in mch_of :=
-sorry
+begin
+  induction c',
+  case code.skip
+  { admit },
+  case code.action
+  { apply @ensure_rule _ (mch_of p c Hcorr) _ _ (some (counter H)),
+      -- EN
+    { rw coarse_sch_of_mch_of_some,
+      intro s, simp [not_or_iff_not_and_not,and_shunting,exits],
+      intros H₀ H₁ H₂,
+      apply counter_action_of_within H₁ H₂, },
+      -- FLW
+    { simp [fine_sch_of_mch_of],
+      apply unitb.leads_to.trivial },
+      -- STEP
+    { intros s s' Hp Hstep, left,
+      rw step_of_mch_of at Hstep,
+      cases Hstep with Hc Hstep,
+      unfold machine.step at Hstep,
+      cases Hstep with Hstep₀ Hstep₁,
+      rw [Hstep₀,← Hc],
+      rw next_counter_action,
+      unfold exits, },
+      -- STABLE
+    { apply unless_rule,
+      intros ec s Hc Hf s' Hstep Hp,
+      rw [not_or_iff_not_and_not,and_shunting],
+      intros Hnq₀ Hnq₁,
+      right, left,
+      unfold exits,
+      have Hp := counter_action_of_within Hp Hnq₀,
+      rw [← next_counter_action s.intl H, Hp],
+      symmetry,
+      apply Hstep.left, }, },
+  case code.seq
+  { admit },
+  case code.if_then_else
+  { admit },
+  case code.while
+  { admit },
+end
 
 end leads_to
 
@@ -324,7 +368,6 @@ begin
   { apply entails_trans (term ∘ state.intl) _ _,
     { intro s, simp [exits],
       intro H,
-      simp [exit'_rfl] at H,
       have Hasrt := s.assertion,
       rw ← H at Hasrt,
       apply Hasrt, },

@@ -233,10 +233,10 @@ inductive subtree {p q : pred} (c : code p q) : ∀ {p' q' : pred}, code p' q' �
   | seq_right : ∀ (p' q' r) (c₀ : code p' q') (c₁ : code q' r),
     subtree c₁ →
     subtree (code.seq c₀ c₁)
-  | ite_left  : ∀ (ds t p' pa pb) (c₀ : code pa q) (c₁ : code pb q),
+  | ite_left  : ∀ (ds t p' pa pb q') (c₀ : code pa q') (c₁ : code pb q'),
     subtree c₀ →
     subtree (code.if_then_else p' ds t c₀ c₁)
-  | ite_right : ∀ (ds t p' pa pb) (c₀ : code pa q) (c₁ : code pb q),
+  | ite_right : ∀ (ds t p' pa pb q') (c₀ : code pa q') (c₁ : code pb q'),
     subtree c₁ →
     subtree (code.if_then_else p' ds t c₀ c₁)
   | while : ∀ (ds t p' q' inv) (c' : code q' inv),
@@ -255,17 +255,17 @@ def within' {p q : pred} {c : code p q}
              (current.seq_left ._ ._ ._ ._ ._ pc) := ff
   | ._ ._ ._ (subtree.seq_right p' q' r' c₀ c₁ P)
              (current.seq_right ._ ._ ._ ._ ._ pc) := within' P pc
-  | ._ ._ ._ (subtree.ite_left ds t p' pa pb c₀ c₁ P)
+  | ._ ._ ._ (subtree.ite_left ds t p' pa pb q' c₀ c₁ P)
              (current.ite_left ._ ._ ._ ._ ._ ._ ._ ._ pc) := within' P pc
-  | ._ ._ ._ (subtree.ite_left ds t p' pa pb c₀ c₁ P)
+  | ._ ._ ._ (subtree.ite_left ds t p' pa pb q' c₀ c₁ P)
              (current.ite_right ._ ._ ._ ._ ._ ._ ._ ._ pc) := ff
-  | ._ ._ ._ (subtree.ite_left ds t p' pa pb c₀ c₁ P)
+  | ._ ._ ._ (subtree.ite_left ds t p' pa pb q' c₀ c₁ P)
              (current.ite_cond ._ ._ ._ ._ ._ ._ ._ ._) := ff
-  | ._ ._ ._ (subtree.ite_right ds t p' pa pb c₀ c₁ P)
+  | ._ ._ ._ (subtree.ite_right ds t p' pa pb q' c₀ c₁ P)
              (current.ite_left ._ ._ ._ ._ ._ ._ ._ ._ pc) := ff
-  | ._ ._ ._ (subtree.ite_right ds t p' pa pb c₀ c₁ P)
+  | ._ ._ ._ (subtree.ite_right ds t p' pa pb q' c₀ c₁ P)
              (current.ite_right ._ ._ ._ ._ ._ ._ ._ ._ pc) := within' P pc
-  | ._ ._ ._ (subtree.ite_right ds t p' pa pb c₀ c₁ P)
+  | ._ ._ ._ (subtree.ite_right ds t p' pa pb q' c₀ c₁ P)
              (current.ite_cond ._ ._ ._ ._ ._ ._ ._ ._) := ff
   | ._ ._ ._ (subtree.while ds t p' q' inv c' P)
              (current.while_body ._ ._ ._ ._ ._ ._ pc) := within' P pc
@@ -280,27 +280,83 @@ def exit' {p q : pred} {c : code p q}
     <|> (seq_right c₀ <$> first c₁)
   | ._ ._ ._ (subtree.seq_right p' q' r' c₀ c₁ P) :=
         seq_right c₀ <$> exit' P
-  | ._ ._ ._ (subtree.ite_left  ds t p' pa pb c₀ c₁ P) :=
+  | ._ ._ ._ (subtree.ite_left  ds t p' pa pb q' c₀ c₁ P) :=
         ite_left p' t ds c₁ <$> exit' P
-  | ._ ._ ._ (subtree.ite_right ds t p' pa pb c₀ c₁ P) :=
+  | ._ ._ ._ (subtree.ite_right ds t p' pa pb q' c₀ c₁ P) :=
         ite_right p' t ds c₀ <$> exit' P
   | ._ ._ ._ (subtree.while ds t p' q' inv c' P)       :=
-        while_body p' ds t <$> exit' P
-
+        (    while_body _ ds _ <$> exit' P
+         <|> some (current.while_cond _ _ _ _ _ _))
 set_option eqn_compiler.lemmas true
 
+@[simp]
 lemma exit'_rfl
 : ∀ {p' q'} {c' : code p' q'}, exit' (subtree.rfl : subtree c' c') = none :=
-begin
-  intros,
-  cases c' ; refl,
-end
+by { intros, cases c' ; refl }
 
+@[simp]
+lemma exit'_seq_left {p' q' p q r : pred}
+  {c : code p' q'} {c₀ : code p q} {c₁ : code q r}
+  {P : subtree c c₀ }
+: exit' (subtree.seq_left p q r c₀ c₁ P) =
+  (     (seq_left c₁ <$> exit' P)
+    <|> (seq_right c₀ <$> first c₁) ) :=
+by refl
+
+@[simp]
+lemma exit'_seq_right {p' q' p q r : pred}
+  {c : code p' q'} {c₀ : code p q} {c₁ : code q r}
+  {P : subtree c c₁ }
+: exit' (subtree.seq_right p q r c₀ c₁ P) =
+  (seq_right c₀ <$> exit' P) :=
+by refl
+
+@[simp]
+lemma exit'_ite_left {p' q' p pa pb q : pred}
+  {ds} {t : pred}
+  {c : code p' q'} {c₀ : code pa q} {c₁ : code pb q}
+  {P : subtree c c₀ }
+: exit' (subtree.ite_left ds t p pa pb q c₀ c₁ P) =
+  ite_left p t ds c₁ <$> exit' P :=
+by refl
+
+@[simp]
+lemma exit'_ite_right {p' q' p pa pb q : pred}
+  {ds} {t : pred}
+  {c : code p' q'} {c₀ : code pa q} {c₁ : code pb q}
+  {P : subtree c c₁ }
+: exit' (subtree.ite_right ds t p pa pb q c₀ c₁ P) =
+  ite_right p t ds c₀ <$> exit' P :=
+by refl
+
+@[simp]
+lemma exit'_while {p' q' p inv q : pred}
+  {ds} {t : pred}
+  {c : code p' q'} {c' : code p inv}
+  {P : subtree c c' }
+: exit' (subtree.while ds q t p inv c' P) =
+  (    while_body t ds q <$> exit' P
+   <|> some (current.while_cond _ _ _ _ _ _)) :=
+by refl
+
+def counter {p q ds l}
+: ∀ {p' q'} {c' : code p' q'}, subtree (code.action p q ds l) c' → current c'
+  | ._ ._ ._ subtree.rfl := current.action _ _ _ _
+  | ._ ._ ._ (subtree.seq_left p q r c₀ c₁ P) :=
+    current.seq_left _ _ _ _ _ (counter P)
+  | ._ ._ ._ (subtree.seq_right p q r c₀ c₁ P) :=
+    current.seq_right _ _ _ _ _ (counter P)
+  | ._ ._ ._ (subtree.ite_left ds p t pa pb q c₀ c₁ P) :=
+    current.ite_left _ _ _ _ _ _ _ _ (counter P)
+  | ._ ._ ._ (subtree.ite_right ds p t pa pb q c₀ c₁ P) :=
+    current.ite_right _ _ _ _ _ _ _ _ (counter P)
+  | ._ ._ ._ (subtree.while p t inv q c₀ c₁ P) :=
+    current.while_body _ _ _ _ _ _ (counter P)
 
 def within {p q : pred} {c : code p q} {p' q'} {c' : code p' q'} (P : subtree c c')
 : option (current c') → Prop
   | (some pc) := within' P pc ∨ exit' P = some pc
-  | none := false
+  | none := exit' P = none
 
 def exits {p q : pred} {c : code p q} {p' q'} {c' : code p' q'} (P : subtree c c')
   (pc : option (current c')) : Prop :=
