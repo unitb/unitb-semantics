@@ -422,7 +422,53 @@ lemma counter_action_of_within {p q : pred} {ds} {l : lbl} {p' q'} {c' : code lb
   {pc : option $ current c'}
   (Hpc : within H pc)
   (Hnex : ¬ exits H pc)
-: some (counter H) = pc := sorry
+: some (counter H) = pc :=
+begin
+  cases pc with pc ; unfold within at Hpc,
+  { cases Hnex Hpc, },
+  rw [or_comm,or_iff_not_imp] at Hpc,
+  have H₃ := Hpc Hnex,  clear Hpc Hnex,
+  apply congr_arg,
+  induction H,
+  case subtree.rfl
+   { cases pc, refl },
+  case subtree.seq_left
+   { unfold counter,
+     rw [within'_seq_left] at H₃,
+     cases H₃ with pc₀ H₃, cases H₃ with H₃ H₄,
+     cases H₄, clear H₄,
+     apply congr_arg,
+     apply ih_1 _ H₃ },
+  case subtree.seq_right
+   { unfold counter,
+     rw [within'_seq_right] at H₃,
+     cases H₃ with pc₀ H₃, cases H₃ with H₃ H₄,
+     cases H₄, clear H₄,
+     apply congr_arg,
+     apply ih_1 _ H₃ },
+  case subtree.ite_left
+   { unfold counter,
+     rw [within'_ite_left] at H₃,
+     cases H₃ with pc₀ H₃, cases H₃ with H₃ H₄,
+     cases H₄, clear H₄,
+     apply congr_arg,
+     apply ih_1 _ H₃ },
+  case subtree.ite_right
+   { unfold counter,
+     rw [within'_ite_right] at H₃,
+     cases H₃ with pc₀ H₃, cases H₃ with H₃ H₄,
+     cases H₄, clear H₄,
+     apply congr_arg,
+     apply ih_1 _ H₃ },
+  case subtree.while
+   { unfold counter,
+     rw [within'_while] at H₃,
+     cases H₃ with pc₀ H₃, cases H₃ with H₃ H₄,
+     cases H₄, clear H₄,
+     apply congr_arg,
+     apply ih_1 _ H₃ },
+end
+
 end
 
 end local_correctness

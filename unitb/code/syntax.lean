@@ -339,6 +339,113 @@ lemma exit'_while {p' q' p inv q : pred}
    <|> some (current.while_cond _ _ _ _ _ _)) :=
 by refl
 
+lemma within'_seq_left {p' q' p q r : pred}
+  {c : code p' q'} {c₀ : code p q} {c₁ : code q r}
+  {P : subtree c c₀ }
+  {pc : current (code.seq c₀ c₁)}
+:   within' (subtree.seq_left p q r c₀ c₁ P) pc
+  ↔ (∃ pc₀, within' P pc₀ ∧ pc = current.seq_left p q r c₀ c₁ pc₀) :=
+begin
+  cases pc with pc,
+  { split ; intro h,
+    { existsi a,
+      split, apply h, refl },
+    { cases h with pc₀ h, cases h with h₀ h₁,
+      rw h₁, apply h₀ }, },
+  { split ; intro h,
+    { cases h },
+    { cases h with pc₀ h, cases h with h₀ h₁,
+      cases h₁, } }
+end
+
+lemma within'_seq_right {p' q' p q r : pred}
+  {c : code p' q'} {c₀ : code p q} {c₁ : code q r}
+  {P : subtree c c₁ }
+  {pc : current (code.seq c₀ c₁)}
+:   within' (subtree.seq_right p q r c₀ c₁ P) pc
+  ↔ (∃ pc₁, within' P pc₁ ∧ pc = current.seq_right p q r c₀ c₁ pc₁) :=
+begin
+  cases pc with pc,
+  { split ; intro h,
+    { cases h },
+    { cases h with pc₀ h, cases h with h₀ h₁,
+      cases h₁, } },
+  { split ; intro h,
+    { existsi a,
+      split, apply h, refl },
+    { cases h with pc₀ h, cases h with h₀ h₁,
+      rw h₁, apply h₀ }, },
+end
+
+@[simp]
+lemma within'_ite_left {p' q' p pa pb q : pred}
+  {ds} {t : pred}
+  {c : code p' q'} {c₀ : code pa q} {c₁ : code pb q}
+  {P : subtree c c₀ }
+  {pc : current _}
+:   within' (subtree.ite_left ds t p pa pb q c₀ c₁ P) pc
+  ↔ ∃ pc₀, within' P pc₀ ∧ pc = current.ite_left _ _ _ _ _ _ c₀ c₁ pc₀ :=
+begin
+  cases pc with pc,
+  { split ; intro h,
+    { cases h },
+    { cases h with pc₀ h, cases h with h₀ h₁,
+      cases h₁, } },
+  { split ; intro h,
+    { existsi a,
+      split, apply h, refl },
+    { cases h with pc₀ h, cases h with h₀ h₁,
+      rw h₁, apply h₀ }, },
+  { split ; intro h,
+    { cases h },
+    { cases h with pc₀ h, cases h with h₀ h₁,
+      cases h₁, } }
+end
+
+@[simp]
+lemma within'_ite_right {p' q' p pa pb q : pred}
+  {ds} {t : pred}
+  {c : code p' q'} {c₀ : code pa q} {c₁ : code pb q}
+  {P : subtree c c₁ }
+  {pc : current _}
+:   within' (subtree.ite_right ds t p pa pb q c₀ c₁ P) pc
+  ↔ ∃ pc₁, within' P pc₁ ∧ pc = current.ite_right _ _ _ _ _ _ c₀ c₁ pc₁ :=
+begin
+  cases pc with pc,
+  { split ; intro h,
+    { cases h },
+    { cases h with pc₀ h, cases h with h₀ h₁,
+      cases h₁, } },
+  { split ; intro h,
+    { cases h },
+    { cases h with pc₀ h, cases h with h₀ h₁,
+      cases h₁, } },
+  { split ; intro h,
+    { existsi a,
+      split, apply h, refl },
+    { cases h with pc₀ h, cases h with h₀ h₁,
+      rw h₁, apply h₀ }, },
+end
+
+@[simp]
+lemma within'_while {p' q' p inv q : pred}
+  {ds} {t : pred}
+  {c : code p' q'} {c' : code p inv}
+  {P : subtree c c' }
+  {pc : current _}
+:   within' (subtree.while ds q t p inv c' P) pc
+  ↔ ∃ pc', within' P pc' ∧ pc = current.while_body _ _ _ _ _ c' pc' :=
+begin
+  split ; intro h,
+  { cases pc,
+    { cases h },
+    { existsi a, split,
+      { apply h },
+      { refl } } },
+  { cases h with pc' h, cases h with h₀ h₁,
+    subst pc, apply h₀ }
+end
+
 def counter {p q ds l}
 : ∀ {p' q'} {c' : code p' q'}, subtree (code.action p q ds l) c' → current c'
   | ._ ._ ._ subtree.rfl := current.action _ _ _ _
