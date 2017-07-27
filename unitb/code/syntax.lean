@@ -470,9 +470,15 @@ def exits {p q : pred} {c : code p q} {p' q'} {c' : code p' q'} (P : subtree c c
 exit' P = pc
 
 
-lemma within_whole {p q : pred} {c : code p q}
+lemma within_rfl {p q : pred} {c : code p q}
   (pc : option (current c))
 : within subtree.rfl pc :=
-sorry
+begin
+  cases pc with pc,
+  { dunfold within,
+    cases c ; refl },
+  { dunfold within,
+    left, cases c ; apply rfl }
+end
 
 end

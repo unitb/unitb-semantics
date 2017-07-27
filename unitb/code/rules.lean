@@ -18,9 +18,6 @@ private def lbl := F.lbl
 @[reducible]
 private def rel := σ → σ → Prop
 
--- @[reducible]
--- private def code := @code σ lbl
-
 parameter {σ}
 
 def hoare (p : pred) (act : rel) (q : pred) :=

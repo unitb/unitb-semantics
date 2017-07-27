@@ -296,7 +296,7 @@ begin
   case correct.seq p' q' r' c₀ c₁ Hc₀ Hc₁
   { intros pc l',
     cases pc with pc pc
-    ; unfold selects assert_of selects' assert_of'
+    ; dunfold selects assert_of selects' assert_of'
     ; intros Hpc,
     { apply ih_1 _ _ Hpc },
     { apply ih_2 _ _ Hpc }, },
@@ -334,14 +334,14 @@ begin
   case correct.seq p' q' r' c₀ c₁ Hc₀ Hc₁
   { intros pc l',
     cases pc with pc pc
-    ; unfold selects assert_of selects' assert_of'
+    ; dunfold selects assert_of selects' assert_of'
     ; intros Hpc,
     { apply ih_1 _ _ Hpc },
     { apply ih_2 _ _ Hpc }, },
   case correct.ite p' t pa pb q' ds c₀ c₁ Hc₀ Hc₁ Hpa Hpb
   { intros pc,
     cases pc with pc pc
-    ; unfold condition assert_of condition' assert_of' next_assert next_assert'
+    ; dunfold condition assert_of condition' assert_of' next_assert next_assert'
              is_control is_control'
     ; intros Hpc s Hp Hc,
     case current.ite_cond
@@ -353,7 +353,7 @@ begin
   case correct.while t p' inv q' ds b c Htp Hntq Hcvr
   { intros pc,
     cases pc with pc pc
-    ; unfold condition assert_of condition' assert_of' next_assert next_assert'
+    ; dunfold condition assert_of condition' assert_of' next_assert next_assert'
              is_control is_control'
     ; intros Hpc s Hp Hc,
     { rw if_neg Hc, apply Hntq _ ⟨Hp,Hc⟩, },
@@ -401,10 +401,6 @@ begin
   ; try { cases h₀ }
   ; apply ih_1 h₁ h₀
 end
-
-lemma within_rfl (pc : option $ current c)
-: within subtree.rfl pc :=
-sorry
 
 lemma next_counter_action {p q : pred} {ds} {l : lbl} {p' q'} {c' : code lbl p' q'}
   (s : σ)

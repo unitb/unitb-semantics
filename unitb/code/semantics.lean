@@ -363,7 +363,7 @@ begin
   revert H,
   apply unitb.leads_to.monotonicity,
   { intros s q,
-    apply within_whole },
+    apply within_rfl },
   apply p_or_entails_p_or,
   { apply entails_trans (term ∘ state.intl) _ _,
     { intro s, simp [exits],
