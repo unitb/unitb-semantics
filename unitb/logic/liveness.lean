@@ -262,7 +262,7 @@ begin
   exact ⟨_,h⟩,
 end
 
-theorem leads_to.cancellation {α} [system α] {s : α} (q : pred' (state α)) {p r b : pred' (state α)}
+theorem leads_to.cancellation (α) [system α] {s : α} (q : pred' (state α)) {p r b : pred' (state α)}
   (P₀ : p ↦ q || b in s)
   (P₁ : q ↦ r in s)
 : p ↦ r || b in s :=
@@ -290,7 +290,7 @@ begin
     change leads_to _ _ _,
     apply leads_to.strengthen_rhs (q || q),
     { intro, simp, exact id },
-    apply leads_to.cancellation (p && lt j ∘ V) (P _),
+    apply leads_to.cancellation _ (p && lt j ∘ V) (P _),
     have h' : (p && lt j ∘ V) = (λ s, ∃v, lt j v ∧ p s ∧ v = V s),
     { apply funext,
       intro x,
@@ -346,7 +346,7 @@ begin
     { apply leads_to.monotonicity _ _ PSP₀,
       { intro, simp, begin [smt] by_cases r i end },
       { intro, simp, begin [smt] by_cases b₀ i end }, } },
-  { have H := leads_to.cancellation _ ih_1 ih_2,
+  { have H := leads_to.cancellation _ _ ih_1 ih_2,
     have H' : (r₁ && r || b || b) = (r₁ && r || b),
     { apply funext, intro,
       rw ← iff_eq_eq,
@@ -402,7 +402,7 @@ begin
   case leads_to.trans pp qq rr P₂ P₃
   { rw [← p_or_self b,p_or_assoc],
     have H' : pp && p'  ↦  rr && q' || b || b in s,
-    { apply leads_to.cancellation (qq && q'),
+    { apply leads_to.cancellation _ (qq && q'),
       { have h : qq && q' || b = qq && q' || (qq && q' || b),
         { admit },
         rw h,

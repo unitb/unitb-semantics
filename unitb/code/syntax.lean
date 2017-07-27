@@ -481,4 +481,32 @@ begin
     left, cases c ; apply rfl }
 end
 
+section projections
+
+variables {p q r : pred}
+variables {c₀ : code p q}
+variables {c₁ : code q r}
+
+def subtree.left
+: ∀ {p' q'} {c : code p' q'}, subtree (code.seq c₀ c₁) c → subtree c₀ c :=
+sorry
+
+def subtree.right
+: ∀ {p' q'} {c : code p' q'}, subtree (code.seq c₀ c₁) c → subtree c₁ c :=
+sorry
+
+variables {p' q' : pred}
+variables {c : code p' q'}
+variables {pc : option $ current c}
+
+lemma within_left_or_within_right_iff_within_seq
+  (H : subtree (code.seq c₀ c₁) c)
+: within H pc ↔ within H.left pc ∨ within H.right pc := sorry
+
+lemma exits_iff_exits_right
+  (H : subtree (code.seq c₀ c₁) c)
+: exits H pc ↔ exits H.right pc := sorry
+
+end projections
+
 end

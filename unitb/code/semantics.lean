@@ -250,6 +250,8 @@ variable ec : { ec // rel ec ea }
 
 section leads_to
 
+open unitb
+
 variable pc : current c
 variables p' q' : pred σ
 variables c' : code p.lbl p' q'
@@ -266,7 +268,7 @@ lemma evt_leads_to_aux
 begin
   induction c',
   case code.skip
-  { apply unitb.leads_to.impl,
+  { apply leads_to.impl,
     apply entails_p_or_of_entails_left,
     intro s,
     apply not_within_skip },
@@ -279,7 +281,7 @@ begin
       apply counter_action_of_within H₁ H₂, },
       -- FLW
     { simp [fine_sch_of_mch_of],
-      apply unitb.leads_to.trivial },
+      apply leads_to.trivial },
       -- STEP
     { intros s s' Hp Hstep, left,
       rw step_of_mch_of at Hstep,
@@ -300,8 +302,21 @@ begin
       rw [← next_counter_action s.intl H, Hp],
       symmetry,
       apply Hstep.left, }, },
-  case code.seq
-  { admit },
+  case code.seq p₀ q r c₀ c₁ ih_1 ih_2 H
+  { have Pright : (λ (s : state), within H.right (s.pc))
+                   ↦
+                  (λ (s : state), selects (s.pc) e ∨ exits H (s.pc))
+               in mch_of p c Hcorr,
+    { admit },
+    have Pleft : (λ (s : state), within H.left (s.pc))
+                   ↦
+                 (λ (s : state), selects (s.pc) e ∨ exits H (s.pc))
+               in mch_of p c Hcorr,
+    { admit,
+      -- apply leads_to.cancellation (program state) (λ (s : state), selects (s.pc) e),
+       },
+    simp [within_left_or_within_right_iff_within_seq],
+    apply leads_to.disj' Pleft Pright, },
   case code.if_then_else
   { admit },
   case code.while
