@@ -1,10 +1,10 @@
 
 import data.stream
 
-import unitb.predicate
 import unitb.semantics.temporal
 
 import util.logic
+import util.predicate
 import util.data.fin
 
 namespace unitb

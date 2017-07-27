@@ -1,7 +1,8 @@
 
 import unitb.logic
-import unitb.predicate
 import unitb.semantics.temporal
+
+import util.predicate
 
 namespace unitb.refinement
 

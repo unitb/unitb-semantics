@@ -1,9 +1,9 @@
 
 import unitb.models.nondet
-import unitb.predicate
 
 import util.data.option
 import util.data.sum
+import util.predicate
 
 universe variables u v
 

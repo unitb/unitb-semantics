@@ -1,8 +1,8 @@
 
 import data.stream
-import unitb.predicate
 
 import util.logic
+import util.predicate
 
 namespace temporal
 

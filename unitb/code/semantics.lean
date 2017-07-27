@@ -1,5 +1,4 @@
 
-import unitb.predicate
 import unitb.semantics.temporal
 import unitb.code.syntax
 import unitb.code.instances
@@ -8,6 +7,7 @@ import unitb.code.lemmas
 import unitb.refinement.superposition
 
 import util.logic
+import util.predicate
 import util.data.subtype
 
 namespace code.semantics

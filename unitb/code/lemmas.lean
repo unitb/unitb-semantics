@@ -1,6 +1,7 @@
-import unitb.predicate
 import unitb.code.syntax
 import unitb.code.rules
+
+import util.predicate
 
 universe variables u v
 

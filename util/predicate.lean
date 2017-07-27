@@ -1,6 +1,7 @@
 
 import util.logic
 import util.data.fin
+import util.category
 
 namespace predicate
 
@@ -678,6 +679,13 @@ begin
   simp [exists_split_one],
   refl,
 end
+
+instance {α} : category (@p_entails α) :=
+  { ident := by { intro, refl }
+  , comp := by { intros, apply entails_trans }
+  , assoc := by { intros, refl }
+  , left_ident := by { intros, refl }
+  , right_ident := by { intros, refl } }
 
 end predicate
 

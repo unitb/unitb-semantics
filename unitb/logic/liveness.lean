@@ -1,11 +1,11 @@
 
 import data.stream
 
-import unitb.predicate
 import unitb.semantics.temporal
 import unitb.logic.safety
 
 import util.logic
+import util.predicate
 
 universe variables u v
 
