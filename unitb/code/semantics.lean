@@ -16,21 +16,12 @@ section
 open code predicate temporal nondet
 
 parameters (σ : Type)
--- def rel := σ → σ → Prop
-
--- def ex : code σ rel → cpred σ → cpred σ
---  | (action p a) := stutter ∘ pre p ∘ act a
---  | (seq p₀ p₁) := ex p₀ ∘ ex p₁
---  | (if_then_else p c a₀ a₁) := pre p ∘ test (pre c ∘ ex a₀) (pre (-c) ∘ ex a₁)
---  | (while p c a inv) := _
 
 parameters (p : nondet.program σ)
 parameters {term : pred σ}
 parameters (c : code p.lbl p.first term)
 
 parameter Hterm : ∀ ae : p.lbl, term ⟹ -p.coarse_sch_of ae
-
--- instance : scheduling.sched (control c ⊕ p.lbl) := _
 
 structure state :=
   (pc : option (current c))
@@ -125,36 +116,11 @@ begin
       apply H } }
 end
 
--- section test
-
--- parameter (s : state)
-
--- noncomputable def machine.test (s' : state) : Prop :=
---   s.intl = s'.intl
--- ∧ s'.pc = next s.intl s.pc
-
--- def machine.test_fis
--- : ∃ (s' : state), machine.test s' :=
--- sorry
-
--- end test
-
 def machine.event (cur : current c) : nondet.event state :=
   { coarse_sch := λ s, some cur = s.pc
   , fine_sch   := True
   , step := λ s hc _ s', machine.step cur s hc s'
   , fis  := λ s hc _, machine.step_fis cur s hc }
-
--- | (sum.inr e) :=
---   { coarse_sch := λ s, selects s.pc e
---   , fine_sch   := True
---   , step := machine.step e
---   , fis  := machine.step_fis e }
--- | (sum.inl pc) :=
---   { coarse_sch := λ s, s.pc = pc.val
---   , fine_sch   := True
---   , step := λ s _ _ s', machine.test s s'
---   , fis  := λ s _ _, machine.test_fis s }
 
 def mch_of : nondet.program state :=
  { lbl := current c
@@ -300,7 +266,10 @@ lemma evt_leads_to_aux
 begin
   induction c',
   case code.skip
-  { admit },
+  { apply unitb.leads_to.impl,
+    apply entails_p_or_of_entails_left,
+    intro s,
+    apply not_within_skip },
   case code.action
   { apply @ensure_rule _ (mch_of p c Hcorr) _ _ (some (counter H)),
       -- EN

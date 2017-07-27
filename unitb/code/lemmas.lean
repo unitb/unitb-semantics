@@ -413,6 +413,39 @@ begin
   all_goals { simp [counter,next',ih_1] },
 end
 
+lemma not_within_skip {p' q'} {c' : code lbl p' q'}
+  {H : subtree (code.skip p) c'}
+  {pc : option $ current c'}
+  (H' : within H pc)
+: exits H pc :=
+begin
+  unfold exits,
+  cases pc with pc,
+  { apply H' },
+  unfold within at H',
+  rw or_comm at H',
+  cases H' with H' H',
+  { apply H' },
+  induction H,
+  { rw exit'_rfl,
+    cases pc },
+  { rw within'_seq_left at H',
+    cases H' with pc' H', cases H' with H₀ H₁,
+    rw [exit'_seq_left,ih_1 _ H₀,fmap_some,some_or_else,H₁] },
+  { rw within'_seq_right at H',
+    cases H' with pc' H', cases H' with H₀ H₁,
+    rw [exit'_seq_right,ih_1 _ H₀,fmap_some,H₁] },
+  { rw within'_ite_left at H',
+    cases H' with pc' H', cases H' with H₀ H₁,
+    rw [exit'_ite_left,ih_1 _ H₀,fmap_some,H₁] },
+  { rw within'_ite_right at H',
+    cases H' with pc' H', cases H' with H₀ H₁,
+    rw [exit'_ite_right,ih_1 _ H₀,fmap_some,H₁] },
+  { rw within'_while at H',
+    cases H' with pc' H', cases H' with H₀ H₁,
+    rw [exit'_while,ih_1 _ H₀,fmap_some,some_or_else,H₁] },
+end
+
 lemma counter_action_of_within {p q : pred} {ds} {l : lbl} {p' q'} {c' : code lbl p' q'}
   {H : subtree (code.action p q ds l) c'}
   {pc : option $ current c'}
