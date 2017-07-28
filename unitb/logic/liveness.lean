@@ -1,6 +1,7 @@
 
 import data.stream
 
+import unitb.category
 import unitb.semantics.temporal
 import unitb.logic.safety
 
@@ -143,7 +144,7 @@ end
 
 parameter s
 
-theorem leads_to.impl {p q : pred' (state α)}
+theorem leads_to.imp {p q : pred' (state α)}
    (h : p ⟹ q)
    : p ↦ q in s :=
 begin
@@ -163,9 +164,16 @@ end
 @[refl]
 theorem leads_to_refl {p : pred' (state α)}
 : p ↦ p in s :=
-by { apply leads_to.impl, refl }
+by { apply leads_to.imp, refl }
 
 parameter {s}
+
+instance category_leads_to : category (leads_to s) :=
+  { ident := @leads_to_refl
+  , comp := λ p q r P₀ P₁, leads_to.trans _ P₁ P₀
+  , assoc := by { intros, refl }
+  , left_ident := by { intros, refl }
+  , right_ident := by { intros, refl } }
 
 theorem leads_to.weaken_lhs (q : pred' (state α)) {p r : pred' (state α)}
     (H  : p ⟹ q)
@@ -173,7 +181,7 @@ theorem leads_to.weaken_lhs (q : pred' (state α)) {p r : pred' (state α)}
     : p ↦ r in s :=
 begin
   apply leads_to.trans,
-  apply leads_to.impl s H,
+  apply leads_to.imp s H,
   apply P₀
 end
 
@@ -185,7 +193,7 @@ theorem leads_to.strengthen_rhs
 begin
   apply leads_to.trans,
   apply P₀,
-  apply leads_to.impl s H,
+  apply leads_to.imp s H,
 end
 
 theorem leads_to.monotonicity
@@ -199,47 +207,26 @@ begin
   apply leads_to.strengthen_rhs _ Hq P₀,
 end
 
+instance : monotonic (leads_to s) :=
+ { (_ : category (leads_to s)) with
+   mono := @leads_to.monotonicity }
+
+instance : disjunctive (leads_to s) :=
+ { (_ : category (leads_to s)) with
+   disj := @leads_to.disj _ _ _ }
+
 lemma leads_to.disj_rng {t : Type} {p : t → pred' (state α)} {q} {r : t → Prop}
   (h : ∀ i, r i → p i ↦ q in s)
 : (∃∃ i, (λ _, r i) && p i) ↦ q in s :=
-begin
-  have h' : (∃∃ (i : t), (λ _, r i) && p i) =
-              (∃∃ (i : { x : t // r x }), p i),
-  { apply funext, intro x,
-    rw ← iff_eq_eq, split,
-    { intro h, cases h with j h,
-      exact ⟨⟨j, h^.left⟩, h^.right⟩ },
-    { intro h₀, cases h₀ with j h₀, cases j with j h₁ h₂,
-      exact ⟨j,h₁,h₀⟩, } },
-  rw h',
-  apply leads_to.disj,
-  intro i,
-  apply h,
-  apply i^.property
-end
+disjunctive.disj_rng h
 
 theorem leads_to.disj' {p q r : pred' (state α)}
   (Pp : p ↦ r in s)
   (Pq : q ↦ r in s)
 : p || q ↦ r in s :=
-begin
-  apply leads_to.weaken_lhs (∃∃ x : bool, (if x then p else q)),
-  { intro i,
-    apply or.rec ; unfold p_exists,
-    { intro h,
-      existsi tt, apply h },
-    { intro h,
-      existsi ff, apply h }, },
-  { apply @leads_to.disj _ _ _ bool,
-    intro i,
-    cases i,
-    { refine leads_to.weaken_lhs _ _ Pq,
-      intros σ h, apply h },
-    { refine leads_to.weaken_lhs _ _ Pp,
-      intros σ h, apply h }, }
-end
+finite_disjunctive.disj _ _ _ Pp Pq
 
-theorem leads_to.gen_disj {α} [system α] {s : α} {p q r₀ r₁ : pred' (state α)}
+theorem leads_to.gen_disj {p q r₀ r₁ : pred' (state α)}
   (Pp : p ↦ r₀ in s)
   (Pq : q ↦ r₁ in s)
 : p || q ↦ r₀ || r₁ in s :=
@@ -251,7 +238,7 @@ begin
     intro i, apply or.inr },
 end
 
-theorem leads_to.gen_disj' {t : Type} {α} [system α] {s : α} {p q : t → pred' (state α)}
+theorem leads_to.gen_disj' {t : Type} {p q : t → pred' (state α)}
   (P : ∀ x, p x ↦ q x in s)
 : (∃∃ x, p x) ↦ (∃∃ x, q x) in s :=
 begin
@@ -262,16 +249,21 @@ begin
   exact ⟨_,h⟩,
 end
 
-theorem leads_to.cancellation (α) [system α] {s : α} (q : pred' (state α)) {p r b : pred' (state α)}
+theorem leads_to.cancellation
+  {p : pred' (state α)} (q : pred' (state α))
+  {r b : pred' (state α)}
   (P₀ : p ↦ q || b in s)
   (P₁ : q ↦ r in s)
 : p ↦ r || b in s :=
 begin
   apply leads_to.trans _ P₀,
   apply leads_to.gen_disj P₁,
-  apply leads_to.impl,
-  intro, apply id
+  refl,
 end
+
+instance : cancellative (leads_to s) :=
+ { (_ : category (leads_to s)) with
+   cancel := @leads_to.cancellation }
 
 theorem leads_to.induction' {β : Type} {lt' : β → β → Prop}
   (wf : well_founded lt')
@@ -279,39 +271,7 @@ theorem leads_to.induction' {β : Type} {lt' : β → β → Prop}
   {p q : pred' (state α)}
   (P : ∀ v, p && (eq v ∘ V)  ↦  p && (flip lt' v ∘ V) || q  in  s)
 : p ↦ q in s :=
-begin
-  let lt := flip lt',
-  have P' : (∃∃ v, p && eq v ∘ V)  ↦ q in s,
-  { apply leads_to.disj β, intro i,
-    let PP := λ i, p && eq i ∘ V  ↦  q in s,
-    change PP i,
-    apply @well_founded.induction _ lt' wf PP,
-    intros j IH,
-    change leads_to _ _ _,
-    apply leads_to.strengthen_rhs (q || q),
-    { intro, simp, exact id },
-    apply leads_to.cancellation _ (p && lt j ∘ V) (P _),
-    have h' : (p && lt j ∘ V) = (λ s, ∃v, lt j v ∧ p s ∧ v = V s),
-    { apply funext,
-      intro x,
-      rw ← iff_eq_eq, split,
-      { intros H₀, cases H₀ with H₀ H₁,
-        existsi V x,
-        repeat { split, assumption }, refl },
-      { intro h, apply exists.elim h,
-        intros s h', cases h' with h₀ h₁, cases h₁, subst s,
-        exact ⟨a,h₀⟩ }, },
-    rw h', clear h',
-    apply leads_to.disj_rng,
-    apply IH, },
-  { have h : (∃∃ (v : β), p && eq v ∘ V) = p,
-    { apply funext,
-      intro x, unfold function.comp,
-      simp, rw [exists_one_point_right (V x) _], simp,
-      { intro, apply and.right }, },
-    rw h at P',
-    apply P' }
-end
+unitb.induction wf V P
 
 def rel : Type := system.state α → system.state α → Prop
 
@@ -328,7 +288,7 @@ theorem leads_to.PSP {p q r b : pred' (state α)}
 begin
   induction P with p p₀ q₀ b₀ t₀ u₀ P PSP₀
          p₁ q₁ r₁ PP₀ PP₁,
-  { apply leads_to.impl,
+  { apply leads_to.imp,
     apply p_and_entails_of_entails_right,
     apply entails_p_or_of_entails_left,
     simp, },
@@ -346,7 +306,7 @@ begin
     { apply leads_to.monotonicity _ _ PSP₀,
       { intro, simp, begin [smt] by_cases r i end },
       { intro, simp, begin [smt] by_cases b₀ i end }, } },
-  { have H := leads_to.cancellation _ _ ih_1 ih_2,
+  { have H := leads_to.cancellation _ ih_1 ih_2,
     have H' : (r₁ && r || b || b) = (r₁ && r || b),
     { apply funext, intro,
       rw ← iff_eq_eq,
@@ -365,7 +325,7 @@ lemma leads_to.trading {p q r : pred' (state α)}
 : p ↦ q || r in s :=
 begin
   have P₀ : p && q ↦ q in s,
-  { apply leads_to.impl,
+  { apply leads_to.imp,
     apply p_and_elim_right },
   have P₁ := leads_to.gen_disj P₀ P,
   rw [←  p_and_over_or_left] at P₁,
@@ -402,7 +362,7 @@ begin
   case leads_to.trans pp qq rr P₂ P₃
   { rw [← p_or_self b,p_or_assoc],
     have H' : pp && p'  ↦  rr && q' || b || b in s,
-    { apply leads_to.cancellation _ (qq && q'),
+    { apply leads_to.cancellation (qq && q'),
       { have h : qq && q' || b = qq && q' || (qq && q' || b),
         { admit },
         rw h,
@@ -483,14 +443,38 @@ begin
     apply True_unless }
 end
 
-lemma True_often_imp_often_True
-: True >~> True in s :=
+@[refl]
+lemma often_imp_often_refl {p}
+: p >~> p in s :=
 begin
   apply often_imp_often.basis,
-  apply leads_to.impl,
   refl
 end
 
+lemma often_imp_often.imp {p q}
+  (H : p ⟹ q)
+: p >~> q in s :=
+by { apply often_imp_often.basis, apply leads_to.imp _ H, }
+
+lemma True_often_imp_often_True
+: True >~> True in s :=
+by refl
+
+instance often_imp_often_monotonic : monotonic (often_imp_often s) :=
+ { ident := by { intro, refl }
+ , comp  := by { introv h₀ h₁, apply often_imp_often.trans _ h₁ h₀ }
+ , left_ident  := by { intros, refl }
+ , right_ident := by { intros, refl }
+ , assoc := by { intros, refl }
+ , mono :=
+   begin
+     introv h₀ h₁ P,
+     transitivity p,
+     { apply often_imp_often.imp h₀ },
+     transitivity q,
+     { apply P },
+     { apply often_imp_often.imp h₁ },
+   end }
 end rules
 
 open predicate

@@ -268,7 +268,7 @@ lemma evt_leads_to_aux
 begin
   induction c',
   case code.skip
-  { apply leads_to.impl,
+  { apply leads_to.imp,
     apply entails_p_or_of_entails_left,
     intro s,
     apply not_within_skip },
@@ -336,7 +336,7 @@ lemma evt_leads_to
    in mch_of :=
 begin
   cases ea with ea,
-  { apply unitb.leads_to.impl,
+  { apply unitb.leads_to.imp,
     apply entails_p_or_of_entails_right,
     intros s h, simp,
     let ec : {ec // rel p c Hcorr ec none},
