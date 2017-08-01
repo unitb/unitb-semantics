@@ -1,2 +1,2 @@
-
-make all | grep -v "imported\|sorry"
+clear
+make all | grep -v "imported\|sorry" | less

@@ -21,8 +21,8 @@ def pred α := α → Prop
 
 variables {lbl α : Type}
 
-def program.init (s : program lbl α) (p : pred α) : Prop
-:= p (s^.first)
+def program.init (s : program lbl α) (p : pred α) : Prop :=
+p (s^.first)
 
 def program.take_step (s : program lbl α) : option lbl → α → α
   | none := id
@@ -37,8 +37,8 @@ def is_step (s : program lbl α) (σ σ' : α) : Prop :=
 def program.falsify (s : program lbl α) (ev : option lbl) (p q : pred α) : Prop :=
 ∀ σ, q σ → ¬ (q (s^.take_step ev σ))
 
-def program.transient (s : program lbl α) (p q : pred α) : Prop
-:= ∃ ev, s.falsify ev p q
+def program.transient (s : program lbl α) (p q : pred α) : Prop :=
+∃ ev, s.falsify ev p q
 
 def program.falsify_action (s : program lbl α) (p q : pred α) (ev : option lbl)
   (h : s.falsify ev p q)

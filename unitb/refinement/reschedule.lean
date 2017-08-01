@@ -75,7 +75,7 @@ begin
   apply often_imp_often.basis,
   rw H.ccsch_def,
   have H' := leads_to.completion H.delay H.stable,
-  apply leads_to.weaken_lhs _ _ H', clear H H',
+  apply leads_to.antimono_left _ _ H', clear H H',
   intro, simp, begin [smt] by_cases ea.coarse_sch i end
 end
 

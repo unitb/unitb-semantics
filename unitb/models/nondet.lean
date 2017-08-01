@@ -55,8 +55,8 @@ def program.event (s : program) : option s.lbl → event
   | none := skip
   | (some e) := s^.event' e
 
-def program.init (s : program) (p : pred) : Prop
-:= s^.first ⟹ p
+def program.init (s : program) (p : pred) : Prop :=
+s^.first ⟹ p
 
 def program.guard  (s : program) (e : option s.lbl) : α → Prop :=
 (s^.event e)^.coarse_sch && (s^.event e)^.fine_sch
@@ -455,7 +455,7 @@ theorem ensure_rule {s : program} {p q : pred' α} (ev : option s.lbl)
 : p ↦ q in s :=
 begin
   apply @leads_to.basis' _ _ s _ _ (s.fine_sch_of ev) _ STABLE,
-  { apply leads_to.weaken_lhs _ _ FLW,
+  { apply leads_to.antimono_left _ _ FLW,
     apply entails_p_and_of_entails,
     { refl },
     { apply EN } },

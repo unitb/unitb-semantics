@@ -54,7 +54,7 @@ begin
               || H.witness ec && (ecs ec).coarse_sch in mc,
     { intro ec,
       have H' := H.delay ec, revert H',
-      apply leads_to.strengthen_rhs,
+      apply leads_to.mono_right,
       apply p_or_intro_right },
     have Hsch' := leads_to.gen_disj' Hsch,
     have H₀ : (∃∃ (ec : lbl), H.witness ec && (ea.coarse_sch ∘ abs && ea.fine_sch ∘ abs))
@@ -70,7 +70,7 @@ begin
     have P₀ := H.resched ce,
     apply often_imp_often.basis,
     revert P₀,
-    apply leads_to.weaken_lhs,
+    apply leads_to.antimono_left,
     apply p_and_elim_left }
 end
 

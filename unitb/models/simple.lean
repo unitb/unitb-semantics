@@ -22,14 +22,14 @@ def pred := α → Prop
 
 parameter {α}
 
-def program.init (s : program) (p : pred) : Prop
-:= p (s^.first)
+def program.init (s : program) (p : pred) : Prop :=
+p (s^.first)
 
-def program.transient (s : program) (p q : pred) : Prop
-:= ∀ σ, p σ → q σ → ¬ (q (s^.step σ))
+def program.transient (s : program) (p q : pred) : Prop :=
+∀ σ, p σ → q σ → ¬ (q (s^.step σ))
 
-def program.unless (s : program) (p q : pred) : Prop
-:= ∀ σ, p σ ∧ ¬q σ → p (s^.step σ) ∨ q (s^.step σ)
+def program.unless (s : program) (p q : pred) : Prop :=
+∀ σ, p σ ∧ ¬q σ → p (s^.step σ) ∨ q (s^.step σ)
 
 lemma program.transient_impl (s : program) {p q : pred}
   (H : p ⟹ -q)

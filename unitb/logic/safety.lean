@@ -23,17 +23,17 @@ def state := has_safety.σ
 def step {α} [has_safety α] : α → state α → state α → Prop :=
 has_safety.step
 
-def unless {α} [has_safety α] (s : α) (p q : pred' (state α)) : Prop
-:= ∀ σ σ', step s σ σ' → p σ ∧ ¬ q σ → p σ' ∨ q σ'
+def unless {α} [has_safety α] (s : α) (p q : pred' (state α)) : Prop :=
+∀ σ σ', step s σ σ' → p σ ∧ ¬ q σ → p σ' ∨ q σ'
 
-def co {α} [has_safety α] (s : α) (p q : pred' (state α)) : Prop
-:= ∀ σ σ', step s σ σ' → p σ → q σ'
+def co {α} [has_safety α] (s : α) (p q : pred' (state α)) : Prop :=
+∀ σ σ', step s σ σ' → p σ → q σ'
 
-def co' {α} [has_safety α] (s : α) (r : act (state α)) : Prop
-:= ∀ σ σ', step s σ σ' → r σ σ'
+def co' {α} [has_safety α] (s : α) (r : act (state α)) : Prop :=
+∀ σ σ', step s σ σ' → r σ σ'
 
-def unless' {α} [has_safety α] (s : α) (p q : pred' (state α)) (e : act (state α)) : Prop
-:= ∀ σ σ', step s σ σ' → ¬ e σ σ' → p σ ∧ ¬ q σ → p σ' ∨ q σ'
+def unless' {α} [has_safety α] (s : α) (p q : pred' (state α)) (e : act (state α)) : Prop :=
+∀ σ σ', step s σ σ' → ¬ e σ σ' → p σ ∧ ¬ q σ → p σ' ∨ q σ'
 
 lemma unless_eq_unless_except {α} [has_safety α] (s : α) (p q : pred' (state α))
 : unless s p q = unless' s p q (λ _, False) :=
