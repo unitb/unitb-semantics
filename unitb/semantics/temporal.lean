@@ -473,9 +473,6 @@ lemma coincidence' {p q : cpred β} {τ}
 : ([]<>(p && q)) τ :=
 coincidence (eventually_weaken _ Hp) Hq
 
-lemma inf_often_p_and {β} (p q : cpred β)
-: []<>(p && q) = []<>p && []<>q :=
-sorry
 
 lemma inf_often_p_or {β} (p q : cpred β)
 : []<>(p || q) = []<>p || []<>q :=
