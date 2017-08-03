@@ -64,7 +64,12 @@ local notation x ` ↦ `:60 y ` in ` s := leads_to x y
 
 inductive often_imp_often : pred' (state α) → pred' (state α) → Prop
   | transient : ∀ {p q}, transient' p (-q) → often_imp_often p q
-  | trans : ∀ {p} q {r}, often_imp_often p q → often_imp_often q r → often_imp_often p r
+  | trans : ∀ {p} q {r}, often_imp_often p q →
+                         often_imp_often q r →
+                         often_imp_often p r
+  | disj : ∀ {p q r}, often_imp_often p r →
+                      often_imp_often q r →
+                      often_imp_often (p || q) r
   | induct : ∀ (t : Type) (V : state α → t) (lt : t → t → Prop)
          (wf : well_founded lt)
          {p q}
@@ -109,19 +114,21 @@ begin
     apply leads_to.disj t _ Pb },
 end
 
-lemma often_imp_often.subst : ∀ {p q}
-  (H : p >~> q in s),
-  (p ∘ f) >~> (q ∘ f) in s' :=
+lemma often_imp_often.subst {p q}
+  (H : p >~> q in s)
+: (p ∘ f) >~> (q ∘ f) in s' :=
 begin
-  apply often_imp_often.drec,
-  { intros p q T,
-    apply often_imp_often.transient (Tf T) },
-  { intros p q r _ _ Pb₀ Pb₁,
-    apply often_imp_often.trans _ Pb₀ Pb₁ },
-  { intros t V lt wf p q P S,
-    apply often_imp_often.induct t (V ∘ f) lt wf,
+  induction H,
+  case often_imp_often.transient p q T
+  { apply often_imp_often.transient (Tf T) },
+  case often_imp_often.trans p q r _ _ Pb₀ Pb₁
+  { apply often_imp_often.trans _ Pb₀ Pb₁ },
+  case often_imp_often.induct t V lt wf p q P S
+  { apply often_imp_often.induct t (V ∘ f) lt wf,
     { intro v, apply leads_to.subst f s s' @Tf @Uf (P v), },
     { intro v, apply Uf (S v) } },
+  case often_imp_often.disj p q r P₀ P₁
+  { apply often_imp_often.disj ih_1 ih_2, }
 end
 
 end conversion
@@ -180,7 +187,8 @@ instance category_leads_to : disjunctive (leads_to s) :=
   , imp_self_eq_ident := by { intros, refl }
   , disj_imp_imp := by { intros, refl }
   , select_left_disj := by { intros, refl }
-  , comp_over_disj_right := by { intros, refl } }
+  , comp_over_disj_right := by { intros, refl }
+  , disj_flip := by { intros, refl } }
 
 theorem leads_to.antimono_left (q : pred' (state α)) {p r : pred' (state α)}
   (H  : p ⟹ q)
@@ -432,7 +440,7 @@ lemma True_often_imp_often_True
 : True >~> True in s :=
 by refl
 
-instance often_imp_often_monotonic : lifted_pred (often_imp_often s) :=
+instance often_imp_often_fin_disj : finite_disjunctive (often_imp_often s) :=
  { ident := by { intro, refl }
  , comp  := by { introv h₀ h₁, apply often_imp_often.trans _ h₁ h₀ }
  , left_ident  := by { intros, refl }
@@ -444,7 +452,12 @@ instance often_imp_often_monotonic : lifted_pred (often_imp_often s) :=
      apply often_imp_often.imp P,
    end
  , imp_self_eq_ident := by { intros, refl }
- , imp_comp_imp_eq_imp_trans := by { intros, refl } }
+ , imp_comp_imp_eq_imp_trans := by { intros, refl }
+ , disj := @often_imp_often.disj _ _ s
+ , disj_flip := by { intros, refl }
+ , disj_imp_imp := by { intros, refl }
+ , select_left_disj := by { intros, refl }
+ , comp_over_disj_right := by { intros, refl } }
 end rules
 
 open predicate
@@ -528,25 +541,32 @@ lemma often_imp_often_sem'
     {s : α}
     (τ : stream _)
      (sem : ex s τ)
-: ∀ {p q : pred' (state α)} (P : p >~> q in s),
-    ([]<>•p ⟶ []<>•q) τ :=
+  {p q : pred' (state α)}
+  (P : p >~> q in s)
+: ([]<>•p ⟶ []<>•q) τ :=
 begin
-  apply @often_imp_often.drec α _ s _ _ _ _,
-  { intros p q T,
-    have Tsem : ([]<>•p ⟶ []<>-•-q) τ
+  induction P,
+  case often_imp_often.transient p q T
+  { have Tsem : ([]<>•p ⟶ []<>-•-q) τ
               := system_sem.transient_sem _ sem T,
     rw [not_init,p_not_p_not_iff_self] at Tsem,
     apply Tsem },
-  { intros p q r P₀ P₁,
-    intros Lpq Lqr Hp,
+  case often_imp_often.trans p q r P₀ P₁ Lpq Lqr
+  { intro Hp,
     apply Lqr (Lpq Hp) },
-  { intros t V lt wf p q P₀ S₀,
-    apply inf_often_induction' V p q wf,
+  case often_imp_often.induct  t V lt wf p q P₀ S₀
+  { apply inf_often_induction' V p q wf,
     { intro v,
       apply unless_sem_str _ (S₀ v),
       apply system_sem.safety _ _ sem, },
     { intro v,
-      apply leads_to_sem (P₀ v) _ sem, } }
+      apply leads_to_sem (P₀ v) _ sem, } },
+  case often_imp_often.disj p q r P₀ P₁
+  { intros H,
+    rw [init_p_or,inf_often_p_or] at H,
+    cases H with H H,
+    { apply ih_1 H },
+    { apply ih_2 H } }
 end
 
 end

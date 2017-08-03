@@ -97,7 +97,14 @@ instance except_finite_disjunctive (e : pred' σ)
      apply congr_arg,
      rw [disj_imp_imp,imp_comp_imp_eq_imp_trans],
    end
- , imp_self_eq_ident := by { introv, refl } }
+ , imp_self_eq_ident := by { introv, refl }
+ , disj_flip :=
+   begin
+     introv, cases P₀ with P₀, cases P₁ with P₁,
+     unfold has_comp.comp except.run cancellation function.comp,
+     apply congr_arg,
+     rw [disj.select_left_disj',disj_flip],
+   end }
 
 instance except_disjunctive (e : pred' σ)
   [disjunctive cat]
@@ -170,6 +177,15 @@ instance inv_fin_disj (inv : pred' σ) {cat : pred' σ → pred' σ → Sort u}
      introv,
      unfold has_comp.comp invariant.run,
      rw [mpr_eq_comp_imp, category.assoc,comp_over_disj_right, mpr_eq_comp_imp],
+     all_goals { simp [p_and_over_or_left] },
+   end
+ , disj_flip :=
+   begin
+     introv,
+     unfold has_comp.comp invariant.run,
+     apply congr_arg,
+     rw [disj_flip,mpr_eq_comp_imp, ← category.assoc, imp_comp_imp_eq_imp_trans],
+     rw [@mpr_eq_comp_imp _ cat, ← category.assoc, imp_comp_imp_eq_imp_trans],
      all_goals { simp [p_and_over_or_left] },
    end
  }

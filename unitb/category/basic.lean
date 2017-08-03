@@ -34,6 +34,9 @@ extends lifted_pred cat :=
                             (Pq : q ⟹ r),
              disj (imp _ _ Pp) (imp _ _ Pq) =
              imp (p || q) r (p_or_entails_of_entails Pp Pq))
+  (disj_flip : ∀ {p q r : pred' α}
+                            (P₀ : cat p r) (P₁ : cat q r),
+             disj P₀ P₁ = (disj P₁ P₀ <<< imp _ _ (by rw [p_or_comm])) )
 
 class disjunctive (cat : pred' α → pred' α → Sort u')
 extends finite_disjunctive cat :=
@@ -60,7 +63,8 @@ extends finite_disjunctive cat :=
    end )
 
 export lifted_pred (imp_comp_imp_eq_imp_trans imp_self_eq_ident)
-export finite_disjunctive (disj comp_over_disj_right select_left_disj disj_imp_imp)
+export finite_disjunctive (disj comp_over_disj_right select_left_disj
+                           disj_imp_imp disj_flip)
 export disjunctive (disj')
 
 section lemmas
@@ -97,7 +101,7 @@ def select_right_disj [finite_disjunctive cat] {p q r : pred}
   (Pp : cat p r)
   (Pq : cat q r)
 : (disj _ Pp Pq <<< lifted_pred.imp cat q _ (p_or_intro_right _ _)) = Pq :=
-sorry
+by rw [disj_flip,← category.assoc,imp_comp_imp_eq_imp_trans,select_left_disj]
 
 def monotonicity [lifted_pred cat]
   {p p' q q'}
