@@ -22,8 +22,8 @@ structure except
 
 variables {cat : pred' σ → pred' σ → Sort u}
 
-def except_lift (e : pred' σ)
-  [lifted_pred cat]
+def except_lift [lifted_pred cat]
+  (e : pred' σ)
   {α β : pred' σ}
   (x : cat α β)
 : except e cat α β :=
@@ -111,6 +111,15 @@ instance except_disjunctive (e : pred' σ)
 : disjunctive (except e cat) :=
  { (_ : finite_disjunctive (except e cat)) with
   disj' := by { introv h, apply except.mk, apply disj', intro, apply (h x).run, } }
+
+@[trans]
+def except_trans [finite_disjunctive cat]
+  {e : pred' σ}
+  {α} β {γ : pred' σ}
+  (h₀ : except e cat α β)
+  (h₁ : except e cat β γ)
+: except e cat α γ :=
+h₁ <<< h₀
 
 instance inv_cat (inv : pred' σ)
   [category cat]

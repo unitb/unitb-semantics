@@ -5,6 +5,7 @@ import unitb.code.instances
 import unitb.code.rules
 import unitb.code.lemmas
 import unitb.refinement.superposition
+import unitb.category.transformer
 
 import util.logic
 import util.predicate
@@ -16,10 +17,11 @@ section
 open code predicate temporal nondet
 
 parameters (σ : Type)
-
-parameters (p : nondet.program σ)
-parameters {term : pred σ}
-parameters (c : code p.lbl p.first term)
+@[reducible]
+private def pred := pred' σ
+parameters {p : nondet.program σ}
+parameters {term : pred}
+parameters {c : code p.lbl p.first term}
 
 parameter Hterm : ∀ ae : p.lbl, term ⟹ -p.coarse_sch_of ae
 
@@ -31,7 +33,7 @@ structure state :=
 parameter {σ}
 parameter Hcorr : ∀ pc, state_correctness p c pc
 
-include Hcorr
+-- include Hcorr
 
 section event
 
@@ -39,6 +41,8 @@ parameter (e : p.lbl)
 parameter (s : state)
 parameter (h₀ : selects s.pc e)
 parameter (h₁ : true)
+
+section implicit
 
 include h₁
 
@@ -53,6 +57,8 @@ evt_guard.left
 theorem evt_fine_sch
 : p.fine_sch_of e s.intl :=
 evt_guard.right
+
+end implicit
 
 def machine.run_event (s' : state) : Prop :=
 (p.event $ some e).step s.intl evt_coarse_sch evt_fine_sch s'.intl
@@ -100,8 +106,8 @@ begin
     { rw Hl, unfold machine.step._match_1 machine.run_event } },
   { cases l with l hl,
     rw h at hl,
-    have CS := evt_coarse_sch p c Hcorr l s hl trivial,
-    have FS := evt_fine_sch _ c Hcorr l s hl trivial,
+    have CS := evt_coarse_sch Hcorr l s hl trivial,
+    have FS := evt_fine_sch Hcorr l s hl trivial,
     cases (p.event l).fis s.intl CS FS with s' H,
     have Hss' : assert_of (next s.intl s.pc) s',
     { rw [assert_of_next],
@@ -188,7 +194,7 @@ begin
   intros s s' H,
   cases ec with pc,
   case none
-  { let x : {ea // rel p c Hcorr none ea},
+  { let x : {ea // rel Hcorr none ea},
     { existsi none, unfold rel is_control, right, refl },
     existsi x, unfold function.on_fun,
     unfold mch_of nondet.program.step_of nondet.program.event
@@ -208,7 +214,7 @@ begin
     { intros c Hact,
       cases c with c Hc,
       cases Hc with P Hc,
-      let x : {ea // rel p _ Hcorr (some pc) ea},
+      let x : {ea // rel Hcorr (some pc) ea},
       { existsi none, unfold rel is_control, left, apply P },
       existsi x,
       unfold function.on_fun nondet.program.step_of nondet.program.event
@@ -227,7 +233,7 @@ begin
     case sum.inr
     { intros e Hact,
       cases e with e He,
-      let x : {ea // rel p _ Hcorr (some pc) ea},
+      let x : {ea // rel Hcorr (some pc) ea},
       { existsi (some e), apply He },
       existsi x, unfold function.on_fun,
       dunfold mch_of nondet.program.step_of nondet.program.event
@@ -251,39 +257,48 @@ variable ec : { ec // rel ec ea }
 section leads_to
 
 open unitb
+parameter pc : current c
+parameters p' q' : pred
+parameter c' : code p.lbl p' q'
+parameter H : subtree c' c
+parameter e : p.lbl
 
-variable pc : current c
-variables p' q' : pred σ
-variables c' : code p.lbl p' q'
-variables H : subtree c' c
-variables e : p.lbl
+@[reducible]
+def lt_sched := except (λ s : state, selects s.pc e) (leads_to mch_of)
 
--- idea:
--- for all pc prefix
+@[trans]
+def lt_sched_trans
+  {α} β {γ : pred' state}
+  (h₀ : lt_sched α β)
+  (h₁ : lt_sched β γ)
+: lt_sched α γ :=
+h₁ <<< h₀
+
+local infix `  ↦.  `:60 := lt_sched
+
 lemma evt_leads_to_aux
 : (λ s : state, within H s.pc)
-    ↦
-  (λ s : state, exits H s.pc ∨ selects s.pc e)
-   in mch_of :=
+    ↦.
+  (λ s : state, exits H s.pc) :=
 begin
   induction c',
   case code.skip
-  { apply leads_to.imp,
-    apply entails_p_or_of_entails_left,
+  { apply lifted_pred.imp,
     intro s,
     apply not_within_skip },
   case code.action
-  { apply @ensure_rule _ (mch_of p c Hcorr) _ _ (some (counter H)),
+  { apply except_lift,
+    apply @ensure_rule _ (mch_of Hcorr) _ _ (some (counter H)),
       -- EN
     { rw coarse_sch_of_mch_of_some,
       intro s, simp [not_or_iff_not_and_not,and_shunting,exits],
-      intros H₀ H₁ H₂,
-      apply counter_action_of_within H₁ H₂, },
+      intros H₀ H₁,
+      apply counter_action_of_within H₀ H₁, },
       -- FLW
     { simp [fine_sch_of_mch_of],
       apply leads_to.trivial },
       -- STEP
-    { intros s s' Hp Hstep, left,
+    { intros s s' Hp Hstep,
       rw step_of_mch_of at Hstep,
       cases Hstep with Hc Hstep,
       unfold machine.step at Hstep,
@@ -294,29 +309,30 @@ begin
       -- STABLE
     { apply unless_rule,
       intros ec s Hc Hf s' Hstep Hp,
-      rw [not_or_iff_not_and_not,and_shunting],
-      intros Hnq₀ Hnq₁,
-      right, left,
+--      rw [not_or_iff_not_and_not,and_shunting],
+      intros Hnq₀,
+      right,
       unfold exits,
       have Hp := counter_action_of_within Hp Hnq₀,
       rw [← next_counter_action s.intl H, Hp],
       symmetry,
       apply Hstep.left, }, },
   case code.seq p₀ q r c₀ c₁ ih_1 ih_2 H
-  { have Pright : (λ (s : state), within H.right (s.pc))
-                   ↦
-                  (λ (s : state), selects (s.pc) e ∨ exits H (s.pc))
-               in mch_of p c Hcorr,
-    { admit },
-    have Pleft : (λ (s : state), within H.left (s.pc))
-                   ↦
-                 (λ (s : state), selects (s.pc) e ∨ exits H (s.pc))
-               in mch_of p c Hcorr,
-    { admit,
-      -- apply leads_to.cancellation (program state) (λ (s : state), selects (s.pc) e),
-       },
+  { have Pright : lt_sched Hcorr e
+                  (λ (s : state), within H.right (s.pc))
+                  (λ (s : state), exits H (s.pc)),
+    { simp [exits_iff_exits_right],
+      apply ih_2 H.right },
+    have Pleft : lt_sched Hcorr e
+                 (λ (s : state), within H.left (s.pc))
+                 (λ (s : state), exits H (s.pc)),
+    { apply lt_sched_trans Hcorr e (λ (s : state), exits H.left (s.pc)),
+      { apply ih_1 },
+      apply antimono_left,
+      { intro, apply exits_left_imp_within_right H },
+      { apply Pright } },
     simp [within_left_or_within_right_iff_within_seq],
-    apply leads_to.disj' Pleft Pright, },
+    apply disj _ Pleft Pright, },
   case code.if_then_else
   { admit },
   case code.while
@@ -339,11 +355,11 @@ begin
   { apply unitb.leads_to.imp,
     apply entails_p_or_of_entails_right,
     intros s h, simp,
-    let ec : {ec // rel p c Hcorr ec none},
+    let ec : {ec // rel Hcorr ec none},
     { existsi none, apply or.inr, refl },
     existsi ec, revert ec,
     simp },
-  have H := evt_leads_to_aux p c Hcorr _ _ c subtree.rfl ea,
+  have H := (evt_leads_to_aux Hcorr _ _ c subtree.rfl ea).run,
   revert H,
   apply unitb.leads_to.monotonicity,
   { intros s q,
@@ -359,7 +375,7 @@ begin
       apply comp_entails_comp _ _,
       apply Hterm } },
   { intros s h,
-    let ec : {ec // rel p c Hcorr ec (some ea)},
+    let ec : {ec // rel Hcorr ec (some ea)},
     { existsi s.pc, apply h, },
     apply p_exists_intro ec,
     revert ec, simp,
@@ -367,6 +383,9 @@ begin
     { intros h, simp [h], },
     { intros ec Hec, simp [Hec], }, },
 end
+
+omit Hterm
+
 
 lemma evt_resched
 : (p.coarse_sch_of ea && p.fine_sch_of ea) ∘ state.intl && True
@@ -379,6 +398,8 @@ begin
   apply unitb.leads_to.trivial,
 end
 
+include Hterm
+
 lemma evt_delay
 : (p.coarse_sch_of ea && (p.event ea).fine_sch) ∘ state.intl
     >~>
@@ -388,8 +409,10 @@ lemma evt_delay
 begin
   simp,
   apply often_imp_often.basis,
-  apply evt_leads_to p c Hterm Hcorr ea,
+  apply evt_leads_to Hterm Hcorr ea,
 end
+
+omit Hterm
 
 lemma evt_stable
 : unless_except mch_of
@@ -428,14 +451,14 @@ begin
     cases ec with ec,
     { cases Hec },
     { simp,
-      have Hgrd : (machine.event p _ Hcorr ec).coarse_sch s
+      have Hgrd : (machine.event Hcorr ec).coarse_sch s
                 → (p.event' ea).guard (s.intl),
       { unfold machine.event,
         unfold nondet.event.coarse_sch, intro H,
         rw H at Hec,
         apply (Hcorr s.pc).enabled _ Hec,
         apply s.assertion },
-      have Hcs : (machine.event p _ Hcorr ec).coarse_sch s
+      have Hcs : (machine.event Hcorr ec).coarse_sch s
                → (p.event' ea).coarse_sch (s.intl),
       { apply and.left ∘ Hgrd },
       apply exists_imp_exists' Hcs,

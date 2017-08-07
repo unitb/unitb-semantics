@@ -339,6 +339,15 @@ lemma exit'_while {p' q' p inv q : pred}
    <|> some (current.while_cond _ _ _ _ _ _)) :=
 by refl
 
+@[simp]
+lemma within'_rfl {p' q' : pred}
+  {c : code p' q'}
+  {pc : current c}
+:   within' subtree.rfl pc
+  ↔ true :=
+by { cases c ; change tt ↔ true ; simp }
+
+@[simp]
 lemma within'_seq_left {p' q' p q r : pred}
   {c : code p' q'} {c₀ : code p q} {c₁ : code q r}
   {P : subtree c c₀ }
@@ -358,6 +367,7 @@ begin
       cases h₁, } }
 end
 
+@[simp]
 lemma within'_seq_right {p' q' p q r : pred}
   {c : code p' q'} {c₀ : code p q} {c₁ : code q r}
   {P : subtree c c₁ }
@@ -481,6 +491,23 @@ begin
     left, cases c ; apply rfl }
 end
 
+@[simp]
+lemma within_seq_left {p' q' p q r : pred}
+  {c : code p' q'} {c₀ : code p q} {c₁ : code q r}
+  {P : subtree c c₀ }
+  {pc : option $ current (code.seq c₀ c₁)}
+:   within (subtree.seq_left p q r c₀ c₁ P) pc
+  ↔ (∃ pc₀, within P pc₀ ∧ pc = current.seq_left p q r c₀ c₁ <$> pc₀) :=
+begin
+  cases pc with pc,
+  { simp [within], split ; intro h,
+    { existsi none, simp [within],
+      cases h, assumption },
+    { cases h with pc₀ h, cases h with h₀ h₁,
+      rw [eq_comm,fmap_eq_none_iff] at h₁, subst pc₀,
+      dunfold within at h₀, simp [h₀], } },
+end
+
 section projections
 
 variables {p q r : pred}
@@ -488,12 +515,28 @@ variables {c₀ : code p q}
 variables {c₁ : code q r}
 
 def subtree.left
-: ∀ {p' q'} {c : code p' q'}, subtree (code.seq c₀ c₁) c → subtree c₀ c :=
-sorry
+: ∀ {p' q'} {c : code p' q'}, subtree (code.seq c₀ c₁) c → subtree c₀ c
+ | ._ ._ ._ subtree.rfl := subtree.seq_left _ _ _ _ _ subtree.rfl
+ | ._ ._ ._ (subtree.seq_left p q r c₂ c₃ S) := subtree.seq_left _ _ _ _ _ (subtree.left S)
+ | ._ ._ ._ (subtree.seq_right p q r c₂ c₃ S) := subtree.seq_right _ _ _ _ _ (subtree.left S)
+ | ._ ._ ._ (subtree.ite_left p ds t pa pb r c₂ c₃ S) :=
+   subtree.ite_left _ _ _ _ _ _ _ _ (subtree.left S)
+ | ._ ._ ._ (subtree.ite_right p ds t pa pb r c₂ c₃ S) :=
+   subtree.ite_right _ _ _ _ _ _ _ _ (subtree.left S)
+ | ._ ._ ._ (subtree.while ds t p q c₂ c₃ S) :=
+   subtree.while _ _ _ _ _ _ (subtree.left S)
 
 def subtree.right
-: ∀ {p' q'} {c : code p' q'}, subtree (code.seq c₀ c₁) c → subtree c₁ c :=
-sorry
+: ∀ {p' q'} {c : code p' q'}, subtree (code.seq c₀ c₁) c → subtree c₁ c
+ | ._ ._ ._ subtree.rfl := subtree.seq_right _ _ _ _ _ subtree.rfl
+ | ._ ._ ._ (subtree.seq_left p q r c₂ c₃ S) := subtree.seq_left _ _ _ _ _ (subtree.right S)
+ | ._ ._ ._ (subtree.seq_right p q r c₂ c₃ S) := subtree.seq_right _ _ _ _ _ (subtree.right S)
+ | ._ ._ ._ (subtree.ite_left p ds t pa pb r c₂ c₃ S) :=
+   subtree.ite_left _ _ _ _ _ _ _ _ (subtree.right S)
+ | ._ ._ ._ (subtree.ite_right p ds t pa pb r c₂ c₃ S) :=
+   subtree.ite_right _ _ _ _ _ _ _ _ (subtree.right S)
+ | ._ ._ ._ (subtree.while ds t p q c₂ c₃ S) :=
+   subtree.while _ _ _ _ _ _ (subtree.right S)
 
 variables {p' q' : pred}
 variables {c : code p' q'}
@@ -506,6 +549,10 @@ lemma within_left_or_within_right_iff_within_seq
 lemma exits_iff_exits_right
   (H : subtree (code.seq c₀ c₁) c)
 : exits H pc ↔ exits H.right pc := sorry
+
+lemma exits_left_imp_within_right
+  (H : subtree (code.seq c₀ c₁) c)
+: exits H.left pc → within H.right pc := sorry
 
 end projections
 
