@@ -1,0 +1,7 @@
+[package]
+name = "lean-lib"
+version = "0.1"
+path = "src"
+
+[dependencies]
+util = { path = "util" }
