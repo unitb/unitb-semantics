@@ -505,7 +505,8 @@ begin
       cases h, assumption },
     { cases h with pc₀ h, cases h with h₀ h₁,
       rw [eq_comm,fmap_eq_none_iff] at h₁, subst pc₀,
-      dunfold within at h₀, simp [h₀], } },
+      dunfold within at h₀, simp [h₀], admit } },
+  { admit }
 end
 
 section projections
@@ -544,7 +545,23 @@ variables {pc : option $ current c}
 
 lemma within_left_or_within_right_iff_within_seq
   (H : subtree (code.seq c₀ c₁) c)
-: within H pc ↔ within H.left pc ∨ within H.right pc := sorry
+: within H pc ↔ within H.left pc ∨ within H.right pc :=
+begin
+  induction H,
+  { cases pc with pc,
+    { dunfold within subtree.left subtree.right,
+      simp, },
+    dunfold within subtree.left subtree.right,
+    have Hnone : none = some pc ↔ false, { admit },
+    simp [Hnone],
+    { cases pc,
+      { left,
+        existsi a, refl, },
+      { right, left, existsi a, refl } } },
+  { cases pc with pc,
+    { dsimp [within,subtree.left], admit }, dsimp [within], admit },
+  all_goals { admit }
+end
 
 lemma exits_iff_exits_right
   (H : subtree (code.seq c₀ c₁) c)
