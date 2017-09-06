@@ -1,5 +1,5 @@
 [package]
-name = "lean-lib"
+name = "unitb"
 version = "0.1"
 path = "src"
 
