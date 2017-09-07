@@ -86,7 +86,8 @@ script:
 # - export LEAN_PATH=`pwd`/src:`pwd`/util:$HOME/lean/bin/../lib/lean/library:$HOME/lean/bin/../library
 - unset LEAN_PATH
 - echo $LEAN_PATH
-- lean --make
+- leanpkg configure
+- leanpkg build
 notifications:
   slack:
     rooms:
