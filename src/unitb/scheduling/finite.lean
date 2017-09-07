@@ -80,7 +80,7 @@ noncomputable def scheduler : program sch_state :=
   { first := sch.first
   , step  := sch.step }
 
-open sch_state unitb subtype has_mem
+open sch_state unitb subtype has_mem classical
 
 def req (s : sch_state) : set lbl :=
 t.req s.target
@@ -118,7 +118,7 @@ begin
       apply not_le_of_gt Hlt h₂, },
     { dunfold select comp sch.step sch_state.queue,
       rw [comp_g], unfold comp,
-      rw [rev_g,perm.rotate_right_f_gt_eq_self _ _ Hlt,h], } },
+      rw [rev_g ,h,perm.rotate_right_f_gt_eq_self _ _ Hlt], } },
   { right,right,
     unfold comp select,
     rw [comp_g], unfold comp,

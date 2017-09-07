@@ -303,7 +303,7 @@ lemma transient.semantics'
 : ([]<>•p) τ → ([]<>-•q) τ :=
 begin
   cases (temporal.em' (•q) τ) with h_q ev_nq,
-  { dunfold program.transient at T₀,
+  { dunfold nondet.program.transient at T₀,
     cases T₀ with ev T₀,
     have Hc : (<>[]•s.coarse_sch_of ev) τ,
     { apply stable_entails_stable' _ _ h_q,
@@ -380,7 +380,7 @@ instance : unitb.system_sem program :=
   , init_sem := @init_sem
   , transient_sem := @transient.semantics }
 
-open unitb
+open unitb classical
 
 def unless_except (s : program) (p q : pred' α) (evts : set event) : Prop :=
 unless' s p q (λ σ σ', ∃ e : event, e ∈ evts ∧ e.step_of σ σ')
@@ -407,7 +407,7 @@ begin
   cases STEP with Hc STEP,
   cases STEP with Hf STEP,
   cases e with e,
-  { dunfold program.event skip event.step at STEP,
+  { dunfold nondet.program.event nondet.skip nondet.event.step at STEP,
     subst σ',
     left, apply Hp },
   { apply ACT e _ Hc Hf _ _ STEP Hp Hq,
@@ -440,8 +440,7 @@ begin
     apply eq_true_intro,
     intro H,
     cases H with e H,
-    cases H with H₀ H₁,
-    apply H₁, },
+    cases H with H₀ H₁, },
   apply iff.elim_left _ H,
   rw iff_eq_eq,
   apply congr_arg _ Heq,

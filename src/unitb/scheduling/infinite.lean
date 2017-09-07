@@ -121,7 +121,7 @@ end
 
 lemma q_len_inc (s : sch_state)
 : (sch.step s).q_len = succ s.q_len :=
-by { rw ← add_one_eq_succ, refl }
+by { rw ← add_one, refl }
 
 lemma not_req_not_move (s : sch_state) (l : lbl)
   (h : s.queue.g l < first (req s) s.queue)
@@ -174,7 +174,7 @@ begin
   { have h' : s.q_len < s.queue.g l := lt_of_le_of_lt h Hlt,
     rw [pending_not_move _ _ _ h'],
     dunfold sch.step sch_state.q_len,
-    rw [add_one_eq_succ,← nat.add_sub_assoc h'
+    rw [add_one,← nat.add_sub_assoc h'
        ,← nat.add_sub_assoc $ le_of_lt h'
        ,sub_succ],
     apply pred_lt_self_of_pos,
@@ -223,6 +223,8 @@ begin
       { apply not_mem_req _ Hgt },
       { apply Heq, }, } },
 end
+
+open classical
 
 lemma fair_schedule_step  (l : lbl) (v : ℕ)
 :  mem l ∘ req && (eq v ∘ rank l) ↦ (flip has_lt.lt v ∘ rank l) || (eq l ∘ next) in scheduler :=

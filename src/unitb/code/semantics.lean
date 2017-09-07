@@ -225,23 +225,24 @@ begin
       apply exists_imp_exists' (assume _, trivial) _, intros _,
       intros H',
       change _ = _,
-      dunfold mch_of nondet.program.event' machine.event
-              nondet.event.step machine.step at H',
+      dunfold code.semantics.mch_of nondet.program.event'
+              code.semantics.machine.event
+              nondet.event.step
+              code.semantics.machine.step at H',
       rw Hact at H',
-      have H : s'.intl = s.intl := H'.right,
-      rw [H], },
+      symmetry, apply H'.right, },
     case sum.inr
     { intros e Hact,
       cases e with e He,
       let x : {ea // rel Hcorr (some pc) ea},
       { existsi (some e), apply He },
       existsi x, unfold function.on_fun,
-      dunfold mch_of nondet.program.step_of nondet.program.event
-              nondet.program.event' machine.event nondet.event.step_of
+      dunfold code.semantics.mch_of nondet.program.step_of nondet.program.event
+              nondet.program.event' code.semantics.machine.event nondet.event.step_of
               nondet.event.coarse_sch nondet.event.fine_sch
               nondet.event.step at H,
       cases H with Hc H, cases H with Hf H,
-      dunfold machine.step at H,
+      dunfold code.semantics.machine.step at H,
       rw Hact at H, unfold machine.step._match_1 machine.run_event at H,
       rw Hc at He,
       have Hen := (Hcorr s.pc).enabled e He _ s.assertion,
@@ -432,7 +433,7 @@ begin
   exfalso, apply Hexcp', clear Hexcp' Hexcp,
   simp at H₁,
   unfold program.event,
-  dunfold machine.event event.coarse_sch at H₁,
+  dunfold code.semantics.machine.event nondet.event.coarse_sch at H₁,
   rw ← Hc at H₁,
   injection H₁, subst ec,
 end
@@ -447,7 +448,7 @@ begin
   cases ec with ec Hec,
   cases ea,
   case some ea
-  { dunfold rel at Hec,
+  { dunfold code.semantics.rel at Hec,
     cases ec with ec,
     { cases Hec },
     { simp,

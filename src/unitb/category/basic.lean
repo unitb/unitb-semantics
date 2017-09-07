@@ -257,7 +257,7 @@ begin
     { apply funext,
       intro x, unfold function.comp,
       simp, rw [exists_one_point_right (V x) _], simp,
-      { intro, apply and.right }, },
+      { introv h, apply h }, },
     rw h at P',
     apply P' }
 end

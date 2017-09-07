@@ -1,7 +1,7 @@
 
 import unitb.category.basic
 
-universes u u₀ u₁ v
+universes u u₀ u₁ u₂ v w
 
 variable {k : Sort u₀}
 
@@ -144,6 +144,19 @@ lemma hcongr_arg
 : ∀ {p q : Prop} {Hp : p} {Hq : q}, p = q → Hp == Hq
   | p ._ Hp Hq rfl := heq.rfl
 
+lemma hcongr₁ {α : Sort u} {β : α → Sort v}
+  {t : Π x : α, β x → Sort u₂}
+  (f : Π (x : α) (y : β x), t x y)
+: Π {x₀ x₁ : α} {y₀ : β x₀} {y₁ : β x₁}, x₀ = x₁ → y₀ == y₁ → f x₀ y₀ == f x₁ y₁
+ | x₀ ._ y₀ ._ rfl heq.rfl := heq.rfl
+
+lemma hcongr₂ {α : Sort u} {β : α → Sort v} {γ : Π x : α, β x → Sort u₁}
+  {t : Π (x : α) (y : β x), γ x y → Sort u₂}
+  (f : Π (x : α) (y : β x) (z : γ x y), t x y z)
+: Π {x₀ x₁ : α} {y₀ : β x₀} {y₁ : β x₁} {z₀ : γ x₀ y₀} {z₁ : γ x₁ y₁},
+   x₀ = x₁ → y₀ == y₁ → z₀ == z₁ → f x₀ y₀ z₀ == f x₁ y₁ z₁
+ | x₀ ._ y₀ ._ z₀ ._ rfl heq.rfl heq.rfl := heq.rfl
+
 lemma mpr_eq_comp_imp [lifted_pred cat] {p p' q : pred' σ}
   (P : cat p q)
   (H : p' = p)
@@ -166,11 +179,13 @@ instance inv_fin_disj (inv : pred' σ) {cat : pred' σ → pred' σ → Sort u}
    begin
      introv, simp [lifted_pred.imp,disj_imp_imp,eq.mpr],
      apply congr_arg,
-     apply eq_rec_of_heq_left,
-     tactic.congr,
-     simp [p_and_over_or_left],
-     apply hcongr_arg,
-     simp [p_and_over_or_left],
+     apply eq_of_heq,
+     transitivity,
+     apply cast_heq,
+     have h := p_and_over_or_left inv p q,
+     symmetry,
+     apply hcongr₂ (@lifted_pred.imp σ cat _) h _,
+     simp [h],
    end
  , select_left_disj :=
    begin

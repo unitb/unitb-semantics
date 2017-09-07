@@ -72,12 +72,14 @@ begin
   unfold unless,
   intros σ σ' S,
   have h' := h σ, clear h,
-  dunfold unitb.step has_safety.step is_step program.step at S,
+  simp [unitb.step,has_safety.step,is_step] at S,
   rw S,
   intros h,
   cases h,
   apply h' ; assumption,
 end
+
+open classical
 
 lemma leads_to_step
   (init : α)
@@ -140,7 +142,6 @@ lemma init_sem
   (I₀ : init s p)
 : (•p) τ :=
 begin
-  dunfold init system.init program.init at I₀,
   unfold temporal.init,
   have H' := H.left,
   unfold temporal.init at H',
@@ -162,7 +163,7 @@ begin
     intros τ Hs Hp,
     cases classical.em (•q $ τ) with Hq Hnq,
     { apply eventually_of_next,
-      dunfold transient' system.transient program.transient at T₀,
+      dsimp [transient',system.transient,simple.program.transient] at T₀,
       unfold action is_step at Hs,
       rw [next_init,Hs],
       apply T₀ _ Hp Hq, },

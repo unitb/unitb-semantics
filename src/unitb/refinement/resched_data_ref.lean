@@ -265,7 +265,7 @@ begin
   { apply (init_simmed _ Hc).right },
   { intro i,
     unfold action step has_safety.step stream.drop,
-    simp [add_one_eq_succ],
+    simp [add_one],
     apply simmed _ Hc,
     apply_instance },
   { intros ea,
