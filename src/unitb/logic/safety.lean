@@ -275,8 +275,7 @@ lemma forall_unless {n} {p : fin n → pred' (state α)} {b : pred' (state α)}
 begin
   have h : unless s (∀∀ i, p i) (∃∃ i : fin n, b) := forall_unless_exists h,
   apply unless_weak_rhs _ h,
-  intro x, simp, apply Exists.rec _,
-  intro , apply id,
+  intro x, simp,
 end
 
 open nat temporal stream

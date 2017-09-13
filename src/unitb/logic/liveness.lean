@@ -335,7 +335,7 @@ begin
   { -- have P₃ : p₀ && p' ↦ _ in s,
     apply leads_to.basis' (b₀ && q'),
     { apply system.transient_antimono _ _ T,
-      { intro, simp, begin [smt] by_cases b₀ i end },
+      { intro, simp },
       { admit } },
     { admit },
     { admit }, },
@@ -357,8 +357,7 @@ begin
         { apply S₀ },
         { apply S₁ }, } },
     apply leads_to.mono_right _ _ H',
-    intro, simp,
-    begin [smt] by_cases b i end },
+    intro, simp, },
   case leads_to.disj t pp qq P₂
   { rw p_and_over_p_exists_right,
     apply leads_to.disj,
@@ -521,7 +520,7 @@ begin
       intros τ',
       simp [init_to_fun],
       intro,
-      begin [smt] eblast end },
+      begin [smt] by_cases p_1 (τ' 0) end },
     { apply saf', } },
     -- transitivity
   { apply leads_to_trans H₀ H₁ },

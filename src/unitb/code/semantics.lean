@@ -451,7 +451,7 @@ begin
   { dunfold code.semantics.rel at Hec,
     cases ec with ec,
     { cases Hec },
-    { simp,
+    { unfold_projs,
       have Hgrd : (machine.event Hcorr ec).coarse_sch s
                 → (p.event' ea).guard (s.intl),
       { unfold machine.event,
@@ -462,25 +462,25 @@ begin
       have Hcs : (machine.event Hcorr ec).coarse_sch s
                → (p.event' ea).coarse_sch (s.intl),
       { apply and.left ∘ Hgrd },
+      rw [step_of_mch_of],
       apply exists_imp_exists' Hcs,
       intros Hcs,
       have Hfs : (p.event' ea).fine_sch (s.intl),
       { apply (Hgrd Hcs).right },
-      intro H, existsi Hfs, revert H,
       simp [machine.step],
       destruct action_of ec,
       case sum.inr
-      { intros ea' Hea, simp [Hea],
-        cases ea' with ea' Hea',
-        simp [machine.step._match_1],
-        unfold machine.run_event program.event,
+      { intros ea' Hea, cases ea' with ea' Hea',
+        simp [Hea,machine.step._match_1,machine.run_event],
+        intros ea'' Hea'',
+        simp [nondet.program.event,mch_of,nondet.program.event'] at *,
+        existsi Hfs,
         have H := selects_and_selects_imp_eq _ Hec Hea',
-        subst ea',
-        intro H, apply H.left, },
+        subst ea', assumption, },
       case sum.inl
       { intros pc Hea, rw Hea,
         simp [machine.step._match_1],
-        intros H, rw H.left,
+        intros H₀ _, rw H₀,
         cases pc with pc P, cases P with P₀ P₁,
         cases not_selects_and_is_control Hec P₀, } } },
   case none
@@ -492,7 +492,7 @@ begin
     { unfold rel at Hec,
       cases Hec,
       case or.inl Hec
-        { intro H, cases H with Hc Hstep,
+        { intros Hc Hstep,
           destruct (action_of ec),
           case sum.inr
             { intros ea Hea₀,

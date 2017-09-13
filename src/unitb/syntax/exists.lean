@@ -296,15 +296,13 @@ begin
   unfold part_of at Hi Hj,
   simp [mem_union,mem_singleton,mem_sep],
   simp [mem_union,mem_singleton,mem_sep] at Hi Hj,
-  intro h'
-  ; cases h' with h₀ h₁
+  intros h₀ h₁
   ; cases Hi with Hi Hi'
   ; cases Hj with Hj Hj',
   split,
   { rw rtc_close_sym at Hj,
     apply rtc_trans k Hj,
-    apply rtc_trans i Hi,
-    apply h₀ },
+    apply rtc_trans i Hi h₀ },
   { apply h₁ },
 end
 

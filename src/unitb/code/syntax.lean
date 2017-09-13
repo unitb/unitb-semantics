@@ -5,6 +5,8 @@ import util.data.option
 import util.data.sum
 import util.predicate
 
+import tactic.finish
+
 universe variables u v
 
 open nat predicate
@@ -345,7 +347,7 @@ lemma within'_rfl {p' q' : pred}
   {pc : current c}
 :   within' subtree.rfl pc
   ↔ true :=
-by { cases c ; change tt ↔ true ; simp }
+by { cases c ; change tt ↔ true ; simp ; exact rfl, }
 
 @[simp]
 lemma within'_seq_left {p' q' p q r : pred}
@@ -453,7 +455,7 @@ begin
       { apply h },
       { refl } } },
   { cases h with pc' h, cases h with h₀ h₁,
-    subst pc, apply h₀ }
+    cases h₁, apply h₀ }
 end
 
 def counter {p q ds l}

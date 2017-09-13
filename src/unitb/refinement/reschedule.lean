@@ -9,7 +9,7 @@ universe variable u
 namespace nondet
 open predicate
 open unitb
-
+local attribute [instance] classical.prop_decidable
 variables α : Type
 
 @[reducible]
