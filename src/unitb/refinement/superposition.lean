@@ -115,6 +115,7 @@ parameter M₁ : system_sem.ex mc τ
 section schedules
 
 parameter e : option ma.lbl
+@[reducible]
 def imp_lbl := { ec : option mc.lbl // R.ref ec e }
 
 def AC := (program.event ma e).coarse_sch ∘ abs
@@ -166,13 +167,13 @@ begin
       apply p_or_p_imp_p_or_right' _,
       apply action_entails_action,
       intros σ σ',
-      simp [mem_set_of],
-      intros ec H x H',
+      simp [mem_set_of,imp_lbl],
+      intros ec H x H' H₂,
       existsi x,
       cases H with H₀ H,
       cases H with H₁ STEP,
       unfold program.step_of,
-      simp [H',event.step_of,STEP,H₀,H₁], },
+      simp [H',event.step_of,STEP,H₀,H₁,H₂], },
     have H' := (R.events e).delay,
     have H'' := system_sem.often_imp_often_sem' _ M₁ H' , clear H',
     rw [init_p_or, inf_often_p_or,shunting,init_exists] at H'',

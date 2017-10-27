@@ -3,6 +3,7 @@ import data.set
 
 import unitb.syntax.simple.expr
 
+import util.data.foldable
 import util.data.traversable
 
 universe variables u u₀ u₁ u₂
@@ -109,7 +110,15 @@ begin
 end
 
 instance : foldable list :=
-  { foldr := λ α β f, flip $ list.foldr f }
+{ to_functor := by apply_instance
+, size := sorry
+, fold := sorry
+, correct_fold := sorry
+, idx := sorry
+, to_lazy_list := sorry
+, size_eq_length := sorry
+, to_lazy_list_eq_fold := sorry
+}
   -- , has := @list.has
   -- , map := @list.map_has
   -- , has_def := _ }
@@ -122,19 +131,37 @@ def expr.foldr {α : Type} {r : Type u} (f : α → r → r) : expr α → r →
   | (expr.var v) := f v
 
 instance expr_foldable : foldable expr :=
-{ foldr := @expr.foldr }
-
-def prop.foldr : ∀ {α : Type} {r : Type u}, (α → r → r) → prop α → r → r
-  | _ _ f prop.true := id
-  | _ _ f prop.false := id
-  | _ _ f (prop.odd e) := foldr' f e
-  | _ _ f (prop.bin _ e₀ e₁) := foldr' f e₀ ∘ foldr' f e₁
-  | _ _ f (prop.not p) := prop.foldr f p
-  | _ _ f (prop.cnt _ e₀ e₁) := prop.foldr f e₀ ∘ prop.foldr f e₁
-  | α r f (prop.all p) := prop.foldr (@option.rec α (λ _, r → r) id f) p
+{ to_functor := by apply_instance
+, size := sorry
+, fold := sorry
+, correct_fold := sorry
+, idx := sorry
+, to_lazy_list := sorry
+, size_eq_length := sorry
+, to_lazy_list_eq_fold := sorry
+}
+-- { foldr := @expr.foldr }
+open foldable
+-- def prop.foldr : ∀ {α : Type} {r : Type u}, (α → r → r) → prop α → r → r
+--   | _ _ f prop.true := id
+--   | _ _ f prop.false := id
+--   | _ _ f (prop.odd e) := foldr' f e
+--   | _ _ f (prop.bin _ e₀ e₁) := foldr' f e₀ ∘ foldr' f e₁
+--   | _ _ f (prop.not p) := prop.foldr f p
+--   | _ _ f (prop.cnt _ e₀ e₁) := prop.foldr f e₀ ∘ prop.foldr f e₁
+--   | α r f (prop.all p) := prop.foldr (@option.rec α (λ _, r → r) id f) p
 
 instance : foldable prop :=
-{ foldr := @prop.foldr }
+{ to_functor := by apply_instance
+, size := sorry
+, fold := sorry
+, correct_fold := sorry
+, idx := sorry
+, to_lazy_list := sorry
+, size_eq_length := sorry
+, to_lazy_list_eq_fold := sorry
+}
+-- { foldr := @prop.foldr }
 
 end ast.simple
 
@@ -143,7 +170,16 @@ def sum.foldr {β : Type u₁} {α : Type u₀} {r : Type u} (f : α → r → r
   | (sum.inl _) x := x
 
 instance sum_foldable {α : Type u₀} : foldable (sum α) :=
-  { foldr := @sum.foldr α }
+{ to_functor := by apply_instance
+, size := sorry
+, fold := sorry
+, correct_fold := sorry
+, idx := sorry
+, to_lazy_list := sorry
+, size_eq_length := sorry
+, to_lazy_list_eq_fold := sorry
+}
+  -- { foldr := @sum.foldr α }
 
 -- def existential.foldr  {r : Type u} {α : Type} (f : α → r → r) : existential α → r → r
 --   | ⟨_,cs⟩ x := list.foldr (foldr' $ foldr' f) x cs
@@ -160,7 +196,7 @@ namespace existential
 variables {α' β' : Type}
 variables {α : Type u₀}
 variables {β : Type u₁}
-
+open foldable
 def locals (x : prop (α' ⊕ β')) : set α' :=
 foldr' (foldr' insert ∘ sum.swap : α' ⊕ β' → set α' → set α') x ∅
 

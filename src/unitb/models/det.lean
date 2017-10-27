@@ -17,7 +17,7 @@ structure program (lbl : Type) (α : Type) : Type :=
   (step : lbl → α → α)
 
 @[reducible]
-def pred α := α → Prop
+def pred (α : Sort*) := α → Prop
 
 variables {lbl α : Type}
 

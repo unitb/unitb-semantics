@@ -58,6 +58,7 @@ parameter M₁ : system_sem.ex mc τ
 section schedules
 
 parameter e : option ma.lbl
+@[reducible]
 def imp_lbl := { ec : option mc.lbl // R.ref ec e }
 
 def AC := (program.event ma e).coarse_sch
@@ -93,13 +94,13 @@ begin
       apply p_or_p_imp_p_or_right' _,
       apply action_entails_action,
       intros σ σ',
-      simp [mem_set_of],
-      intros ec H x H',
+      simp [imp_lbl,mem_set_of],
+      intros ec H x H' H₁,
       existsi x,
       cases H with H₀ H,
-      cases H with H₁ STEP,
+      cases H with H₂ STEP,
       unfold program.step_of,
-      simp [H',event.step_of,STEP,H₀,H₁], },
+      simp [H₂,event.step_of,STEP,H₀,H₁,H'], },
     have H' := leads_to.gen_disj' (R.events e).delay,
     apply inf_often_of_leads_to (system_sem.leads_to_sem H' _ M₁),
     simp,
@@ -110,7 +111,6 @@ begin
     apply abs_coarse_and_fine ma mc _ M₁ _ abs_coarse abs_fine, },
   simp at H,
   cases H with H H,
-  { apply H },
   { exfalso,
     revert abs_coarse,
     change ¬ _,
@@ -120,6 +120,7 @@ begin
     rw p_exists_entails_eq_p_forall_entails,
     intros ec,
     apply (R.events e).sim _ , },
+  { simp [H], },
 end
 
 lemma conc_fine : ∀ e',

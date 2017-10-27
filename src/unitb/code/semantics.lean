@@ -8,6 +8,7 @@ import unitb.refinement.superposition
 import unitb.category.transformer
 
 import util.logic
+import util.meta.tactic
 import util.predicate
 import util.data.subtype
 
@@ -269,7 +270,7 @@ def lt_sched := except (λ s : state, selects s.pc e) (leads_to mch_of)
 
 @[trans]
 def lt_sched_trans
-  {α} β {γ : pred' state}
+  {α} (β) {γ : pred' state}
   (h₀ : lt_sched α β)
   (h₁ : lt_sched β γ)
 : lt_sched α γ :=
@@ -358,7 +359,7 @@ begin
     intros s h, simp,
     let ec : {ec // rel Hcorr ec none},
     { existsi none, apply or.inr, refl },
-    existsi ec, revert ec,
+    existsi [ec.val,ec.property], unfold_local ec,
     simp },
   have H := (evt_leads_to_aux Hcorr _ _ c subtree.rfl ea).run,
   revert H,
@@ -425,17 +426,17 @@ begin
   intros e s Hc Hf s' Hexcp H₀ H₁ H₂,
   simp [function.comp],
   simp [mem_set_of,not_exists_iff_forall_not] at Hexcp,
-  have Hexcp' := Hexcp ec,
+  simp [program.event,mch_of,machine.event,program.coarse_sch_of] at H₁ Hc,
   cases ec with ec Hec,
+  specialize Hexcp ec Hec,
   cases ec with ec,
   { right, trivial, },
-  dsimp [program.event,mch_of,machine.event] at H₁ Hc,
-  exfalso, apply Hexcp', clear Hexcp' Hexcp,
   simp at H₁,
-  unfold program.event,
-  dunfold code.semantics.machine.event nondet.event.coarse_sch at H₁,
+  exfalso, apply Hexcp,
+  dsimp [program.event,code.semantics.mch_of,program.event,machine.event] at H₁ Hc,
   rw ← Hc at H₁,
-  injection H₁, subst ec,
+  rw H₁,
+  refl
 end
 
 lemma evt_sim

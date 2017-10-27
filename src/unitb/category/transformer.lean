@@ -115,7 +115,7 @@ instance except_disjunctive (e : pred' σ)
 @[trans]
 def except_trans [finite_disjunctive cat]
   {e : pred' σ}
-  {α} β {γ : pred' σ}
+  {α} (β) {γ : pred' σ}
   (h₀ : except e cat α β)
   (h₁ : except e cat β γ)
 : except e cat α γ :=
