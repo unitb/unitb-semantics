@@ -26,6 +26,7 @@ decomposition: unitb/decomposition/component.olean
 
 clean:
 	/usr/bin/find . -name "*.olean" -delete
+	rm -rf _target
 
 lines:
 	wc `git ls-files | grep .lean`
