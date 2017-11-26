@@ -12,13 +12,13 @@ variable {σ : Type u₀}
 open predicate unitb
 
 structure invariant (inv : pred' σ) (cat : pred' σ → pred' σ → Sort v) (p q : pred' σ) :=
-  (run : cat (inv && p) (inv && q))
+  (run : cat (inv ⋀ p) (inv ⋀ q))
 
 structure except
      (excp : pred' σ)
      (cat : pred' σ → pred' σ → Sort v)
      (p q : pred' σ) : Type v :=
-  (run : cat p (q || excp))
+  (run : cat p (q ⋁ excp))
 
 variables {cat : pred' σ → pred' σ → Sort u}
 
@@ -54,7 +54,7 @@ instance except_finite_disjunctive (e : pred' σ)
  , left_ident  :=
    begin
      introv, cases x with x,
-     have h : cat α (β || e) :=
+     have h : cat α (β ⋁ e) :=
         cancellation cat β x (lifted_pred.weaken _ _),
      { unfold has_comp.comp except.run,
        apply congr_arg,
@@ -65,7 +65,7 @@ instance except_finite_disjunctive (e : pred' σ)
  , right_ident :=
    begin
      introv, cases x with x,
-     have h : cat α (β || e) :=
+     have h : cat α (β ⋁ e) :=
         cancellation cat β x (lifted_pred.weaken _ _),
      { unfold has_comp.comp except.run,
        apply congr_arg,
@@ -74,7 +74,7 @@ instance except_finite_disjunctive (e : pred' σ)
        apply p_or_intro_left
    end
  , imp := assume p q,
-   except.mk ∘ lifted_pred.imp cat p (q || e) ∘ entails_p_or_of_entails_left
+   except.mk ∘ lifted_pred.imp cat p (q ⋁ e) ∘ entails_p_or_of_entails_left
  , disj :=
    begin
      introv h₀ h₁,

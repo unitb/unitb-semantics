@@ -20,22 +20,22 @@ structure evt_ref (lbl : Type) (mc : program α') (ea : event α) (ecs : lbl →
   (witness : lbl → α' → Prop)
   (witness_fis : ⦃ ∃∃ e, witness e ⦄)
   (sim : ∀ ec, ⟦ (ecs ec).step_of ⟧ ⟹ ⟦ ea.step_of on abs ⟧)
-  (delay : ∀ ec, witness ec && (ea.coarse_sch && ea.fine_sch) ∘ abs ↦ witness ec && (ecs ec).coarse_sch in mc)
-  (stable : ∀ ec, unless_except mc (witness ec && (ecs ec).coarse_sch) (-(ea.coarse_sch ∘ abs))
+  (delay : ∀ ec, witness ec ⋀ (ea.coarse_sch ⋀ ea.fine_sch) ∘ abs ↦ witness ec ⋀ (ecs ec).coarse_sch in mc)
+  (stable : ∀ ec, unless_except mc (witness ec ⋀ (ecs ec).coarse_sch) (-(ea.coarse_sch ∘ abs))
                                    { e | ∃ l, ecs l = e })
-  (resched : ∀ ec, (ea.coarse_sch && ea.fine_sch) ∘ abs && witness ec ↦ (ecs ec).fine_sch in mc)
+  (resched : ∀ ec, (ea.coarse_sch ⋀ ea.fine_sch) ∘ abs ⋀ witness ec ↦ (ecs ec).fine_sch in mc)
 
 structure evt_ref_wk (lbl : Type) (mc : program α') (ea : event α) (ecs : lbl → event α')
 : Type :=
   (witness : lbl → α' → Prop)
   (sim : ∀ ec, ⟦ (ecs ec).step_of ⟧ ⟹ ⟦ ea.step_of on abs ⟧)
-  (delay : (ea.coarse_sch && ea.fine_sch) ∘ abs
+  (delay : (ea.coarse_sch ⋀ ea.fine_sch) ∘ abs
             >~>
            -(ea.coarse_sch ∘ abs)
-            || ∃∃ ec, witness ec && (ecs ec).coarse_sch in mc)
-  (stable : ∀ ec, unless_except mc (witness ec && (ecs ec).coarse_sch) (-(ea.coarse_sch ∘ abs))
+            ⋁ ∃∃ ec, witness ec ⋀ (ecs ec).coarse_sch in mc)
+  (stable : ∀ ec, unless_except mc (witness ec ⋀ (ecs ec).coarse_sch) (-(ea.coarse_sch ∘ abs))
                                    { e | ∃ l, ecs l = e })
-  (resched : ∀ ec, (ea.coarse_sch && ea.fine_sch) ∘ abs && witness ec && (ecs ec).coarse_sch
+  (resched : ∀ ec, (ea.coarse_sch ⋀ ea.fine_sch) ∘ abs ⋀ witness ec ⋀ (ecs ec).coarse_sch
                     >~>
                    (ecs ec).fine_sch in mc)
 
@@ -48,17 +48,17 @@ lemma evt_ref_wk_of_evt_ref
 begin
   apply evt_ref_wk.mk H.witness,
   { apply H.sim },
-  { have Hsch : ∀ ec, H.witness ec && (ea.coarse_sch && ea.fine_sch) ∘ abs
+  { have Hsch : ∀ ec, H.witness ec ⋀ (ea.coarse_sch ⋀ ea.fine_sch) ∘ abs
                ↦
               -(ea.coarse_sch ∘ abs)
-              || H.witness ec && (ecs ec).coarse_sch in mc,
+              ⋁ H.witness ec ⋀ (ecs ec).coarse_sch in mc,
     { intro ec,
       have H' := H.delay ec, revert H',
       apply leads_to.mono_right,
       apply p_or_intro_right },
     have Hsch' := leads_to.gen_disj' Hsch,
-    have H₀ : (∃∃ (ec : lbl), H.witness ec && (ea.coarse_sch ∘ abs && ea.fine_sch ∘ abs))
-            = (ea.coarse_sch && ea.fine_sch) ∘ abs,
+    have H₀ : (∃∃ (ec : lbl), H.witness ec ⋀ (ea.coarse_sch ∘ abs ⋀ ea.fine_sch ∘ abs))
+            = (ea.coarse_sch ⋀ ea.fine_sch) ∘ abs,
     { rw [← p_and_over_p_exists_right,ew_eq_true H.witness_fis],
       simp },
     simp [H₀] at Hsch',
@@ -124,16 +124,16 @@ def W (e' : imp_lbl) := (R.events e).witness e'
 def CC (e' : option mc.lbl) := mc.coarse_sch_of e'
 def CF (e' : option mc.lbl) := mc.fine_sch_of e'
 
-parameter abs_coarse : (<>[](•AC && -⟦ ma.step_of e on abs ⟧)) τ
+parameter abs_coarse : (◇◻(•AC ⋀ -⟦ ma.step_of e on abs ⟧)) τ
 
-parameter abs_fine : ([]<>•AF) τ
+parameter abs_fine : (◻◇•AF) τ
 
 include M₁
 include abs_coarse
 include abs_fine
 
 lemma abs_coarse_and_fine
-: ([]<>(•AC && •AF)) τ :=
+: (◻◇(•AC ⋀ •AF)) τ :=
 begin
   apply coincidence,
   { apply stable_entails_stable _ _ abs_coarse,
@@ -144,7 +144,7 @@ end
 include R
 
 lemma evt_ref_wk.delay_sem
-: []<>(∃∃ ce, •W ce && •CC ce.val) $ τ :=
+: ◻◇(∃∃ ce, •W ce ⋀ •CC ce.val) $ τ :=
 begin
   have Hdelay := (R.events e).delay,
   have H := system_sem.often_imp_often_sem' _ M₁ Hdelay
@@ -155,12 +155,12 @@ begin
   have Hc := stable_entails_stable (λ _, and.left) τ abs_coarse,
   apply H Hc,
 end
--- lemma conc_coarse : ∃ e', (<>[](• W e' && • CC e'.val) ) τ :=
+-- lemma conc_coarse : ∃ e', (◇◻(• W e' ⋀ • CC e'.val) ) τ :=
 
-lemma conc_event : ∃ e' : imp_lbl, (<>[]• CC e'.val && []<>•CF e'.val ) τ :=
+lemma conc_event : ∃ e' : imp_lbl, (◇◻• CC e'.val ⋀ ◻◇•CF e'.val ) τ :=
 begin
-  have H : ((∃∃ e', <>[](• W R e e' && • CC e'.val))
-                   || []<>((-•AC  e) || ∃∃ e' : imp_lbl R e, ⟦ mc.step_of e'.val ⟧)) τ,
+  have H : ((∃∃ e', ◇◻(• W R e e' ⋀ • CC e'.val))
+                   ⋁ ◻◇((-•AC  e) ⋁ ∃∃ e' : imp_lbl R e, ⟦ mc.step_of e'.val ⟧)) τ,
   { rw exists_action,
     apply p_or_p_imp_p_or_right _ (unless_sem_exists' M₁.safety (R.events e).stable _),
     { apply inf_often_entails_inf_often,
@@ -226,7 +226,7 @@ begin
     apply M₁.safety },
   { intros e COARSE₀ FINE₀,
     apply assume_neg _, intro ACT,
-    have COARSE₁ :  (<>[](•AC e && -⟦program.step_of ma e on abs⟧)) τ,
+    have COARSE₁ :  (◇◻(•AC e ⋀ -⟦program.step_of ma e on abs⟧)) τ,
     { rw [← inf_often_trace_action_trading] at ACT,
       rw [← stable_trace_init_trading] at COARSE₀,
       rw [p_not_eq_not,not_henceforth,not_eventually] at ACT,

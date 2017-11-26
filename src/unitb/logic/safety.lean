@@ -47,7 +47,7 @@ begin
 end
 
 def saf_ex {α} [has_safety α] (s : α) : cpred (state α) :=
- ([] ⟦ step s ⟧)
+ (◻ ⟦ step s ⟧)
 
 section properties
 
@@ -61,7 +61,7 @@ variables {s}
 
 lemma unless_action {α} [has_safety α] {s : α} {p q : pred' (state α)}
   (h : unless s p q)
-: ⟦ λ σ σ', (p σ ∧ ¬ q σ) ⟧ ⟹ ( ⟦ step s ⟧ ⟶  ⟦ λ _, p || q ⟧ ) :=
+: ⟦ λ σ σ', (p σ ∧ ¬ q σ) ⟧ ⟹ ( ⟦ step s ⟧ ⟶  ⟦ λ _, p ⋁ q ⟧ ) :=
 begin
   intros τ,
   intros hpnq act,
@@ -80,12 +80,8 @@ lemma unless_weak_rhs {p q r : pred' σ}
   (P₀ : unless s p q)
 : unless s p r :=
 begin
-  apply forall_imp_forall _ P₀,
-  intro s,
-  apply forall_imp_forall _,
-  intro s',
-  apply imp_imp_imp_right' _,
-  intro step,
+  revert P₀, unfold unless,
+  intros_mono s s' step,
   apply imp_mono,
   { apply and.imp id,
     apply imp_imp_imp_left,
@@ -97,7 +93,7 @@ end
 lemma unless_conj_gen {p₀ q₀ p₁ q₁ : pred' σ}
   (P₀ : unless s p₀ q₀)
   (P₁ : unless s p₁ q₁)
-: unless s (p₀ && p₁) ((q₀ && p₁) || (p₀ && q₁) || (q₀ && q₁)) :=
+: unless s (p₀ ⋀ p₁) ((q₀ ⋀ p₁) ⋁ (p₀ ⋀ q₁) ⋁ (q₀ ⋀ q₁)) :=
 begin
   intros s s' step H,
   have P₀ := P₀ s s' step,
@@ -109,7 +105,7 @@ end
 theorem unless_conj {p₀ q₀ p₁ q₁ : pred' (state α)}
   (h₀ : unless s p₀ q₀)
   (h₁ : unless s p₁ q₁)
-: unless s (p₀ && p₁) (q₀ || q₁) :=
+: unless s (p₀ ⋀ p₁) (q₀ ⋁ q₁) :=
 begin
   apply unless_weak_rhs _ (unless_conj_gen h₀ h₁),
   apply p_or_entails_of_entails,
@@ -122,7 +118,7 @@ end
 lemma unless_disj_gen {p₀ q₀ p₁ q₁ : pred' σ}
   (P₀ : unless s p₀ q₀)
   (P₁ : unless s p₁ q₁)
-: unless s (p₀ || p₁) ((q₀ && - p₁) || (- p₀ && q₁) || (q₀ && q₁)) :=
+: unless s (p₀ ⋁ p₁) ((q₀ ⋀ - p₁) ⋁ (- p₀ ⋀ q₁) ⋁ (q₀ ⋀ q₁)) :=
 begin
   intros σ σ' STEP h,
   cases h with h₀ h₁,
@@ -156,7 +152,7 @@ end
 lemma unless_disj' {p₀ q₀ p₁ q₁ : pred' σ}
   (P₀ : unless s p₀ q₀)
   (P₁ : unless s p₁ q₁)
-: unless s (p₀ || p₁) (q₀ || q₁) :=
+: unless s (p₀ ⋁ p₁) (q₀ ⋁ q₁) :=
 begin
   have h := unless_disj_gen P₀ P₁, revert h,
   apply unless_weak_rhs,
@@ -196,7 +192,7 @@ end
 lemma unless_cancellation {p q r : pred' (state α)}
   (S₀ : unless s p q)
   (S₁ : unless s q r)
-: unless s (p || q) r :=
+: unless s (p ⋁ q) r :=
 begin
   intros σ σ' h,
   rw and_shunting,
@@ -234,15 +230,15 @@ begin
 end
 
 lemma forall_unless_exists_str {n} {p q : fin n → pred' (state α)}
-  (h : ∀ i, unless s (p i) (p i && q i))
-: unless s (∀∀ i, p i) ( (∀∀ i, p i) && (∃∃ i, q i) ) :=
+  (h : ∀ i, unless s (p i) (p i ⋀ q i))
+: unless s (∀∀ i, p i) ( (∀∀ i, p i) ⋀ (∃∃ i, q i) ) :=
 begin
   revert p q h,
   induction n with n IH
   ; intros p q h,
   { rw p_forall_fin_zero, apply True_unless, },
   { rw [p_exists_split_one,p_forall_split_one],
-    have h' : ∀ i, unless s (restr p i) (restr p i && restr q i),
+    have h' : ∀ i, unless s (restr p i) (restr p i ⋀ restr q i),
     { unfold restr, intro i, apply h },
     have Hconj := unless_conj_gen (h fin.max) (IH h'),
     apply unless_weak_rhs _ Hconj, clear Hconj,
@@ -283,10 +279,10 @@ open nat temporal stream
 lemma unless_sem' {τ : stream σ} {p q : pred' σ} (i : ℕ)
     (sem : saf_ex s τ)
     (H : unless s p q)
-: (<>•p) (τ.drop i) → (<>[]•p) (τ.drop i) ∨ (<>•q) (τ.drop i) :=
+: (◇•p) (τ.drop i) → (◇◻•p) (τ.drop i) ∨ (◇•q) (τ.drop i) :=
 begin
   intros h,
-  cases classical.em ((<> •q) (τ.drop i)) with H' H',
+  cases classical.em ((◇ •q) (τ.drop i)) with H' H',
   { right, assumption },
   { left,  simp [p_not_eq_not,not_eventually] at H' ,
     apply eventually_imp_eventually _ h,
@@ -295,7 +291,7 @@ begin
     intros k hp,
     simp [stream.drop_drop],
     simp [stream.drop_drop] at hp,
-    have GOAL : ⟦λ (_x : σ), p || q⟧ (drop (i + (j + k)) τ),
+    have GOAL : ⟦λ (_x : σ), p ⋁ q⟧ (drop (i + (j + k)) τ),
     { apply unless_action H,
       { simp [action_drop], split,
         simp [init_drop] at hp, simp [init_drop,hp],
@@ -319,10 +315,11 @@ end
 lemma co_sem'  {τ : stream σ} {A : act σ}
     (sem : saf_ex s τ)
     (H : co' s A)
-: []⟦ A ⟧ $ τ :=
+: ◻⟦ A ⟧ $ τ :=
 begin
-  unfold saf_ex at sem,
-  apply henceforth_entails_henceforth _ _ sem,
+  revert_p sem,
+  unfold saf_ex,
+  monotonicity,
   apply action_entails_action,
   apply H
 end
@@ -330,15 +327,15 @@ end
 lemma unless_sem {τ : stream σ} {p q : pred' σ}
     (sem : saf_ex s τ)
     (H : unless s p q)
-: (<>•p) τ → (<>[]•p) τ ∨ (<>•q) τ :=
+: (◇•p) τ → (◇◻•p) τ ∨ (◇•q) τ :=
 by apply @unless_sem' _ _ _ _ _ _ 0 sem H
 
 lemma unless_sem_str {τ : stream σ} {p q : pred' σ}
     (sem : saf_ex s τ)
     (H : unless s p q)
-: ([]<>•p ⟶ <>[]•p || []<>•q) τ :=
+: (◻◇•p ⟶ ◇◻•p ⋁ ◻◇•q) τ :=
 begin
-  rw [shunting,← eventually_eventually ([] _),not_eventually,← henceforth_and],
+  rw [shunting,← eventually_eventually (◻ _),not_eventually,← henceforth_and],
   apply henceforth_imp_henceforth, intro j,
   rw [← shunting],
   have H' := unless_sem' j sem H,
@@ -349,7 +346,7 @@ end
 lemma unless_sem_exists' {τ : stream σ} {t} {p : t → pred' σ} {q : pred' σ} {evt : act σ}
     (sem : saf_ex s τ)
     (H : ∀ x, unless' s (p x) q evt)
-: ( []<>(∃∃ x, •p x) ⟶ (∃∃ x, <>[]•p x) || []<>(•q || ⟦ evt ⟧) ) τ :=
+: ( ◻◇(∃∃ x, •p x) ⟶ (∃∃ x, ◇◻•p x) ⋁ ◻◇(•q ⋁ ⟦ evt ⟧) ) τ :=
 begin
   intro H₀,
   rw [p_or_comm,← p_not_p_imp],
@@ -393,9 +390,9 @@ end
 lemma unless_sem_exists {τ : stream σ} {t} {p : t → pred' σ} {q : pred' σ}
     (sem : saf_ex s τ)
     (H : ∀ x, unless s (p x) q)
-: ( []<>(∃∃ x, •p x) ⟶ (∃∃ x, <>[]•p x) || []<>•q ) τ :=
+: ( ◻◇(∃∃ x, •p x) ⟶ (∃∃ x, ◇◻•p x) ⋁ ◻◇•q ) τ :=
 begin
-  have H₀ : ( []<>(∃∃ x, •p x) ⟶ (∃∃ x, <>[]•p x) || []<>(•q || ⟦ λ _, False ⟧) ) τ,
+  have H₀ : ( ◻◇(∃∃ x, •p x) ⟶ (∃∃ x, ◇◻•p x) ⋁ ◻◇(•q ⋁ ⟦ λ _, False ⟧) ) τ,
   { apply unless_sem_exists' sem,
     simp [unless_eq_unless_except] at H,
     apply H, },

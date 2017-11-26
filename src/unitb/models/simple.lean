@@ -104,11 +104,11 @@ open nat
 open temporal
 
 def ex (s : program) : cpred α :=
-•eq s.first && [] ⟦ is_step s ⟧
+•eq s.first ⋀ ◻ ⟦ is_step s ⟧
 
 lemma ex.safety {s : program} (τ : stream α)
   (h : ex s τ)
-: [] ⟦ is_step s ⟧ $ τ :=
+: ◻ ⟦ is_step s ⟧ $ τ :=
 h.right
 
 def ex.witness (s : program) : stream α
@@ -150,10 +150,10 @@ end
 
 lemma transient.semantics
   (T₀ : transient' s p q)
-: ([]<>•p) τ → ([]<>•-q) τ :=
+: (◻◇•p) τ → (◻◇•-q) τ :=
 begin
   intros Hp,
-  have Hstep : (<>[]⟦is_step s⟧) τ,
+  have Hstep : (◇◻⟦is_step s⟧) τ,
   { apply eventually_weaken,
     apply ex.safety τ H },
   have H' := coincidence Hstep Hp,

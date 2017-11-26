@@ -63,7 +63,7 @@ def program.init (s : program) (p : pred) : Prop
 := s^.first ⟹ p
 
 def program.guard  (s : program) (e : option s.lbl) : α → Prop :=
-(s^.event e)^.coarse_sch && (s^.event e)^.fine_sch
+(s^.event e)^.coarse_sch ⋀ (s^.event e)^.fine_sch
 
 def program.coarse_sch_of (s : program) (act : option s.lbl) : α → Prop :=
 (s.event act).coarse_sch
@@ -112,7 +112,7 @@ begin
 end
 
 lemma is_step_exists_event  (s : program)
- : temporal.action (is_step s) = (⟦ eq ⟧ || ∃∃ ev : s.lbl, ⟦ (s.event' ev).step_of ⟧) :=
+ : temporal.action (is_step s) = (⟦ eq ⟧ ⋁ ∃∃ ev : s.lbl, ⟦ (s.event' ev).step_of ⟧) :=
 begin
   simp [exists_action,or_action],
   apply congr_arg,
@@ -165,13 +165,13 @@ instance : unitb.has_safety program :=
 structure program.ex (s : program) (τ : stream α) : Prop :=
     (init : s^.first (τ 0))
     (safety : unitb.saf_ex s τ)
-    (liveness : ∀ e, (<>[]• s^.coarse_sch_of e) τ →
-                     ([]<>• s^.fine_sch_of e) τ →
-                     ([]<> ⟦ s.step_of e ⟧) τ)
+    (liveness : ∀ e, (◇◻• s^.coarse_sch_of e) τ →
+                     (◻◇• s^.fine_sch_of e) τ →
+                     (◻◇ ⟦ s.step_of e ⟧) τ)
 
 -- structure program.falsify (s : program) (act : option s.lbl) (p : pred') : Prop :=
 --   (enable : p ⟹ s^.coarse_sch_of' act)
---   (schedule : s.ex ⟹ (<>[]•p ⟶ []<>• s.fine_sch_of' act) )
+--   (schedule : s.ex ⟹ (◇◻•p ⟶ ◻◇• s.fine_sch_of' act) )
 --   (negate' : ⦃ •p ⟶ ⟦ s^.step_of act ⟧ ⟶ ⊙-•p ⦄)
 
 -- open temporal
@@ -179,7 +179,7 @@ structure program.ex (s : program) (τ : stream α) : Prop :=
 -- lemma program.falsify.negate
 --    {s : program} {act : option s.lbl} {p : pred}
 -- :  s.falsify act p
--- →  •p && ⟦ s.step_of act ⟧ ⟹ <>-•p :=
+-- →  •p ⋀ ⟦ s.step_of act ⟧ ⟹ ◇-•p :=
 -- begin
 --   intros h₀ τ h₁,
 --   note h₂ := h₀.negate' _ h₁^.left h₁^.right,
@@ -270,15 +270,15 @@ structure program.ex (s : program) (τ : stream α) : Prop :=
 
 -- lemma transient.semantics
 --   (T₀ : s.transient p)
--- : ([]<>-•p) τ :=
+-- : (◻◇-•p) τ :=
 -- begin
 --   cases (temporal.em' (•p) τ) with h_p ev_np,
 --   { unfold program.transient at T₀,
 --     cases T₀ with ev T₀,
---     assert Hc : (<>[]•s.coarse_sch_of ev) τ,
+--     assert Hc : (◇◻•s.coarse_sch_of ev) τ,
 --     { apply stable_entails_stable' _ _ h_p,
 --       apply T₀.enable },
---     assert Hf : ([]<>•s.fine_sch_of ev) τ,
+--     assert Hf : (◻◇•s.fine_sch_of ev) τ,
 --     { apply T₀.schedule _ h h_p, },
 --     note act := coincidence h_p (h.liveness ev Hc Hf),
 --     rw [← eventually_eventually],
@@ -334,13 +334,13 @@ structure program.ex (s : program) (τ : stream α) : Prop :=
 --         apply s.run_enabled, } }, },
 --   { apply forall_imp_forall _ h,
 --     intros e Heq Hc Hf i,
---     assert inf_evts : ([]<>•mem e) (req_of evts τ),
+--     assert inf_evts : (◻◇•mem e) (req_of evts τ),
 --     { clear Heq h,
 --       note Hg := coincidence Hc Hf,
 --       revert evts, simp,
 --       unfold req_of enabled,
---       change (([]<>•mem e) (λ (i : ℕ), {l : option (s.lbl) | s.guard l (run s τ i)})),
---       change (([]<>•mem e) ((λ (σ : α), {l : option (s.lbl) | s.guard l σ}) ∘ (run s τ))),
+--       change ((◻◇•mem e) (λ (i : ℕ), {l : option (s.lbl) | s.guard l (run s τ i)})),
+--       change ((◻◇•mem e) ((λ (σ : α), {l : option (s.lbl) | s.guard l σ}) ∘ (run s τ))),
 --       rw ← inf_often_trace_init_trading,
 --       apply Hg, },
 --     cases (Heq inf_evts i) with j Heq,
@@ -434,7 +434,7 @@ structure program.ex (s : program) (τ : stream α) : Prop :=
 
 -- theorem transient_rule {s : program} {p : pred' α} (ev : option s.lbl)
 --    (EN : p ⟹ s.coarse_sch_of ev)
---    (FLW : leads_to s (p && s.coarse_sch_of ev) (s.fine_sch_of ev))
+--    (FLW : leads_to s (p ⋀ s.coarse_sch_of ev) (s.fine_sch_of ev))
 --    (NEG : ∀ σ σ', p σ → s.step_of ev σ σ' → ¬p σ')
 -- : s.transient p :=
 -- begin

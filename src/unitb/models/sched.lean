@@ -69,7 +69,7 @@ open temporal
 lemma program.falsify.negate
    {s : program} {act : option s.lbl} {p q : pred' α}
    (F : s.falsify act p q)
-:  •q && ⟦ s^.step_of act ⟧ ⟹ <>-•q :=
+:  •q ⋀ ⟦ s^.step_of act ⟧ ⟹ ◇-•q :=
 @nondet.program.falsify.negate _ s.nondet act p q F
 
 def program.transient (s : program) : pred' α → pred' α → Prop :=
@@ -124,8 +124,8 @@ instance : unitb.system_sem program :=
 open unitb
 
 theorem transient_rule {s : program} {p q : pred' α} (ev : option s.lbl)
-   (EN : p && -q ⟹ s.coarse_sch_of ev)
-   (FLW : (p && -q && s.coarse_sch_of ev) ↦ s.fine_sch_of ev || q in s)
+   (EN : p ⋀ -q ⟹ s.coarse_sch_of ev)
+   (FLW : (p ⋀ -q ⋀ s.coarse_sch_of ev) ↦ s.fine_sch_of ev ⋁ q in s)
    (NEG : ∀ σ σ', ¬ q σ → s.step_of ev σ σ' → q σ')
    (STABLE : unless (program.nondet s) p q)
 : p ↦ q in s.nondet :=

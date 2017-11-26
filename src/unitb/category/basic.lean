@@ -19,7 +19,7 @@ extends category cat :=
 
 class finite_disjunctive (cat : pred' α → pred' α → Sort u')
 extends lifted_pred cat :=
-  (disj : ∀ {p q r : pred' α}, cat p r → cat q r → cat (p || q) r)
+  (disj : ∀ {p q r : pred' α}, cat p r → cat q r → cat (p ⋁ q) r)
   (comp_over_disj_right : ∀ {p q r r' : pred' α}
                             (Pp : cat p r)
                             (Pq : cat q r)
@@ -33,7 +33,7 @@ extends lifted_pred cat :=
                             (Pp : p ⟹ r)
                             (Pq : q ⟹ r),
              disj (imp _ _ Pp) (imp _ _ Pq) =
-             imp (p || q) r (p_or_entails_of_entails Pp Pq))
+             imp (p ⋁ q) r (p_or_entails_of_entails Pp Pq))
   (disj_flip : ∀ {p q r : pred' α}
                             (P₀ : cat p r) (P₁ : cat q r),
              disj P₀ P₁ = (disj P₁ P₀ <<< imp _ _ (by rw [p_or_comm])) )
@@ -46,7 +46,7 @@ extends finite_disjunctive cat :=
    begin
      intros p q r X Y,
      let f := λ x : bool, if x then p else q,
-     have H : p || q = ∃∃ x, f x,
+     have H : p ⋁ q = ∃∃ x, f x,
      { apply mutual_entails,
        apply p_or_entails_of_entails,
        { apply @p_exists_intro _ _ f tt, },
@@ -84,15 +84,15 @@ lemma disj.select_left_disj' [finite_disjunctive cat]
   (H : p' ⟹ p)
   (Pp : cat p r)
   (Pq : cat q r)
-: (disj σ Pp Pq <<< lifted_pred.imp _ p' (p || q)
+: (disj σ Pp Pq <<< lifted_pred.imp _ p' (p ⋁ q)
          (entails_trans p H $ p_or_intro_left _ _)) =
   (Pp <<< lifted_pred.imp _ p' p H) :=
 begin
-  have h₀ : p' ⟹ p || q,
+  have h₀ : p' ⟹ p ⋁ q,
   { transitivity p, assumption, apply p_or_intro_left },
   have h₁ := p_or_intro_left p q,
-  have H' : lifted_pred.imp cat p' (p || q) h₀ =
-            (lifted_pred.imp cat p (p || q) h₁ <<< lifted_pred.imp cat p' p H),
+  have H' : lifted_pred.imp cat p' (p ⋁ q) h₀ =
+            (lifted_pred.imp cat p (p ⋁ q) h₁ <<< lifted_pred.imp cat p' p H),
   { rw imp_comp_imp_eq_imp_trans },
   rw [H',semigroupoid.assoc,select_left_disj],
 end
@@ -137,9 +137,9 @@ monotonicity (by refl) h
 def disj_rng [category cat] [disjunctive cat]
   {p : t → pred} {q : pred} {r : t → Prop}
   (h : ∀ i, r i → p i ⤇ q)
-: (∃∃ i, (λ _, r i) && p i) ⤇ q :=
+: (∃∃ i, (λ _, r i) ⋀ p i) ⤇ q :=
 begin
-  have h' : (∃∃ (i : t), (λ _, r i) && p i) =
+  have h' : (∃∃ (i : t), (λ _, r i) ⋀ p i) =
               (∃∃ (i : { x : t // r x }), p i),
   { apply funext, intro x,
     rw ← iff_eq_eq, split,
@@ -158,7 +158,7 @@ def gen_disj [finite_disjunctive cat]
   {p₀ p₁ q₀ q₁ : pred' σ}
   (P₀ : p₀ ⤇ q₀)
   (P₁ : p₁ ⤇ q₁)
-: p₀ || p₁ ⤇ q₀ || q₁ :=
+: p₀ ⋁ p₁ ⤇ q₀ ⋁ q₁ :=
 begin
   apply disj,
   { apply lifted_pred.mono_right cat _ _ P₀,
@@ -183,9 +183,9 @@ def cancellation'
   [lifted_pred cat] [finite_disjunctive cat]
   {p : pred' σ} (q : pred' σ)
   {r b : pred' σ}
-  (P₀ : p ⤇ q || b)
+  (P₀ : p ⤇ q ⋁ b)
   (P₁ : q ⤇ r)
-: p ⤇ r || b :=
+: p ⤇ r ⋁ b :=
 begin
   apply has_comp.comp _ _ P₀,
   apply gen_disj _ P₁ (ident _),
@@ -195,9 +195,9 @@ def cancellation
   [lifted_pred cat] [finite_disjunctive cat]
   {p : pred' σ} (q : pred' σ)
   {r b : pred' σ}
-  (P₀ : p ⤇ q || b)
-  (P₁ : q ⤇ r || b)
-: p ⤇ r || b :=
+  (P₀ : p ⤇ q ⋁ b)
+  (P₁ : q ⤇ r ⋁ b)
+: p ⤇ r ⋁ b :=
 begin
   apply has_comp.comp _ _ P₀,
   apply finite_disjunctive.disj _ P₁,
@@ -211,9 +211,9 @@ lemma cancellation_assoc
   [finite_disjunctive cat]
   {p q : pred' σ}
   {r r' b : pred' σ}
-  (P₀ : p ⤇ q || b)
-  (P₁ : q ⤇ r || b)
-  (P₂ : r ⤇ r' || b)
+  (P₀ : p ⤇ q ⋁ b)
+  (P₁ : q ⤇ r ⋁ b)
+  (P₂ : r ⤇ r' ⋁ b)
 :   cancellation _ (cancellation _ P₀ P₁) P₂
   = cancellation _ P₀ (cancellation _ P₁ P₂)  :=
 begin
@@ -226,21 +226,21 @@ theorem induction [disjunctive cat]
   (wf : well_founded lt')
   (V : σ → β)
   {p q : pred}
-  (P : ∀ v, p && (eq v ∘ V)  ⤇  p && (flip lt' v ∘ V) || q)
+  (P : ∀ v, p ⋀ (eq v ∘ V)  ⤇  p ⋀ (flip lt' v ∘ V) ⋁ q)
 : p ⤇ q :=
 begin
   let lt := flip lt',
-  have P' : (∃∃ v, p && eq v ∘ V)  ⤇ q,
+  have P' : (∃∃ v, p ⋀ eq v ∘ V)  ⤇ q,
   { apply disjunctive.disj', intro i,
-    let PP := λ i, p && eq i ∘ V  ⤇  q,
+    let PP := λ i, p ⋀ eq i ∘ V  ⤇  q,
     change PP i,
     apply @well_founded.recursion _ lt' wf PP,
     intros j IH,
     change _ ⤇ _,
-    apply lifted_pred.mono_right cat (q || q),
+    apply lifted_pred.mono_right cat (q ⋁ q),
     { simp [p_or_self] },
-    apply cancellation' _ (p && lt j ∘ V) (P _),
-    have h' : (p && lt j ∘ V) = (λ s, ∃v, lt j v ∧ p s ∧ v = V s),
+    apply cancellation' _ (p ⋀ lt j ∘ V) (P _),
+    have h' : (p ⋀ lt j ∘ V) = (λ s, ∃v, lt j v ∧ p s ∧ v = V s),
     { apply funext,
       intro x,
       rw ← iff_eq_eq, split,
@@ -253,7 +253,7 @@ begin
     rw h', clear h',
     apply disj_rng,
     apply IH, },
-  { have h : (∃∃ (v : β), p && eq v ∘ V) = p,
+  { have h : (∃∃ (v : β), p ⋀ eq v ∘ V) = p,
     { apply funext,
       intro x, unfold function.comp,
       simp, },

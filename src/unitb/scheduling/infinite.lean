@@ -227,7 +227,7 @@ end
 open classical
 
 lemma fair_schedule_step  (l : lbl) (v : ℕ)
-:  mem l ∘ req && (eq v ∘ rank l) ↦ (flip has_lt.lt v ∘ rank l) || (eq l ∘ next) in scheduler :=
+:  mem l ∘ req ⋀ (eq v ∘ rank l) ↦ (flip has_lt.lt v ∘ rank l) ⋁ (eq l ∘ next) in scheduler :=
 begin
   unfold scheduler,
   apply leads_to_step,
@@ -245,7 +245,7 @@ begin
 end
 
 lemma stable_queue_ranking (l : lbl) (v : ℕ)
-: unless scheduler (eq v ∘ rank l) (flip has_lt.lt v ∘ rank l || (eq l ∘ next)) :=
+: unless scheduler (eq v ∘ rank l) (flip has_lt.lt v ∘ rank l ⋁ (eq l ∘ next)) :=
 begin
   unfold scheduler,
   apply unless_step,

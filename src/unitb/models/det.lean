@@ -54,7 +54,7 @@ end
 lemma program.falsify.negate
    {s : program lbl α} {act : option lbl} {p q : pred' α}
 :  s.falsify act p q
-→  •q && ⟦ s^.action_of act ⟧ ⟹ <>-•q :=
+→  •q ⋀ ⟦ s^.action_of act ⟧ ⟹ ◇-•q :=
 begin
   intros FALSE τ H,
   have GOAL : ⟦ λ _, - q ⟧ τ,
@@ -84,8 +84,9 @@ begin
   cases T₀ with ev T₁,
   existsi ev,
   intros σ,
-  apply imp_mono (hq _) _ (T₁ σ),
-  apply mt (hq _),
+  imp_transitivity [q σ,¬q (program.take_step s ev σ)],
+  intros_mono, apply hq,
+  apply T₁, apply hq,
 end
 
 instance prog_is_system : unitb.system (program lbl α) :=
@@ -102,7 +103,7 @@ open temporal
 structure ex (p : program lbl α) (τ : stream α) : Prop :=
     (init : τ 0 = p^.first)
     (safety : unitb.saf_ex p τ)
-    (liveness : ∀ e, ([] <> ⟦ p.action_of e ⟧) τ)
+    (liveness : ∀ e, (◻ ◇ ⟦ p.action_of e ⟧) τ)
 
 open unitb
 open nat
@@ -125,7 +126,7 @@ end
 
 lemma transient.semantics
   (T₀ : s.transient p q)
-: ([]<>•p) τ → ([]<>-•q) τ :=
+: (◻◇•p) τ → (◻◇-•q) τ :=
 begin
   intro,
   unfold program.transient at T₀,
@@ -133,8 +134,7 @@ begin
   cases temporal.em' (• q) τ with hq hnq,
   { have occ := coincidence hq (h.liveness ev),
     rw ← eventually_eventually,
-    apply henceforth_entails_henceforth _ _ occ,
-    apply eventually_entails_eventually,
+    revert_p occ, monotonicity,
     apply T₀.negate },
   { apply hnq }
 end
@@ -155,7 +155,7 @@ lemma program.witness [sched lbl] (s : program lbl α)
 begin
   apply exists_imp_exists _ (sched.sched_str (object s)),
   intros τ h,
-  have H : ∀ e, •has_mem.mem e ∘ (object s).req && ⟦target_mch.action (object s) e⟧
+  have H : ∀ e, •has_mem.mem e ∘ (object s).req ⋀ ⟦target_mch.action (object s) e⟧
               ⟹ ⟦s.action_of e⟧,
   { simp [init_eq_action,action_and_action],
     intro e,
@@ -167,10 +167,10 @@ begin
   apply ex.mk,
   { rw h.init, refl },
   { unfold saf_ex,
-    apply henceforth_entails_henceforth _ _ h.valid,
+    revert_p h.valid, monotonicity,
     rw p_exists_entails_eq_p_forall_entails,
     intro l,
-    apply entails_trans _ (H _),
+    transitivity, apply (H _),
     revert l,
     rw [← p_exists_entails_eq_p_forall_entails,exists_action], refl },
   { intro e,

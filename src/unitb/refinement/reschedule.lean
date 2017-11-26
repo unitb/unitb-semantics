@@ -19,17 +19,17 @@ variables {α}
 
 structure evt_ref (mc : program α) (ea ec : event α) : Prop :=
   (sim : ⟦ ec.step_of ⟧ ⟹ ⟦ ea.step_of ⟧)
-  (delay : ea.coarse_sch && ea.fine_sch  >~>  ec.coarse_sch || - ea.coarse_sch in mc)
+  (delay : ea.coarse_sch ⋀ ea.fine_sch  >~>  ec.coarse_sch ⋁ - ea.coarse_sch in mc)
   (stable : unless mc ec.coarse_sch (-ea.coarse_sch))
-  (resched : ea.coarse_sch && ea.fine_sch  >~>  ec.fine_sch || - ea.coarse_sch in mc)
+  (resched : ea.coarse_sch ⋀ ea.fine_sch  >~>  ec.fine_sch ⋁ - ea.coarse_sch in mc)
 
 structure evt_ref_piecewise (mc : program α) (ea ec : event α)
     {n : ℕ} (ccsch : fin n → pred α) : Prop :=
   (ccsch_def : ec.coarse_sch = (∀∀ i, ccsch i))
   (sim : ⟦ ec.step_of ⟧ ⟹ ⟦ ea.step_of ⟧)
-  (delay : ∀ i, ea.coarse_sch && ea.fine_sch  ↦  ccsch i || - ea.coarse_sch in mc)
+  (delay : ∀ i, ea.coarse_sch ⋀ ea.fine_sch  ↦  ccsch i ⋁ - ea.coarse_sch in mc)
   (stable : ∀ i, unless mc (ccsch i) (-ea.coarse_sch))
-  (resched : ea.coarse_sch && ea.fine_sch  >~>  ec.fine_sch || - ea.coarse_sch in mc)
+  (resched : ea.coarse_sch ⋀ ea.fine_sch  >~>  ec.fine_sch ⋁ - ea.coarse_sch in mc)
 
 
 open temporal
@@ -38,11 +38,11 @@ structure refined (ma mc : program α) : Prop :=
   (bij : mc.lbl = ma.lbl)
   (sim_init : mc^.first ⟹ ma^.first)
   (sim' : ∀ e, ⟦ mc.step_of e ⟧ ⟹ action (ma.step_of (e.cast bij) ))
-  (delay : ∀ e, ma.coarse_sch_of e && ma.fine_sch_of e
-            >~> mc.coarse_sch_of (e.cast' bij) || - ma.coarse_sch_of e in mc)
+  (delay : ∀ e, ma.coarse_sch_of e ⋀ ma.fine_sch_of e
+            >~> mc.coarse_sch_of (e.cast' bij) ⋁ - ma.coarse_sch_of e in mc)
   (stable : ∀ e, unless mc (mc^.coarse_sch_of e) (-ma^.coarse_sch_of (e.cast bij)))
-  (resched : ∀ e, ma^.coarse_sch_of e && ma^.fine_sch_of e
-              >~> mc^.fine_sch_of (e.cast' bij) || - ma.coarse_sch_of e in mc)
+  (resched : ∀ e, ma^.coarse_sch_of e ⋀ ma^.fine_sch_of e
+              >~> mc^.fine_sch_of (e.cast' bij) ⋁ - ma.coarse_sch_of e in mc)
 
 lemma refined.sim {m₀ m₁ : program α} (R : refined m₀ m₁)
 : ⟦ is_step m₁ ⟧ ⟹ ⟦ is_step m₀ ⟧ :=
@@ -70,7 +70,7 @@ variables (H : evt_ref_piecewise mc ea ec ccsch)
 include H
 
 lemma piecewise_delay
-: ea.coarse_sch && ea.fine_sch  >~>  ec.coarse_sch || -ea.coarse_sch in mc :=
+: ea.coarse_sch ⋀ ea.fine_sch  >~>  ec.coarse_sch ⋁ -ea.coarse_sch in mc :=
 begin
   apply often_imp_often.basis,
   rw H.ccsch_def,
@@ -135,12 +135,12 @@ begin
     apply M₁.safety },
   { intros e COARSE₀ FINE₀,
     let e' := e.cast' R.bij,
-    have CF_SCH : ([]<>•(program.coarse_sch_of ma e && program.fine_sch_of ma e)) τ,
+    have CF_SCH : (◻◇•(program.coarse_sch_of ma e ⋀ program.fine_sch_of ma e)) τ,
     { apply coincidence,
       apply COARSE₀,
       apply FINE₀, },
-    have COARSE₁ : (<>[]•program.coarse_sch_of mc e') τ,
-    { have COARSE₂ : ([]<>•program.coarse_sch_of mc e') τ,
+    have COARSE₁ : (◇◻•program.coarse_sch_of mc e') τ,
+    { have COARSE₂ : (◻◇•program.coarse_sch_of mc e') τ,
       { revert COARSE₀,
         rw [imp_iff_not_or,p_not_eq_not,not_eventually,not_henceforth,not_init],
         rw [← p_or_to_fun,p_or_comm,← inf_often_p_or],
@@ -149,12 +149,12 @@ begin
       have UNLESS := unless_sem_str M₁.safety (R.stable e') COARSE₂,
       cases UNLESS with UNLESS H,
       { apply UNLESS },
-      { have H' : (-<>[]•program.coarse_sch_of ma e) τ,
+      { have H' : (-◇◻•program.coarse_sch_of ma e) τ,
         { rw [not_eventually,not_henceforth,not_init],
           simp [option_cast_cast'] at H,
           apply H },
         cases H' COARSE₀, } },
-    have FINE₁ : ([]<>•program.fine_sch_of mc e') τ,
+    have FINE₁ : (◻◇•program.fine_sch_of mc e') τ,
     { revert COARSE₀,
       rw [imp_iff_not_or,p_not_eq_not,not_eventually,not_henceforth,not_init],
       rw [← p_or_to_fun,p_or_comm,← inf_often_p_or],

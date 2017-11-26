@@ -204,9 +204,7 @@ begin
   unfold sigma.snd,
   induction ps with k p ps IH,
   { refl, },
-  { unfold proof_list.to_list' flat_proof_list' array.to_list
-           array.rev_iterate array.rev_iterate_aux,
-    admit, }
+  { admit, }
 end
 
 namespace semantics

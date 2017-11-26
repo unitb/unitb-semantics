@@ -55,8 +55,8 @@ end
 
 lemma fair_sched_of_is_fair
   (l : lbl)
-  (h : ([]<>•mem l ∘ t.req) $ fair_sched_of t)
-: ([]<>(•mem l ∘ t.req && ⟦ t.action l ⟧)) $ fair_sched_of t :=
+  (h : (◻◇•mem l ∘ t.req) $ fair_sched_of t)
+: (◻◇(•mem l ∘ t.req ⋀ ⟦ t.action l ⟧)) $ fair_sched_of t :=
 (fair_sched_of_spec t).fair l h
 
 instance {lbl} [i : nonempty lbl] : nonempty (stream lbl) :=

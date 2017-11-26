@@ -42,13 +42,13 @@ inductive correct : ∀ {p q : pred}, code lbl p q → Prop
       → correct (code.seq c₀ c₁)
   | ite : ∀ (p t pa pb q : pred)  (ds : set lbl) (c₀ : code lbl pa q) (c₁ : code lbl pb q),
         correct c₀ → correct c₁
-      → (p && t ⟹ pa)
-      → (p && -t ⟹ pb)
+      → (p ⋀ t ⟹ pa)
+      → (p ⋀ -t ⟹ pb)
       → correct (if_then_else p ds t c₀ c₁)
   | while : ∀ (t p inv q : pred) (ds : set lbl) (b : code lbl p inv),
         correct b
-      → (inv && t ⟹ p)
-      → (inv && -t ⟹ q)
+      → (inv ⋀ t ⟹ p)
+      → (inv ⋀ -t ⟹ q)
       → covered b = univ
       → correct (while q ds t b)
 

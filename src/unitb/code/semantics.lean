@@ -347,10 +347,10 @@ open unitb
 include Hterm
 
 lemma evt_leads_to
-: (p.coarse_sch_of ea && (p.event ea).fine_sch) ∘ state.intl
+: (p.coarse_sch_of ea ⋀ (p.event ea).fine_sch) ∘ state.intl
     ↦
       -(p.coarse_sch_of ea ∘ state.intl)
-      || ∃∃ ec : { ec // rel ec ea }, mch_of.coarse_sch_of ec.val
+      ⋁ ∃∃ ec : { ec // rel ec ea }, mch_of.coarse_sch_of ec.val
    in mch_of :=
 begin
   cases ea with ea,
@@ -367,15 +367,17 @@ begin
   { intros s q,
     apply within_rfl },
   apply p_or_entails_p_or,
-  { apply entails_trans (term ∘ state.intl) _ _,
+  { -- type_check (term ∘ state.intl),
+    -- type_check entails_trans (term ∘ state.intl),
+    refine entails_trans (term ∘ state.intl) _ _,
     { intro s, simp [exits],
       intro H,
       have Hasrt := s.assertion,
       rw ← H at Hasrt,
       apply Hasrt, },
     { rw p_not_comp,
-      apply comp_entails_comp _ _,
-      apply Hterm } },
+      refine comp_entails_comp _ _,
+      apply Hterm }, },
   { intros s h,
     let ec : {ec // rel Hcorr ec (some ea)},
     { existsi s.pc, apply h, },
@@ -390,8 +392,8 @@ omit Hterm
 
 
 lemma evt_resched
-: (p.coarse_sch_of ea && p.fine_sch_of ea) ∘ state.intl && True
-  && mch_of.coarse_sch_of ec
+: (p.coarse_sch_of ea ⋀ p.fine_sch_of ea) ∘ state.intl ⋀ True
+  ⋀ mch_of.coarse_sch_of ec
     >~>
       mch_of.fine_sch_of ec  in  mch_of :=
 begin
@@ -403,10 +405,10 @@ end
 include Hterm
 
 lemma evt_delay
-: (p.coarse_sch_of ea && (p.event ea).fine_sch) ∘ state.intl
+: (p.coarse_sch_of ea ⋀ (p.event ea).fine_sch) ∘ state.intl
     >~>
       -(p.coarse_sch_of ea ∘ state.intl)
-      || ∃∃ ec : { ec // rel ec ea }, True && mch_of.coarse_sch_of ec.val
+      ⋁ ∃∃ ec : { ec // rel ec ea }, True ⋀ mch_of.coarse_sch_of ec.val
    in mch_of :=
 begin
   simp,
@@ -418,7 +420,7 @@ omit Hterm
 
 lemma evt_stable
 : unless_except mch_of
-      (True && mch_of.coarse_sch_of ec)
+      (True ⋀ mch_of.coarse_sch_of ec)
       (-(p.coarse_sch_of ea ∘ state.intl))
       { e | ∃ (l : {ec // rel ec ea}), mch_of.event l = e } :=
 begin

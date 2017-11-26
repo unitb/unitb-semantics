@@ -48,8 +48,8 @@ open has_mem scheduling.unitb temporal
 
 structure fair (t : target_mch lbl) (τ : stream t.σ) : Prop :=
   (init : τ 0 = t.s₀)
-  (valid : [] (∃∃ l, •(mem l ∘ t.req) && ⟦ t.action l ⟧) $ τ)
-  (fair : ∀ l, ([]<>•mem l ∘ t.req) ⟶ ([]<>(•mem l ∘ t.req && ⟦ t.action l ⟧)) $ τ)
+  (valid : ◻ (∃∃ l, •(mem l ∘ t.req) ⋀ ⟦ t.action l ⟧) $ τ)
+  (fair : ∀ l, (◻◇•mem l ∘ t.req) ⟶ (◻◇(•mem l ∘ t.req ⋀ ⟦ t.action l ⟧)) $ τ)
   -- (evts : stream lbl)
   -- (run_evts_eq_τ : run t evts = τ)
 
@@ -201,14 +201,14 @@ begin
 end
 
 def n : ℕ :=
-array.maximum ( array.mk (λ i, (H' $ (finite.to_nat t).g i).count) )
+array.maximum ( d_array.mk (λ i, (H' $ (finite.to_nat t).g i).count) )
 
 lemma Hmn : ∀ i, (H' i).count ≤ n :=
 begin
   intro i,
   unfold n,
   rw ← _inst_2.to_nat.f_inv i,
-  change (array.mk $ λ i, (H' H ((finite.to_nat t).g i)).count).read _ ≤ _,
+  change (d_array.mk $ λ i, (H' H ((finite.to_nat t).g i)).count).read _ ≤ _,
   apply array.le_maximum,
 end
 
@@ -436,8 +436,8 @@ begin
       apply INV } },
   { intros l h,
     let t := t r r_nemp s₀ next,
-    have H : ⟦λ s s', t.action (ch s) (object s) (object s')⟧ && •eq l ∘ ch
-          ⟹ (•mem l ∘ t.req ∘ object && ⟦t.action l on object⟧),
+    have H : ⟦λ s s', t.action (ch s) (object s) (object s')⟧ ⋀ •eq l ∘ ch
+          ⟹ (•mem l ∘ t.req ∘ object ⋀ ⟦t.action l on object⟧),
     { simp [init_eq_action,action_and_action],
       unfold comp,
       apply action_entails_action, intros σ σ' H,
@@ -446,8 +446,9 @@ begin
       { apply H₀ }, { apply INV } },
     apply inf_often_entails_inf_often H,
     apply coincidence',
-    { apply henceforth_entails_henceforth _ _ (system_sem.safety _ _ sem),
-      apply action_entails_action,
+    { revert_p (system_sem.safety _ _ sem),
+      clear H, unfold saf_ex,
+      monotonicity, apply' (action_entails_action _ _ _),
       intros σ σ' H, apply STEP σ σ' H, },
     { apply system_sem.often_imp_often_sem' _ sem (P l) h, }, },
 end

@@ -49,9 +49,9 @@ system.init s p
 inductive leads_to : pred' (state α) → pred' (state α) → Prop
   | trivial {} : ∀ {p}, leads_to p True
   | basis' : ∀ {p q : pred' (state α)} r,
-          transient' r (p && - q) →
+          transient' r (p ⋀ - q) →
           unless s p q →
-          leads_to (p && -q) (r || q) →
+          leads_to (p ⋀ -q) (r ⋁ q) →
           leads_to p q
   | trans : ∀ {p} q {r}, leads_to p q → leads_to q r → leads_to p r
   | disj : ∀ (t : Type) (p : t → pred' (state α)) {q},
@@ -69,12 +69,12 @@ inductive often_imp_often : pred' (state α) → pred' (state α) → Prop
                          often_imp_often p r
   | disj : ∀ {p q r}, often_imp_often p r →
                       often_imp_often q r →
-                      often_imp_often (p || q) r
+                      often_imp_often (p ⋁ q) r
   | induct : ∀ (t : Type) (V : state α → t) (lt : t → t → Prop)
          (wf : well_founded lt)
          {p q}
-         (P : ∀ v, p && eq v ∘ V  ↦  flip lt v ∘ V || q  in  s)
-         (S : ∀ v, unless s (eq v ∘ V) (flip lt v ∘ V || q)),
+         (P : ∀ v, p ⋀ eq v ∘ V  ↦  flip lt v ∘ V ⋁ q  in  s)
+         (S : ∀ v, unless s (eq v ∘ V) (flip lt v ∘ V ⋁ q)),
          often_imp_often p q
 
 attribute [trans] often_imp_often.trans
@@ -141,7 +141,7 @@ parameters {α : Type u} [system α]
 parameter {s : α}
 
 lemma leads_to.basis {p q : pred' (state α)}
-  (h₀ : transient s (p && - q))
+  (h₀ : transient s (p ⋀ - q))
   (h₁ : unless s p q)
 : leads_to s p q :=
 begin
@@ -156,7 +156,7 @@ theorem leads_to.imp {p q : pred' (state α)}
    : p ↦ q in s :=
 begin
   apply leads_to.basis,
-  { have h' : (p && -q) = False,
+  { have h' : (p ⋀ -q) = False,
     { apply funext,
       intro x, unfold p_and p_not,
       apply eq_false_of_not_eq_true,
@@ -213,19 +213,19 @@ monotonicity _ Hp Hq P₀
 
 lemma leads_to.disj_rng {t : Type} {p : t → pred' (state α)} {q} {r : t → Prop}
   (h : ∀ i, r i → p i ↦ q in s)
-: (∃∃ i, (λ _, r i) && p i) ↦ q in s :=
+: (∃∃ i, (λ _, r i) ⋀ p i) ↦ q in s :=
 unitb.disj_rng _ h
 
 theorem leads_to.disj' {p q r : pred' (state α)}
   (Pp : p ↦ r in s)
   (Pq : q ↦ r in s)
-: p || q ↦ r in s :=
+: p ⋁ q ↦ r in s :=
 finite_disjunctive.disj _ Pp Pq
 
 theorem leads_to.gen_disj {p q r₀ r₁ : pred' (state α)}
   (Pp : p ↦ r₀ in s)
   (Pq : q ↦ r₁ in s)
-: p || q ↦ r₀ || r₁ in s :=
+: p ⋁ q ↦ r₀ ⋁ r₁ in s :=
 unitb.gen_disj _ Pp Pq
 
 theorem leads_to.gen_disj' {t : Type} {p q : t → pred' (state α)}
@@ -236,24 +236,24 @@ unitb.gen_disj' _ P
 theorem leads_to.cancellation
   {p : pred' (state α)} (q : pred' (state α))
   {r b : pred' (state α)}
-  (P₀ : p ↦ q || b in s)
-  (P₁ : q ↦ r || b in s)
-: p ↦ r || b in s :=
+  (P₀ : p ↦ q ⋁ b in s)
+  (P₁ : q ↦ r ⋁ b in s)
+: p ↦ r ⋁ b in s :=
 unitb.cancellation _ q P₀ P₁
 
 theorem leads_to.cancellation'
   {p : pred' (state α)} (q : pred' (state α))
   {r b : pred' (state α)}
-  (P₀ : p ↦ q || b in s)
+  (P₀ : p ↦ q ⋁ b in s)
   (P₁ : q ↦ r in s)
-: p ↦ r || b in s :=
+: p ↦ r ⋁ b in s :=
 unitb.cancellation' _ q P₀ P₁
 
 theorem leads_to.induction' {β : Type} {lt' : β → β → Prop}
   (wf : well_founded lt')
   (V : state α → β)
   {p q : pred' (state α)}
-  (P : ∀ v, p && (eq v ∘ V)  ↦  p && (flip lt' v ∘ V) || q  in  s)
+  (P : ∀ v, p ⋀ (eq v ∘ V)  ↦  p ⋀ (flip lt' v ∘ V) ⋁ q  in  s)
 : p ↦ q in s :=
 unitb.induction _ wf V P
 
@@ -261,14 +261,14 @@ def rel : Type := system.state α → system.state α → Prop
 
 theorem leads_to.induction {lt' : rel} (wf : well_founded lt')
   {p q : pred' (state α)}
-  (P : ∀ v, p && eq v  ↦  p && flip lt' v || q  in  s)
+  (P : ∀ v, p ⋀ eq v  ↦  p ⋀ flip lt' v ⋁ q  in  s)
 : p ↦ q in s :=
 leads_to.induction' wf _ P
 
 theorem leads_to.PSP {p q r b : pred' (state α)}
   (P : p ↦ q in s)
   (S : unless s r b)
-: p && r  ↦  (q && r) || b in s :=
+: p ⋀ r  ↦  (q ⋀ r) ⋁ b in s :=
 begin
   induction P with p p₀ q₀ b₀ t₀ u₀ P PSP₀
          p₁ q₁ r₁ PP₀ PP₁,
@@ -279,9 +279,9 @@ begin
   { apply leads_to.basis' b₀,
     { apply system.transient_str _ _ t₀,
       intro, simp, begin [smt] by_cases r i end },
-    { have H : unless s r (r || b),
+    { have H : unless s r (r ⋁ b),
       { apply unless_imp, intro, apply or.inl },
-      have H' : unless s p₀ (q₀ || b),
+      have H' : unless s p₀ (q₀ ⋁ b),
       { apply unless_weak_rhs _ u₀,
         intro, apply or.inl },
       have H'' := unless_conj_gen u₀ S,
@@ -301,10 +301,10 @@ begin
 end
 
 lemma leads_to.trading {p q r : pred' (state α)}
-  (P : p && -q ↦ r in s)
-: p ↦ q || r in s :=
+  (P : p ⋀ -q ↦ r in s)
+: p ↦ q ⋁ r in s :=
 begin
-  have P₀ : p && q ↦ q in s,
+  have P₀ : p ⋀ q ↦ q in s,
   { apply leads_to.imp,
     apply p_and_elim_right },
   have P₁ := leads_to.gen_disj P₀ P,
@@ -322,7 +322,7 @@ lemma leads_to.completion_a {p p' q q' : pred' (state α)} {b : pred' (state α)
   (P₁ : p' ↦ q' in s)
   (S₀ : unless s q  b)
   (S₁ : unless s q' b)
-: p && p' ↦ (q && q') || b in s :=
+: p ⋀ p' ↦ (q ⋀ q') ⋁ b in s :=
 begin
   revert p' q' b,
   induction P₀
@@ -332,8 +332,8 @@ begin
     { intro, simp, begin [smt] by_cases p i end },
     { intro, simp, begin [smt] by_cases p i end }, },
   case leads_to.basis' p₀ q₀ b₀ T S₂ P₂
-  { -- have P₃ : p₀ && p' ↦ _ in s,
-    apply leads_to.basis' (b₀ && q'),
+  { -- have P₃ : p₀ ⋀ p' ↦ _ in s,
+    apply leads_to.basis' (b₀ ⋀ q'),
     { apply system.transient_antimono _ _ T,
       { intro, simp },
       { admit } },
@@ -341,9 +341,9 @@ begin
     { admit }, },
   case leads_to.trans pp qq rr P₂ P₃
   { rw [← p_or_self b,p_or_assoc],
-    have H' : pp && p'  ↦  rr && q' || b || b in s,
-    { apply leads_to.cancellation' (qq && q'),
-      { have h : qq && q' || b = qq && q' || (qq && q' || b),
+    have H' : pp ⋀ p'  ↦  rr ⋀ q' ⋁ b ⋁ b in s,
+    { apply leads_to.cancellation' (qq ⋀ q'),
+      { have h : qq ⋀ q' ⋁ b = qq ⋀ q' ⋁ (qq ⋀ q' ⋁ b),
         { admit },
         rw h,
         apply ih_1,
@@ -365,29 +365,29 @@ begin
 end
 
 lemma leads_to.completion_b {p p' q q' : pred' (state α)} {b : pred' (state α)}
-  (P₀ : p  ↦ q  || b in s)
-  (P₁ : p' ↦ q' || b in s)
+  (P₀ : p  ↦ q  ⋁ b in s)
+  (P₁ : p' ↦ q' ⋁ b in s)
   (S₀ : unless s q  b)
   (S₁ : unless s q' b)
-: p && p' ↦ (q && q') || b in s :=
+: p ⋀ p' ↦ (q ⋀ q') ⋁ b in s :=
 begin
   have H : unless s b b := unless_refl _,
-  have H₀ : unless s (q  || b) b,
+  have H₀ : unless s (q  ⋁ b) b,
   { have H' := unless_disj' S₀ H,
     simp at H', apply H', },
-  have H₁ : unless s (q' || b) b,
+  have H₁ : unless s (q' ⋁ b) b,
   { have H' := unless_disj' S₁ H,
     simp at H', apply H', },
-  have H₂ : p && p' ↦ ( (q || b) && (q' || b) ) || b in s,
+  have H₂ : p ⋀ p' ↦ ( (q ⋁ b) ⋀ (q' ⋁ b) ) ⋁ b in s,
   { apply leads_to.completion_a P₀ P₁ H₀ H₁, },
   apply leads_to.mono_right _ _ H₂,
   { intro, simp, begin [smt] by_cases b i end },
 end
 
 lemma leads_to.completion {n : ℕ} {p q : fin n → pred' (state α)} {b : pred' (state α)}
-  (P : ∀ i, p i ↦ q i || b in s)
+  (P : ∀ i, p i ↦ q i ⋁ b in s)
   (S : ∀ i, unless s (q i) b)
-: (∀∀ i, p i) ↦ (∀∀ i, q i) || b in s :=
+: (∀∀ i, p i) ↦ (∀∀ i, q i) ⋁ b in s :=
 begin
   revert p q,
   induction n with n IH ; intros p q P S,
@@ -472,7 +472,7 @@ class system_sem (α : Type u) extends system α :=
   (transient_sem : ∀ {s : α} {p q : pred' _} (τ : stream _),
          ex s τ →
          transient' s p q →
-         ([]<>•p) τ → ([]<>-•q) τ)
+         (◻◇•p) τ → (◻◇-•q) τ)
 
 namespace system_sem
 
@@ -496,25 +496,31 @@ begin
         p q b T S B Bsem
         p q r P₀ P₁ H₀ H₁
         X p q P₀ H₀ x y z,
-    -- trivial
+  case leads_to.trivial
   { apply temporal.leads_to_of_inf_often,
     simp, },
-    -- transient and unless
+  case leads_to.basis' p q b T S B Bsem
   { intros i hp,
     have saf' := unless_sem' _ saf S (temporal.eventually_weaken _ hp),
     cases saf' with saf' saf',
-    { have T' : ([]<>-•(p && -q)) τ,
-      { rw [← or_self (([]<>-•(p && -q)) τ),or_iff_not_imp],
+    { have T' : (◻◇-•(p ⋀ -q)) τ,
+      { rw [← or_self ((◻◇-•(p ⋀ -q)) τ),or_iff_not_imp],
         rw [p_not_eq_not,not_henceforth,not_eventually,p_not_p_not_iff_self],
-        apply function.comp _ (inf_often_of_stable _),
+        -- apply' inf_often_of_stable _,
+        -- transitivity ,
+        imp_transitivity (◻◇•(p ⋀ -q)) τ,
+        type_check @inf_often_of_stable,
+        swap,
+        apply' inf_often_of_stable,
         intro H,
-        rw [← or_self (([]<>-•(p && -q)) τ)],
+        rw [← or_self ((◻◇-•(p ⋀ -q)) τ)],
         apply or.imp_left (transient_sem τ sem T),
         rw [← p_or_to_fun,← inf_often_p_or],
         rw [not_init,p_not_p_and,p_not_p_not_iff_self,← init_p_or],
-        apply inf_often_entails_inf_often' _ _ (inf_often_of_leads_to Bsem H),
-        { apply p_or_entails_p_or_right,
-          apply p_or_intro_right, }, },
+        have Bsem' := inf_often_of_leads_to Bsem H,
+        revert_p Bsem',
+        monotonicity,
+        apply p_or_intro_right, },
       have T'' := (coincidence saf' (henceforth_drop i T')),
       apply eventually_entails_eventually _ _ (henceforth_str _ T''),
       intros τ',
@@ -522,9 +528,9 @@ begin
       intro,
       begin [smt] by_cases p_1 (τ' 0) end },
     { apply saf', } },
-    -- transitivity
+  case leads_to.trans p q r P₀ P₁ H₀ H₁
   { apply leads_to_trans H₀ H₁ },
-    -- disjunction
+  case leads_to.disj X p q P₀ H₀ x y z
   { intros i hp,
     cases hp with x hp,
     apply H₀ x i hp,  }
@@ -542,11 +548,11 @@ lemma often_imp_often_sem'
      (sem : ex s τ)
   {p q : pred' (state α)}
   (P : p >~> q in s)
-: ([]<>•p ⟶ []<>•q) τ :=
+: (◻◇•p ⟶ ◻◇•q) τ :=
 begin
   induction P,
   case often_imp_often.transient p q T
-  { have Tsem : ([]<>•p ⟶ []<>-•-q) τ
+  { have Tsem : (◻◇•p ⟶ ◻◇-•-q) τ
               := system_sem.transient_sem _ sem T,
     rw [not_init,p_not_p_not_iff_self] at Tsem,
     apply Tsem },

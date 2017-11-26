@@ -60,7 +60,7 @@ begin
   apply decomposition.program.ex.mk,
   { apply h.init },
   { unfold saf_ex,
-    apply temporal.henceforth_entails_henceforth _ _ h.safety,
+    refine temporal.henceforth_entails_henceforth _ _ h.safety,
     apply temporal.action_entails_action,
     intros s s',
     unfold unitb.step has_safety.step is_step step,
