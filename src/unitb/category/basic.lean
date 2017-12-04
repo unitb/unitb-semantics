@@ -15,7 +15,7 @@ extends category cat :=
   (imp : ∀ p q, p ⟹ q → cat p q)
   (imp_self_eq_ident : ∀ {p : pred' α}, imp p p (by refl) = ident)
   (imp_comp_imp_eq_imp_trans : ∀ {p q r : pred' α} (h₀ : p ⟹ q) (h₁ : q ⟹ r),
-     (imp q r h₁ <<< imp p q h₀) = imp p r (entails_trans _ h₀ h₁))
+     (imp q r h₁ <<< imp p q h₀) = imp p r (entails_trans h₀ h₁))
 
 class finite_disjunctive (cat : pred' α → pred' α → Sort u')
 extends lifted_pred cat :=
@@ -85,7 +85,7 @@ lemma disj.select_left_disj' [finite_disjunctive cat]
   (Pp : cat p r)
   (Pq : cat q r)
 : (disj σ Pp Pq <<< lifted_pred.imp _ p' (p ⋁ q)
-         (entails_trans p H $ p_or_intro_left _ _)) =
+         (entails_trans H $ p_or_intro_left _ _)) =
   (Pp <<< lifted_pred.imp _ p' p H) :=
 begin
   have h₀ : p' ⟹ p ⋁ q,
