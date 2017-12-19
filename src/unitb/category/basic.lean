@@ -1,6 +1,7 @@
 
 import util.category
 import util.predicate
+import unitb.semantics.temporal
 
 open predicate
 
@@ -137,12 +138,12 @@ monotonicity (by refl) h
 def disj_rng [category cat] [disjunctive cat]
   {p : t → pred} {q : pred} {r : t → Prop}
   (h : ∀ i, r i → p i ⤇ q)
-: (∃∃ i, (λ _, r i) ⋀ p i) ⤇ q :=
+: (∃∃ i, r i ⋀ p i) ⤇ q :=
 begin
-  have h' : (∃∃ (i : t), (λ _, r i) ⋀ p i) =
+  have h' : (∃∃ (i : t), ↑(r i) ⋀ p i) =
               (∃∃ (i : { x : t // r x }), p i),
-  { apply funext, intro x,
-    rw ← iff_eq_eq, split,
+  { funext x,
+    split,
     { intro h, cases h with j h,
       exact ⟨⟨j, h^.left⟩, h^.right⟩ },
     { intro h₀, cases h₀ with j h₀, cases j with j h₁ h₂,
@@ -240,23 +241,21 @@ begin
     apply lifted_pred.mono_right cat (q ⋁ q),
     { simp [p_or_self] },
     apply cancellation' _ (p ⋀ lt j ∘ V) (P _),
-    have h' : (p ⋀ lt j ∘ V) = (λ s, ∃v, lt j v ∧ p s ∧ v = V s),
-    { apply funext,
-      intro x,
-      rw ← iff_eq_eq, split,
+    have h' : (p ⋀ lt j ∘ V) = (∃∃v, lt j v ⋀ (p ⋀ ↑(eq v) '∘ V)),
+    { funext x, split,
       { intros H₀, cases H₀ with H₀ H₁,
-        existsi V x,
-        repeat { split, assumption }, refl },
+        existsi V x, TL_simp,
+        split ; assumption, },
       { intro h, apply exists.elim h,
-        intros s h', cases h' with h₀ h₁, cases h₁, subst s,
-        exact ⟨left,h₀⟩ }, },
+        intros s h', cases h' with h₀ h₁, cases h₁,
+        TL_simp at right, subst s,
+        split ; assumption,  }, },
     rw h', clear h',
+    -- apply @disj_rng _ _ β _ _  (lt j) ,
     apply disj_rng,
     apply IH, },
   { have h : (∃∃ (v : β), p ⋀ eq v ∘ V) = p,
-    { apply funext,
-      intro x, unfold function.comp,
-      simp, },
+    { funext x, TL_simp [function.comp] },
     rw h at P',
     apply P' }
 end
