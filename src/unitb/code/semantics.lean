@@ -1,5 +1,4 @@
 
-import unitb.semantics.temporal
 import unitb.code.syntax
 import unitb.code.instances
 import unitb.code.rules
@@ -11,6 +10,8 @@ import util.logic
 import util.meta.tactic
 import util.predicate
 import util.data.subtype
+
+import temporal_logic
 
 namespace code.semantics
 

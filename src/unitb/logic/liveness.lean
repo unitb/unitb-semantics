@@ -2,11 +2,12 @@
 import data.stream
 
 import unitb.category
-import unitb.semantics.temporal
 import unitb.logic.safety
 
 import util.logic
 import util.predicate
+
+import temporal_logic
 
 universe variables u v
 

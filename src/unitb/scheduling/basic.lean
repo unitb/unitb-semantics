@@ -1,12 +1,13 @@
 
 import data.stream
-import unitb.semantics.temporal
 import unitb.logic
 import util.logic
 import util.classical
 import util.data.array
 import util.data.bijection
 import util.data.stream
+
+import temporal_logic
 
 universe variables u v
 

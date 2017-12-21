@@ -1,9 +1,10 @@
 
 import unitb.logic
 import unitb.scheduling
-import unitb.semantics.temporal
 
 import util.logic
+
+import temporal_logic
 
 universe variables u u'
 namespace nondet

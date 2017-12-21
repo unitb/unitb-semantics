@@ -1,12 +1,13 @@
 
 import data.set
 
-import unitb.semantics.temporal
 import unitb.refinement.basic
 import unitb.scheduling
 import unitb.models.nondet
 
 import util.cast
+
+import temporal_logic
 
 namespace hidden_state
 

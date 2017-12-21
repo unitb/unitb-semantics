@@ -1,7 +1,7 @@
 
 import util.category
 import util.predicate
-import unitb.semantics.temporal
+import temporal_logic
 
 open predicate
 

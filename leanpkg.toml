@@ -6,4 +6,5 @@ path = "src"
 
 [dependencies]
 mathlib = {git = "https://github.com/leanprover/mathlib", rev = "2c84af163dbc83c6eb6a94a03d5c25f25b6b8623"}
-lean-lib = {git = "https://github.com/unitb/lean-lib", rev = "2600586ad2f8915fd68733312cd18d0530d4a79d"}
+lean-lib = {git = "https://github.com/unitb/lean-lib", rev = "03663fe2b670449860343583463a3682288ca8cc"}
+temporal-logic = {git = "https://github.com/unitb/temporal-logic", rev = "05aea1fb64fb71cdaa9a77cdc9fb22017f841798"}

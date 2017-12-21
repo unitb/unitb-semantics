@@ -1,7 +1,7 @@
 
 import data.stream
 
-import unitb.semantics.temporal
+import temporal_logic
 
 import util.logic
 import util.predicate
@@ -12,28 +12,34 @@ namespace unitb
 universe variable u
 
 open predicate
-open temporal
+open temporal (hiding action)
 
-class has_safety (α : Type u) : Type (u+1) :=
-  (σ : Type)
+@[reducible]
+def pred (σ : Sort u) := σ → Prop
+
+instance {σ} : has_coe (pred σ) (pred' σ) :=
+by { unfold pred, apply_instance }
+
+class has_safety (α : Sort u) : Type u :=
+  (σ : Sort u)
   (step : α → σ → σ → Prop)
 
 def state := has_safety.σ
 
-def step {α} [has_safety α] : α → state α → state α → Prop :=
+def step {α} [has_safety α] : α → act (state α) :=
 has_safety.step
 
 def unless {α} [has_safety α] (s : α) (p q : pred' (state α)) : Prop :=
-∀ σ σ', step s σ σ' → p σ ∧ ¬ q σ → p σ' ∨ q σ'
+∀ σ σ', step s σ σ' → σ ⊨ p ∧ ¬ σ ⊨ q → σ' ⊨ p ∨ σ' ⊨ q
 
 def co {α} [has_safety α] (s : α) (p q : pred' (state α)) : Prop :=
-∀ σ σ', step s σ σ' → p σ → q σ'
+∀ σ σ', step s σ σ' → σ ⊨ p → σ' ⊨ q
 
 def co' {α} [has_safety α] (s : α) (r : act (state α)) : Prop :=
 ∀ σ σ', step s σ σ' → r σ σ'
 
 def unless' {α} [has_safety α] (s : α) (p q : pred' (state α)) (e : act (state α)) : Prop :=
-∀ σ σ', step s σ σ' → ¬ e σ σ' → p σ ∧ ¬ q σ → p σ' ∨ q σ'
+∀ σ σ', step s σ σ' → ¬ e σ σ' → σ ⊨ p ∧ ¬ σ ⊨ q → σ' ⊨ p ∨ σ' ⊨ q
 
 lemma unless_eq_unless_except {α} [has_safety α] (s : α) (p q : pred' (state α))
 : unless s p q = unless' s p q (λ _ _, false) :=
@@ -42,7 +48,7 @@ begin
   apply forall_congr_eq, intro σ,
   apply forall_congr_eq, intro σ',
   apply forall_congr_eq, intro P,
-  generalize : (p σ ∧ ¬q σ → p σ' ∨ q σ') = r,
+  generalize : (σ ⊨ p ∧ ¬ σ ⊨ q → σ' ⊨ p ∨ σ' ⊨ q) = r,
   simp,
 end
 
@@ -59,14 +65,64 @@ variable s : α
 def σ := state α
 variables {s}
 
+lemma unless_action' {α} [has_safety α] {s : α} {p q : pred' (state α)} {e : act $ state α}
+  (h : unless' s p q e)
+: ⟦ λ σ σ', (σ ⊨ p ∧ ¬ σ ⊨ q) ⟧ ⟹ ( ⟦ step s ⟧ ⟶ -⟦ e ⟧ ⟶ ⟦ λ _ σ', σ' ⊨ p ∨ σ' ⊨ q ⟧ ) :=
+begin [temporal]
+  action with σ σ'
+  { intros, apply h ; assumption, },
+end
+
 lemma unless_action {α} [has_safety α] {s : α} {p q : pred' (state α)}
   (h : unless s p q)
-: ⟦ λ σ σ', (p σ ∧ ¬ q σ) ⟧ ⟹ ( ⟦ step s ⟧ ⟶  ⟦ λ _, p ⋁ q ⟧ ) :=
+: ⟦ λ σ σ', (σ ⊨ p ∧ ¬ σ ⊨ q) ⟧ ⟹ ( ⟦ step s ⟧ ⟶  ⟦ λ _ σ', σ' ⊨ p ∨ σ' ⊨ q ⟧ ) :=
 begin
   rw ← action_imp,
   refine action_entails_action _ _ _ ,
   intros s s' hpnq act,
   apply h _ _ act hpnq
+end
+
+section
+open tactic interactive
+
+meta def classical_rules : list simp_arg_type :=
+[simp_arg_type.expr ``(not_or_iff_not_and_not)
+,simp_arg_type.expr ``(classical.not_and_iff_not_or_not)
+,simp_arg_type.expr ``(not_not_iff_self)]
+
+meta def tactic.classical_simp (rules : parse simp_arg_list) : tactic unit :=
+tactic.interactive.simp ff (classical_rules ++ rules) [`predicate] loc.wildcard
+
+meta def tactic.safety_intro (rules : list simp_arg_type) (with_contra : bool := ff) : tactic unit :=
+do `(unless _ _ _) ← target,
+   σ  ← intro1,
+   σ' ← intro1,
+   STEP ← intro1,
+   hs ← local_context,
+   hs.for_each (λ h, try $ do
+     `(unless _ _ _) ← infer_type h,
+     note h.local_pp_name none (h σ σ' STEP),
+     clear h),
+   clear STEP,
+   when with_contra (() <$ by_contradiction),
+   tactic.classical_simp rules
+
+
+meta def tactic.prove_safety (rs : parse simp_arg_list) : tactic unit :=
+do tactic.safety_intro rs,
+   try `[begin [smt] intros, break_asms ; by_contradiction ; eblast end]
+
+meta def tactic.prove_safety_with_contra (rs : parse simp_arg_list) : tactic unit :=
+do tactic.safety_intro rs tt,
+   try `[begin [smt] intros, break_asms ; by_contradiction ; eblast end]
+
+run_cmd add_interactive
+   [`tactic.prove_safety
+   ,`tactic.safety_intro
+   ,`tactic.prove_safety_with_contra
+   ,`tactic.classical_simp]
+
 end
 
 lemma unless_imp {p q : pred' σ} (h : p ⟹ q) : unless s p q :=
@@ -87,114 +143,52 @@ begin
   apply imp_mono,
   { apply and.imp id,
     apply imp_imp_imp_left,
-    apply h },
+    apply ew_str h },
   { apply or.imp_right,
-    apply h }
+    apply ew_str h }
 end
+
+local attribute [instance] classical.prop_decidable
 
 lemma unless_conj_gen {p₀ q₀ p₁ q₁ : pred' σ}
   (P₀ : unless s p₀ q₀)
   (P₁ : unless s p₁ q₁)
 : unless s (p₀ ⋀ p₁) ((q₀ ⋀ p₁) ⋁ (p₀ ⋀ q₁) ⋁ (q₀ ⋀ q₁)) :=
-begin
-  intros s s' step H,
-  have P₀ := P₀ s s' step,
-  have P₁ := P₁ s s' step,
-  revert H P₀ P₁, simp,
-  propositional,
-  begin [smt] by_cases _x_5,  end,
-end
+by prove_safety [imp_iff_not_or]
 
 theorem unless_conj {p₀ q₀ p₁ q₁ : pred' (state α)}
   (h₀ : unless s p₀ q₀)
   (h₁ : unless s p₁ q₁)
 : unless s (p₀ ⋀ p₁) (q₀ ⋁ q₁) :=
-begin
-  apply unless_weak_rhs _ (unless_conj_gen h₀ h₁),
-  apply p_or_entails_of_entails,
-  apply p_or_p_imp_p_or',
-  { apply p_and_elim_left },
-  { apply p_and_elim_right },
-  { apply p_and_entails_p_or },
-end
+by prove_safety
 
 lemma unless_disj_gen {p₀ q₀ p₁ q₁ : pred' σ}
   (P₀ : unless s p₀ q₀)
   (P₁ : unless s p₁ q₁)
 : unless s (p₀ ⋁ p₁) ((q₀ ⋀ - p₁) ⋁ (- p₀ ⋀ q₁) ⋁ (q₀ ⋀ q₁)) :=
-begin
-  intros σ σ' STEP h,
-  cases h with h₀ h₁,
-  rw [p_not_eq_not,p_not_p_or,p_not_p_or] at h₁,
-  repeat { rw p_not_p_and at h₁ },
-  simp [p_not_p_not_iff_self] at h₁,
-  cases h₁ with h₁ h₂, cases h₂ with h₂ h₃,
-  simp at h₀,
-  have h₄ : p₀ σ ∧ ¬q₀ σ ∨ p₁ σ ∧ ¬q₁ σ,
-  { revert h₁ h₂ h₃ h₀, propositional,
-    begin [smt] by_cases _x_1, by_cases _x_2, end, },
-  have STEP₀ := or.imp (P₀ _ _ STEP) (P₁ _ _ STEP) h₄,
-  have STEP₁ : (p₀ σ' ∨ p₁ σ') ∨ q₀ σ' ∨ q₁ σ',
-  { revert STEP₀,
-    apply iff.mp, simp, },
-  rw [← or_not_and (p₀ σ' ∨ p₁ σ')] at STEP₁,
-  revert STEP₁,
-  apply or.imp_right,
-  rw [not_or_iff_not_and_not,distrib_left_and],
-  simp,
-  intro h, right, revert h,
-  apply or.imp ; apply and.imp_right,
-  { begin [smt] by_cases ¬p₁ σ' end, },
-  { begin [smt] by_cases ¬p₁ σ' end },
-end
+by prove_safety
 
 lemma unless_disj' {p₀ q₀ p₁ q₁ : pred' σ}
   (P₀ : unless s p₀ q₀)
   (P₁ : unless s p₁ q₁)
 : unless s (p₀ ⋁ p₁) (q₀ ⋁ q₁) :=
-begin
-  have h := unless_disj_gen P₀ P₁, revert h,
-  apply unless_weak_rhs,
-  propositional,
-  begin [smt] by_cases _x end,
-end
+by prove_safety
 
 @[refl]
 lemma unless_refl (p : pred' (state α)) : unless s p p :=
-begin
-  apply unless_imp,
-  refl
-end
+by prove_safety
 
 lemma unless_antirefl (p : pred' (state α)) : unless s p (-p) :=
-begin
-  intros σ σ' X h, simp,
-  apply classical.em,
-end
+by prove_safety
 
 lemma True_unless (p : pred' (state α)) : unless s True p :=
-begin
-  intros σ σ' X h,
-  left, trivial
-end
+by prove_safety
 
 lemma unless_cancellation {p q r : pred' (state α)}
   (S₀ : unless s p q)
   (S₁ : unless s q r)
 : unless s (p ⋁ q) r :=
-begin
-  intros σ σ' h,
-  rw and_shunting,
-  intros h₀ hr,
-  rw [p_or_comm,← p_or_not_and,p_and_comm] at h₀,
-  cases h₀ with hq hpnq,
-  { apply or.imp_left (or.intro_right _) (S₁ _ _ h _),
-    exact ⟨hq,hr⟩ },
-  { left,
-    specialize S₀ _ _ h,
-    revert hpnq S₀, simp,
-    propositional, }
-end
+by prove_safety
 
 lemma exists_unless' {t} {p : t → pred' (state α)} {q : pred' (state α)}
   {A : act (state α)}
@@ -265,131 +259,113 @@ end
 
 open nat temporal stream
 
-lemma unless_sem' {τ : stream σ} {p q : pred' σ} (i : ℕ)
-    (sem : τ ⊨ saf_ex s)
+instance persistent_saf_ex : persistent (saf_ex s) :=
+by { unfold saf_ex, apply_instance }
+
+variables {Γ : cpred σ}
+
+lemma unless_sem {p q : pred' σ}
+    (sem : Γ ⊢ saf_ex s)
     (H : unless s p q)
-: (◇•p) (τ.drop i) → (◇◻•p) (τ.drop i) ∨ (◇•q) (τ.drop i) :=
-begin
-  intros h,
-  cases classical.em ((◇ •q) (τ.drop i)) with H' H',
-  { right, assumption },
-  { left,  simp [p_not_eq_not,not_eventually] at H' ,
-    apply eventually_imp_eventually _ h,
-    intros j,
-    apply induct,
-    intros k hp,
-    simp [stream.drop_drop],
-    simp [stream.drop_drop] at hp,
-    have GOAL : ⟦λ (_x : σ), p ⋁ q⟧ (drop (i + (j + k)) τ),
-    { apply unless_action H,
-      { simp [action_drop], split,
-        simp [init_drop] at hp, simp [init_drop,hp],
-        have hnq := henceforth_str' (k+j) H',
-        simp [not_init,drop_drop,init_drop] at hnq,
-        simp [hnq,init_to_fun], },
-      { apply sem } },
-    unfold action at GOAL,
-    cases GOAL with hp hq,
-    {   -- The order of i,j,k changes slightly between
-        -- invokations of lean. The next line aims to fix that
-      try { simp }, try { simp at hp },
-      apply hp },
-    { have hnq' := henceforth_str' (k+j+1) H',
-      simp [drop_drop,not_init] at hnq',
-      unfold drop init at hq hnq',
-      simp at hnq' hq,
-      cases hnq' hq } }
+    (h : Γ ⊢ ◇•p)
+:  Γ ⊢ ◇◻•p ⋁ ◇•q :=
+begin [temporal]
+  focus_left with H',
+  { simp [p_not_eq_not,not_eventually] at H' ,
+    revert h, monotonicity1,
+    apply induct (•p) _ _,
+    henceforth at sem ⊢,
+    intros hp,
+    have hq  : •-q, apply H',
+    have hq' : ⊙•-q, apply H',
+    have := unless_action H Γ _ sem,
+    { revert this hq hq',
+      clear H,
+      action with σ σ'
+      { begin [smt] intros, break_asms,
+                    exact a_3, destruct a a_3 end } },
+    revert hp hq hq',
+    action with σ σ'
+    { intros,
+      by_contradiction, classical_simp,
+      begin [smt] break_asms,
+                  apply a_1 a_4,
+                  apply a_4 a_2, end }, }
 end
 
-lemma co_sem'  {τ : stream σ} {A : act σ}
-    (sem : τ ⊨ saf_ex s)
+lemma co_sem' {A : act σ}
+    (sem : Γ ⊢ saf_ex s)
     (H : co' s A)
-: ◻⟦ A ⟧ $ τ :=
-begin
-  revert_p sem,
-  unfold saf_ex,
-  monotonicity,
-  apply action_entails_action,
-  apply H
+: Γ ⊢ ◻⟦ A ⟧ :=
+begin [temporal]
+  henceforth at *,
+  revert sem,
+  action with σ σ'
+  { apply H, },
 end
 
-lemma unless_sem {τ : stream σ} {p q : pred' σ}
-    (sem : saf_ex s τ)
-    (H : unless s p q)
-: (◇•p) τ → (◇◻•p) τ ∨ (◇•q) τ :=
-by apply @unless_sem' _ _ _ _ _ _ 0 sem H
-
-lemma unless_sem_str {τ : stream σ} {p q : pred' σ}
-    (sem : saf_ex s τ)
-    (H : unless s p q)
-: (◻◇•p ⟶ ◇◻•p ⋁ ◻◇•q) τ :=
-begin
-  rw [shunting,← eventually_eventually (◻ _),not_eventually,← henceforth_and],
-  apply henceforth_imp_henceforth, intro j,
-  rw [← shunting],
-  have H' := unless_sem' j sem H,
-  apply H'
+lemma unless_sem_str {p q : pred' σ}
+    (sem : Γ ⊢ saf_ex s)
+    (H₀ : unless s p q)
+    (H₁ : Γ ⊢ ◻◇•p)
+: Γ ⊢ ◇◻•p ⋁ ◻◇•q :=
+begin [temporal]
+  rw [← p_not_p_imp],
+  intro H₂,
+  henceforth at H₁ ⊢,
+  revert H₂, rw p_not_p_imp,
+  apply unless_sem sem H₀ H₁,
 end
 
-
-lemma unless_sem_exists' {τ : stream σ} {t} {p : t → pred' σ} {q : pred' σ} {evt : act σ}
-    (sem : saf_ex s τ)
+lemma unless_sem_exists' {t} {p : t → pred' σ} {q : pred' σ} {evt : act σ}
+    (sem : Γ ⊢ saf_ex s)
     (H : ∀ x, unless' s (p x) q evt)
-: ( ◻◇(∃∃ x, •p x) ⟶ (∃∃ x, ◇◻•p x) ⋁ ◻◇(•q ⋁ ⟦ evt ⟧) ) τ :=
-begin
+: Γ ⊢ ◻◇(∃∃ x, •p x) ⟶ (∃∃ x, ◇◻•p x) ⋁ ◻◇(•q ⋁ ⟦ evt ⟧) :=
+begin [temporal]
   intro H₀,
   rw [p_or_comm,← p_not_p_imp],
   intro H₁,
-  simp [p_not_p_exists,not_henceforth,not_eventually] at H₁,
-  unfold eventually at H₁,
-  rw eventually_exists at H₀,
-  cases H₁ with i H₁,
-  have H₂ := H₀ i,
-  cases H₂ with x H₂,
-  unfold eventually at H₂,
-  cases H₂ with j H₂,
-  simp,
-  existsi x,
-  unfold eventually,
-  existsi i+j,
-  intro k,
-  induction k with k
-  ; simp [drop_drop] at H₂,
-  { apply H₂, },
-  { simp [drop_drop] at ih_1,
-    rw [drop_succ,← tail_drop],
-    simp [drop_drop],
-    unfold tail,
-    let σ := (drop (i + (j + k)) τ 0),
-    let σ' := (τ (i + (j + (k + 1)))),
-    have H₂ := H₁ (j+k),
-    simp [drop_drop] at H₂,
-    have H₃ := H₁ (j+k+1),
-    simp [drop_drop,init_to_fun] at H₃,
-    simp [not_or_iff_not_and_not,init_to_fun] at H₂,
-    have IH := H x σ _ (sem _) H₂.right ⟨ih_1,H₂.left⟩,
-    cases IH with IH IH,
-    { apply IH },
-    { unfold drop at H₃ IH,
-      simp at H₃ IH,
-      simp [not_or_iff_not_and_not] at H₃,
-      cases H₃.left IH }, },
+  simp [p_not_p_exists] at H₁,
+  rw ← eventually_exists,
+  eventually H₁,
+  henceforth at H₀,
+  eventually H₀ ⊢,
+  revert H₀,
+  apply p_exists_p_imp_p_exists,
+  introv,
+  apply induct,
+  henceforth at sem ⊢,
+  intro hp,
+  simp [p_not_p_or] at H₁,
+  have Hnq : •-q,
+  { strengthen_to ◻_, persistent,
+    henceforth at H₁ ⊢, apply H₁.left, },
+  have Hnnq : ⊙•-q,
+  { strengthen_to ◻•_, persistent,
+    henceforth at H₁ ⊢, apply H₁.left, },
+  have Hevt : -⟦ evt ⟧,
+  { strengthen_to ◻_, persistent,
+    henceforth at H₁ ⊢, apply H₁.right, },
+  clear H₁,
+  have := unless_action' (H x) Γ,
+  revert sem hp Hnq Hnnq Hevt this,
+  clear H,
+  action
+  { specialize a ⟨a_3,a_4⟩ a_5 a_1,
+    begin [smt] break_asms, by_contradiction, apply a_2 a_6, end },
 end
 
-lemma unless_sem_exists {τ : stream σ} {t} {p : t → pred' σ} {q : pred' σ}
-    (sem : saf_ex s τ)
+lemma unless_sem_exists {t} {p : t → pred' σ} {q : pred' σ}
+    (sem : Γ ⊢ saf_ex s)
     (H : ∀ x, unless s (p x) q)
-: ( ◻◇(∃∃ x, •p x) ⟶ (∃∃ x, ◇◻•p x) ⋁ ◻◇•q ) τ :=
-begin
-  have H₀ : ( ◻◇(∃∃ x, •p x) ⟶ (∃∃ x, ◇◻•p x) ⋁ ◻◇(•q ⋁ ⟦ λ _ _, false ⟧) ) τ,
-  { apply unless_sem_exists' sem,
-    simp [unless_eq_unless_except] at H,
-    apply H, },
-  have H₁ : action (λ _ _, false) = (False : cpred σ),
-  { funext σ,
-    refl, },
-  rw [H₁,p_or_False] at H₀,
-  apply H₀,
+: Γ ⊢ ◻◇(∃∃ x, •p x) ⟶ (∃∃ x, ◇◻•p x) ⋁ ◻◇•q  :=
+begin [temporal]
+  intros H',
+  simp [unless_eq_unless_except] at H,
+  have := @unless_sem_exists' _ _ _ _ t p q _ sem H H',
+  revert this,
+  monotonicity,
+  simp [@action_false (state α)],
 end
 
 end properties

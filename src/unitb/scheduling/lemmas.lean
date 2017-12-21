@@ -2,9 +2,9 @@ import unitb.scheduling.basic
 import unitb.scheduling.finite
 import unitb.scheduling.infinite
 
-import unitb.semantics.temporal
-
 import util.data.stream
+
+import temporal_logic
 
 namespace scheduling
 

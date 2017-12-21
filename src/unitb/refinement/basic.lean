@@ -1,8 +1,9 @@
 
 import unitb.logic
-import unitb.semantics.temporal
 
 import util.predicate
+
+import temporal_logic
 
 namespace unitb.refinement
 
