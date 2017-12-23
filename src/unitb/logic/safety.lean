@@ -15,10 +15,10 @@ open predicate
 open temporal (hiding action)
 
 @[reducible]
-def pred (σ : Sort u) := σ → Prop
+def pred (σ : Sort u) := pred' σ
 
-instance {σ} : has_coe (pred σ) (pred' σ) :=
-by { unfold pred, apply_instance }
+-- instance {σ} : has_coe (pred σ) (pred' σ) :=
+-- by { unfold pred, apply_instance }
 
 class has_safety (α : Sort u) : Type u :=
   (σ : Sort u)
@@ -227,8 +227,8 @@ begin
     { unfold restr, intro i, apply h },
     have Hconj := unless_conj_gen (h fin.max) (IH h'),
     apply unless_weak_rhs _ Hconj, clear Hconj,
-    { propositional,
-      begin [smt] by_cases _x_1, destruct a, end, } },
+    { lifted_pred,
+      begin [smt] intros, break_asms end, } },
 end
 
 lemma forall_unless_exists {n} {p q : fin n → pred' (state α)}
@@ -244,8 +244,7 @@ begin
     { unfold restr, intro i, apply h },
     have Hconj := unless_conj_gen (h fin.max) (IH h'),
     apply unless_weak_rhs _ Hconj, clear Hconj,
-    { propositional,
-      begin [smt] by_cases _x end, } },
+    { propositional } },
 end
 
 lemma forall_unless {n} {p : fin n → pred' (state α)} {b : pred' (state α)}
@@ -267,17 +266,17 @@ variables {Γ : cpred σ}
 lemma unless_sem {p q : pred' σ}
     (sem : Γ ⊢ saf_ex s)
     (H : unless s p q)
-    (h : Γ ⊢ ◇•p)
-:  Γ ⊢ ◇◻•p ⋁ ◇•q :=
+    (h : Γ ⊢ •p)
+:  Γ ⊢ ◻•p ⋁ ◇•q :=
 begin [temporal]
   focus_left with H',
   { simp [p_not_eq_not,not_eventually] at H' ,
-    revert h, monotonicity1,
+    revert h,
     apply induct (•p) _ _,
     henceforth at sem ⊢,
     intros hp,
-    have hq  : •-q, apply H',
-    have hq' : ⊙•-q, apply H',
+    have hq  : -•q, apply H',
+    have hq' : ⊙-•q, apply H',
     have := unless_action H Γ _ sem,
     { revert this hq hq',
       clear H,
@@ -310,9 +309,11 @@ lemma unless_sem_str {p q : pred' σ}
     (H₁ : Γ ⊢ ◻◇•p)
 : Γ ⊢ ◇◻•p ⋁ ◻◇•q :=
 begin [temporal]
-  rw [← p_not_p_imp],
+  rw [← p_not_p_imp,not_eventually],
   intro H₂,
   henceforth at H₁ ⊢,
+  eventually H₁,
+  henceforth at H₂,
   revert H₂, rw p_not_p_imp,
   apply unless_sem sem H₀ H₁,
 end
@@ -337,11 +338,11 @@ begin [temporal]
   henceforth at sem ⊢,
   intro hp,
   simp [p_not_p_or] at H₁,
-  have Hnq : •-q,
+  have Hnq : -•q,
   { strengthen_to ◻_, persistent,
     henceforth at H₁ ⊢, apply H₁.left, },
-  have Hnnq : ⊙•-q,
-  { strengthen_to ◻•_, persistent,
+  have Hnnq : ⊙-•q,
+  { strengthen_to ◻-_, persistent,
     henceforth at H₁ ⊢, apply H₁.left, },
   have Hevt : -⟦ evt ⟧,
   { strengthen_to ◻_, persistent,
@@ -351,7 +352,7 @@ begin [temporal]
   revert sem hp Hnq Hnnq Hevt this,
   clear H,
   action
-  { specialize a ⟨a_3,a_4⟩ a_5 a_1,
+  { specialize a ⟨a_4,a_3⟩ a_5 a_1,
     begin [smt] break_asms, by_contradiction, apply a_2 a_6, end },
 end
 

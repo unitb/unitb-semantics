@@ -41,23 +41,24 @@ extends lifted_pred cat :=
 
 class disjunctive (cat : pred' α → pred' α → Sort u')
 extends finite_disjunctive cat :=
-  (disj' : ∀ {t : Type} (p : t → pred' α) r : pred' α,
+  (disj' : ∀ {t : Type u} (p : t → pred' α) r : pred' α,
       (∀ x, cat (p x) r) → cat (∃∃ x, p x) r)
   (disj :=
    begin
      intros p q r X Y,
-     let f := λ x : bool, if x then p else q,
+     let f := λ x : ulift.{u} bool, if x.down then p else q,
      have H : p ⋁ q = ∃∃ x, f x,
      { apply mutual_entails,
        apply p_or_entails_of_entails,
-       { apply @p_exists_intro _ _ f tt, },
-       { apply @p_exists_intro _ _ f ff, },
+       { apply @p_exists_intro _ _ f ⟨ tt ⟩, },
+       { apply @p_exists_intro _ _ f ⟨ ff ⟩, },
        apply p_exists_elim,
-       intro x, cases x,
+       intro x, cases x, cases down,
        { apply p_or_intro_right },
        { apply p_or_intro_left }, },
      rw H, clear H,
      apply disj',
+     apply ulift.rec,
      apply bool.rec ; revert f
      ; simp
      ; assumption
@@ -78,7 +79,7 @@ private def pred := pred' σ
 local infix ` ⤇ `:25 := cat
    -- M-x insert-char RET right*arrow
    -- code point: 0x2907
-parameters {t : Type}
+parameters {t : Type u}
 
 lemma disj.select_left_disj' [finite_disjunctive cat]
   {p p' q r : pred}
@@ -169,7 +170,7 @@ begin
 end
 
 def gen_disj' [disjunctive cat]
-  {t : Type} {p q : t → pred' σ}
+  {t : Type u} {p q : t → pred' σ}
   (P : ∀ x, p x ⤇ q x)
 : (∃∃ x, p x) ⤇ (∃∃ x, q x) :=
 begin
@@ -223,7 +224,7 @@ begin
 end
 
 theorem induction [disjunctive cat]
-  {β : Type} {lt' : β → β → Prop}
+  {β : Type u} {lt' : β → β → Prop}
   (wf : well_founded lt')
   (V : σ → β)
   {p q : pred}
