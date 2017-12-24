@@ -474,12 +474,14 @@ class system_sem (α : Type u) extends system α :=
   (ex : α → cpred _)
   (safety : ∀ s, ex s ⟹ saf_ex s)
   (inhabited : ∀s, ∃τ, τ ⊨ ex s)
-  (init_sem : ∀ {s : α} {p : pred' _},
+  (init_sem : ∀ {s : α} {Γ p : pred' _},
+         Γ ⊢ ex s →
          init s p →
-         ⊩ ex s ⟶ •p)
-  (transient_sem : ∀ {s : α} {p q : pred' _},
+         Γ ⊢ •p)
+  (transient_sem : ∀ {s : α} {Γ p q : pred' _},
+         Γ ⊢ ex s →
          transient' s p q →
-         ⊩ ex s ⟶ ◻◇•p ⟶ ◻◇-•q)
+         Γ ⊢ ◻◇•p ⟶ ◻◇-•q)
 
 namespace system_sem
 
@@ -491,28 +493,24 @@ section
 
 variable [system_sem α]
 
-set_option trace.check true
-
 lemma leads_to_sem {s : α} {p q : pred' (state α)}
     {Γ : cpred _}
     (P : p ↦ q in s)
     (sem : Γ ⊢ ex s)
 : Γ ⊢ •p ~> •q :=
-begin
-  have saf : Γ ⊢ saf_ex s := system_sem.safety s Γ sem,
+begin [temporal]
+  have saf : saf_ex s := system_sem.safety s Γ sem,
   induction P ,
   case leads_to.trivial
   { apply temporal.leads_to_of_inf_often, simp, },
   case leads_to.basis' p q b T S B Bsem
-  begin [temporal]
-    have := transient_sem T Γ sem,
+  { have := transient_sem sem T,
     clear sem,
     henceforth,
     intros hp,
-    have saf' : _ ⋁ _ := unless_sem saf S hp, -- (temporal.eventually_weaken _ hp),
+    have saf' : _ ⋁ _ := unless_sem saf S hp,
     cases saf' with saf' saf',
     { have T' : ◻◇-•(p ⋀ -q),
-      -- timetac "have T'"
       { rw [← p_or_self (◻◇-•(p ⋀ -q))],
         focus_left with h, simp [p_not_p_not_iff_self] at h,
         suffices : ◻◇-•(p ⋀ -q) ⋁ ◻◇•q,
@@ -530,59 +528,55 @@ begin
       henceforth at T'', revert T'', persistent,
       monotonicity, lifted_pred,
       show _, { intros, auto } },
-    { assumption, }
-  end,
+    { assumption, } },
   case leads_to.trans p q r P₀ P₁ H₀ H₁
   { apply leads_to_trans H₀ H₁ },
   case leads_to.disj X p' q' P₀ H₀ x y z
-  begin [temporal]
-    clear sem,
+  { clear sem,
     henceforth,
     rw [init_exists,p_exists_p_imp ],
     intros x hp,
-    apply H₀ x hp,
-  end
+    apply H₀ x hp, }
 end
 
 end
 
--- section
+section
 
--- variable [system_sem α]
+variable [system_sem α]
 
--- lemma often_imp_often_sem'
---     {s : α}
---     (τ : stream _)
---      (sem : ex s τ)
---   {p q : pred' (state α)}
---   (P : p >~> q in s)
--- : (◻◇•p ⟶ ◻◇•q) τ :=
--- begin
---   induction P,
---   case often_imp_often.transient p q T
---   { have Tsem : (◻◇•p ⟶ ◻◇-•-q) τ
---               := system_sem.transient_sem _ sem T,
---     rw [not_init,p_not_p_not_iff_self] at Tsem,
---     apply Tsem },
---   case often_imp_often.trans p q r P₀ P₁ Lpq Lqr
---   { intro Hp,
---     apply Lqr (Lpq Hp) },
---   case often_imp_often.induct  t V lt wf p q P₀ S₀
---   { apply inf_often_induction' V p q wf,
---     { intro v,
---       apply unless_sem_str _ (S₀ v),
---       apply system_sem.safety _ _ sem, },
---     { intro v,
---       apply leads_to_sem (P₀ v) _ sem, } },
---   case often_imp_often.disj p q r P₀ P₁
---   { intros H,
---     rw [init_p_or,inf_often_p_or] at H,
---     cases H with H H,
---     { apply ih_1 H },
---     { apply ih_2 H } }
--- end
+lemma often_imp_often_sem'
+    {s : α}
+    {Γ : cpred _}
+  {p q : pred' (state α)}
+  (P : p >~> q in s)
+  (sem : Γ ⊢ ex s)
+: Γ ⊢ ◻◇•p ⟶ ◻◇•q :=
+begin [temporal]
+  induction P,
+  case often_imp_often.transient p q T
+  { have Tsem : ◻◇•p ⟶ ◻◇-•-q
+              := system_sem.transient_sem sem T,
+    rw [not_init,p_not_p_not_iff_self] at Tsem },
+  case often_imp_often.trans p q r P₀ P₁ Lpq Lqr
+  { intro Hp,
+    apply Lqr (Lpq Hp) },
+  case often_imp_often.induct  t V lt wf p q P₀ S₀
+  { apply inf_often_induction' V p q wf,
+    { intros v h,
+      apply unless_sem_str _ (S₀ v) h,
+      apply system_sem.safety s Γ sem, },
+    { intro v,
+      apply leads_to_sem (P₀ v) sem, } },
+  case often_imp_often.disj p q r P₀ P₁
+  { intros H,
+    rw [init_p_or,inf_often_p_or] at H,
+    cases H with H H,
+    { apply ih_1 H },
+    { apply ih_2 H } }
+end
 
--- end
+end
 
 end system_sem
 
