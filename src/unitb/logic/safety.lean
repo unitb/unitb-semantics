@@ -282,14 +282,14 @@ begin [temporal]
       clear H,
       action with σ σ'
       { begin [smt] intros, break_asms,
-                    exact a_3, destruct a a_3 end } },
+                    exact a_1, destruct σ_1 a_1 , end } },
     revert hp hq hq',
     action with σ σ'
     { intros,
       by_contradiction, classical_simp,
       begin [smt] break_asms,
-                  apply a_1 a_4,
-                  apply a_4 a_2, end }, }
+                  apply σ'_1 a_2,
+                  apply a_2 a, end }, }
 end
 
 lemma co_sem' {A : act σ}
@@ -299,7 +299,7 @@ lemma co_sem' {A : act σ}
 begin [temporal]
   henceforth at *,
   revert sem,
-  action with σ σ'
+  action
   { apply H, },
 end
 
@@ -351,9 +351,9 @@ begin [temporal]
   have := unless_action' (H x) Γ,
   revert sem hp Hnq Hnnq Hevt this,
   clear H,
-  action
-  { specialize a ⟨a_4,a_3⟩ a_5 a_1,
-    begin [smt] break_asms, by_contradiction, apply a_2 a_6, end },
+  action with h₀ h₁ h₂ h₃ h₄ h₅
+  { specialize h₀ ⟨h₄,h₃⟩ h₅ h₁,
+    begin [smt] break_asms, destruct h₂ a, end },
 end
 
 lemma unless_sem_exists {t} {p : t → pred' σ} {q : pred' σ}

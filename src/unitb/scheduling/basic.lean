@@ -6,6 +6,7 @@ import util.classical
 import util.data.array
 import util.data.bijection
 import util.data.stream
+import util.meta.tactic
 
 import temporal_logic
 
@@ -14,7 +15,7 @@ universe variables u v
 namespace scheduling
 
 open stream nat function
-
+open predicate
 namespace unitb
 
 section target
@@ -49,8 +50,8 @@ open has_mem scheduling.unitb temporal
 
 structure fair (t : target_mch lbl) (τ : stream t.σ) : Prop :=
   (init : τ 0 = t.s₀)
-  (valid : ◻ (∃∃ l, •(mem l ∘ t.req) ⋀ ⟦ t.action l ⟧) $ τ)
-  (fair : ∀ l, (◻◇•mem l ∘ t.req) ⟶ (◻◇(•mem l ∘ t.req ⋀ ⟦ t.action l ⟧)) $ τ)
+  (valid : τ ⊨ ◻ (∃∃ l, •↑(mem l ∘ t.req) ⋀ ⟦ t.action l ⟧))
+  (fair : ∀ l, τ ⊨ ◻◇•↑(mem l ∘ t.req) ⟶ ◻◇(•↑(mem l ∘ t.req) ⋀ ⟦ t.action l ⟧))
   -- (evts : stream lbl)
   -- (run_evts_eq_τ : run t evts = τ)
 
@@ -409,12 +410,12 @@ parameters ch : unitb.state s → lbl
 parameters object : unitb.state s → α
 def req (σ) := r (object σ)
 parameters P : ∀ l, (mem l ∘ req)  >~>  (eq l ∘ ch)  in  F
-parameters INIT : system.init F (eq s₀ ∘ object)
+parameters INIT : system.init F (↑(eq s₀) '∘ object)
 parameters STEP : unitb.co' F (λ σ σ', ∃ P, object σ' = next (ch σ) (object σ) P)
 parameters INV : ∀ σ, ch σ ∈ req σ
 
 def t := target_mch.mk _ s₀ r r_nemp next
-
+open unitb.system_sem  unitb.system target_mch
 include ch F INIT STEP INV P
 lemma scheduling'
 : ∃ τ : stream α, fair t τ :=
@@ -422,36 +423,46 @@ begin
   apply exists_imp_exists' (map object) _ (system_sem.inhabited F),
   intros τ sem,
   apply fair.mk,
-  { have h := system_sem.init_sem τ sem INIT,
-    unfold temporal.init function.comp at h,
+  { rw ← eq_judgement at sem,
+    have h := system_sem.init_sem sem INIT,
+    simp [temporal.init,comp] at h,
     unfold map nth, rw ← h, refl },
-  { intro i,
-    simp [temporal.init_drop,temporal.action_drop],
-    existsi (ch $ τ i),
-    split,
-    { have Hsaf := system_sem.safety _ _ sem i,
-      rw action_drop at Hsaf,
-      unfold map nth target_mch.action,
-      apply (STEP (τ i) (τ $ succ i) Hsaf), },
-    { unfold map nth target_mch.action function.comp,
-      apply INV } },
-  { intros l h,
-    let t := t r r_nemp s₀ next,
-    have H : ⟦λ s s', t.action (ch s) (object s) (object s')⟧ ⋀ •eq l ∘ ch
-          ⟹ (•mem l ∘ t.req ∘ object ⋀ ⟦t.action l on object⟧),
-    { simp [init_eq_action,action_and_action],
-      unfold comp,
-      apply action_entails_action, intros σ σ' H,
-      cases H with H₀ H₁, subst l,
+  { simp,
+    begin [temporal]
+      have Hsaf := system_sem.safety F Γ,
+      replace Hsaf := Hsaf sem,
+      clear sem,
+      henceforth,
+      existsi ch,
       split,
-      { apply H₀ }, { apply INV } },
-    apply inf_often_entails_inf_often H,
-    apply coincidence',
-    { revert_p (system_sem.safety _ _ sem),
-      clear H, unfold saf_ex,
-      monotonicity, apply' (action_entails_action _ _ _),
-      intros σ σ' H, apply STEP σ σ' H, },
-    { apply system_sem.often_imp_often_sem' _ sem (P l) h, }, },
+      explicit
+      { simp [h], apply INV, },
+      { replace STEP := co_sem' Hsaf STEP,
+        henceforth at STEP,
+        revert STEP h,
+        action
+        { simp [on_fun,target_mch.action,comp],
+          introv H₀ H₁, subst ch₀,
+          split, rw H₁, refl }, }
+    end, },
+  { intros l h, simp at h ⊢,
+    begin [temporal]
+      replace P := often_imp_often_sem' (P l) sem h,
+      have Hsaf := (system_sem.safety F Γ sem), clear sem,
+      henceforth at P ⊢, eventually P ⊢,
+      split, revert P,
+      action { simp [comp],
+               intros, subst l,
+               apply INV, },
+      { have H := co_sem' Hsaf STEP,
+        henceforth at H,
+        revert H P,
+        action
+        { simp [comp],
+          intros, simp [target_mch.action,on_fun],
+           subst l,
+          existsi (INV σ), rw [a_1], refl, } }
+      end },
 end
 
 end
@@ -468,14 +479,15 @@ structure scheduler :=
  (F : s)
  (ch : unitb.state s → lbl)
  (object : unitb.state s → t.σ)
- (INIT : system.init F (eq t.s₀ ∘ object))
+ (INIT : system.init F (↑(eq t.s₀) '∘ object))
  (STEP : unitb.co' F (λ σ σ', ∃ P, object σ' = t.next (ch σ) (object σ) P))
  (INV  : ∀ σ, ch σ ∈ t.req (object σ))
  (PROG : ∀ l, (mem l ∘ t.req ∘ object)  >~>  (eq l ∘ ch) in F)
 
+instance (s : scheduler t) : system_sem (s.s) := s.sem
+
 lemma scheduling
   (sch : scheduler t)
-  (sem : system_sem (sch.s))
 : ∃ τ : stream t.σ, fair t τ :=
 begin
   have H : t = scheduling.unitb.t t.req t.req_nemp t.s₀ t.next,
