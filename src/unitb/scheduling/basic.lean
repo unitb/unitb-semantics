@@ -25,9 +25,9 @@ parameters (lbl : Type)
 structure target_mch :=
   (σ : Type)
   (s₀ : σ)
-  (req : σ → set lbl)
-  (req_nemp : ∀ x, req x ≠ ∅)
-  (next : ∀ l s, l ∈ req s → σ)
+  (req : var σ (set lbl))
+  (req_nemp : ∀ x, req.apply x ≠ ∅)
+  (next : ∀ l s, l ∈ req.apply s → σ)
 
 parameters {lbl}
 
@@ -50,8 +50,8 @@ open has_mem scheduling.unitb temporal
 
 structure fair (t : target_mch lbl) (τ : stream t.σ) : Prop :=
   (init : τ 0 = t.s₀)
-  (valid : τ ⊨ ◻ (∃∃ l, •↑(mem l ∘ t.req) ⋀ ⟦ t.action l ⟧))
-  (fair : ∀ l, τ ⊨ ◻◇•↑(mem l ∘ t.req) ⟶ ◻◇(•↑(mem l ∘ t.req) ⋀ ⟦ t.action l ⟧))
+  (valid : τ ⊨ ◻ (∃∃ l, •(↑l ∊ t.req) ⋀ ⟦ t.action l ⟧))
+  (fair : ∀ l, τ ⊨ ◻◇•(↑l ∊ t.req) ⟶ ◻◇(•(↑l ∊ t.req) ⋀ ⟦ t.action l ⟧))
   -- (evts : stream lbl)
   -- (run_evts_eq_τ : run t evts = τ)
 
@@ -401,18 +401,18 @@ parameters {lbl : Type}
 parameters {s : Type u}
 parameters [system_sem s]
 parameters {α : Type}
-parameters r : α → set lbl
-parameters r_nemp : ∀ x, r x ≠ ∅
+parameters r : var α (set lbl)
+parameters r_nemp : ∀ x, r.apply x ≠ ∅
 parameters s₀ : α
-parameters next : ∀ l s, r s l → α
+parameters next : ∀ l s, r.apply s l → α
 parameters {F : s}
-parameters ch : unitb.state s → lbl
-parameters object : unitb.state s → α
-def req (σ) := r (object σ)
-parameters P : ∀ l, (mem l ∘ req)  >~>  (eq l ∘ ch)  in  F
-parameters INIT : system.init F (↑(eq s₀) '∘ object)
-parameters STEP : unitb.co' F (λ σ σ', ∃ P, object σ' = next (ch σ) (object σ) P)
-parameters INV : ∀ σ, ch σ ∈ req σ
+parameters ch : var (unitb.state s) lbl
+parameters object : var (unitb.state s) α
+def req : var _ _  := r ∘' object
+parameters P : ∀ l : lbl, (↑l ∊ req)  >~>  (ch ≃ l)  in  F
+parameters INIT : system.init F (object ≃ s₀)
+parameters STEP : unitb.co' F (λ σ σ', ∃ P, object.apply σ' = next (ch.apply σ) (object.apply σ) P)
+parameters INV : ∀ σ, σ ⊨ ch ∊ req
 
 def t := target_mch.mk _ s₀ r r_nemp next
 open unitb.system_sem  unitb.system target_mch
@@ -420,7 +420,7 @@ include ch F INIT STEP INV P
 lemma scheduling'
 : ∃ τ : stream α, fair t τ :=
 begin
-  apply exists_imp_exists' (map object) _ (system_sem.inhabited F),
+  apply exists_imp_exists' (map object.apply) _ (system_sem.inhabited F),
   intros τ sem,
   apply fair.mk,
   { rw ← eq_judgement at sem,
@@ -436,7 +436,8 @@ begin
       existsi ch,
       split,
       explicit
-      { simp [h], apply INV, },
+      { simp [h], have := INV,
+        simp [req] at this, apply this },
       { replace STEP := co_sem' Hsaf STEP,
         henceforth at STEP,
         revert STEP h,
@@ -447,20 +448,21 @@ begin
     end, },
   { intros l h, simp at h ⊢,
     begin [temporal]
-      replace P := often_imp_often_sem' (P l) sem h,
+      replace P := often_imp_often_sem' (P l) sem,
+      simp [req] at P h, replace  P := P h,
       have Hsaf := (system_sem.safety F Γ sem), clear sem,
       henceforth at P ⊢, eventually P ⊢,
       split, revert P,
-      action { simp [comp],
+      action { simp [req] at ⊢ INV,
                intros, subst l,
                apply INV, },
       { have H := co_sem' Hsaf STEP,
         henceforth at H,
         revert H P,
         action
-        { simp [comp],
+        { simp [req] at ⊢ INV,
           intros, simp [target_mch.action,on_fun],
-           subst l,
+          subst l,
           existsi (INV σ), rw [a_1], refl, } }
       end },
 end
@@ -473,16 +475,18 @@ variable {lbl : Type}
 
 variable t : target_mch lbl
 
+def t_req : var t.σ (set lbl) := t.req
+
 structure scheduler :=
  (s : Type u)
  (sem : system_sem s)
  (F : s)
- (ch : unitb.state s → lbl)
- (object : unitb.state s → t.σ)
- (INIT : system.init F (↑(eq t.s₀) '∘ object))
- (STEP : unitb.co' F (λ σ σ', ∃ P, object σ' = t.next (ch σ) (object σ) P))
- (INV  : ∀ σ, ch σ ∈ t.req (object σ))
- (PROG : ∀ l, (mem l ∘ t.req ∘ object)  >~>  (eq l ∘ ch) in F)
+ (ch : var (unitb.state s) lbl)
+ (object : var (unitb.state s) t.σ)
+ (INIT : system.init F (object ≃ t.s₀))
+ (STEP : unitb.co' F (λ σ σ', ∃ P, object.apply σ' = t.next (ch.apply σ) (object.apply σ) P))
+ (INV  : ∀ σ, σ ⊨ ch ∊ t.req ∘' object)
+ (PROG : ∀ l : lbl, ↑l ∊ t_req t ∘' object  >~>  ch ≃ l in F)
 
 instance (s : scheduler t) : system_sem (s.s) := s.sem
 
@@ -494,7 +498,7 @@ begin
   { cases t, refl },
   rw H,
   apply @scheduling' lbl sch.s sch.sem t.σ _ _ t.s₀ _ _
-        sch.ch sch.object sch.PROG sch.INIT sch.STEP sch.INV
+                     sch.ch sch.object sch.PROG sch.INIT sch.STEP sch.INV,
 end
 end unitb
 

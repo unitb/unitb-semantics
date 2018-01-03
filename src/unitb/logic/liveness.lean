@@ -75,11 +75,10 @@ inductive often_imp_often : pred' (state α) → pred' (state α) → Prop
   | disj : ∀ {p q r}, often_imp_often p r →
                       often_imp_often q r →
                       often_imp_often (p ⋁ q) r
-  | induct : ∀ (t : Type) (V : state α → t) (lt : t → t → Prop)
-         (wf : well_founded lt)
+  | induct : ∀ (t : Type) (V : var (state α) t) [has_well_founded t]
          {p q}
-         (P : ∀ v, p ⋀ eq v ∘ V  ↦  flip lt v ∘ V ⋁ q  in  s)
-         (S : ∀ v, unless s (eq v ∘ V) (flip lt v ∘ V ⋁ q)),
+         (P : ∀ v : t, p ⋀ V ≃ v  ↦  V ≺≺ v ⋁ q  in  s)
+         (S : ∀ v : t, unless s (V ≃ v) (V ≺≺ v ⋁ q)),
          often_imp_often p q
 
 attribute [trans] often_imp_often.trans
@@ -97,21 +96,21 @@ parameter [system α]
 parameter [system α']
 parameter (f : state α' → state α)
 parameters (s : α) (s' : α')
-parameter (Tf : ∀ {p q}, transient' s p q → transient' s' (p '∘ f) (q '∘ f))
-parameter (Uf : ∀ {p q}, unless s p q → unless s' (p '∘ f) (q '∘ f))
+parameter (Tf : ∀ {p q}, transient' s p q → transient' s' (p ∘' f) (q ∘' f))
+parameter (Uf : ∀ {p q}, unless s p q → unless s' (p ∘' f) (q ∘' f))
 
 include Tf Uf
 
 lemma leads_to.subst {p q}
   (H : p ↦ q in s)
-: (p '∘ f) ↦ (q '∘ f) in s' :=
+: (p ∘' f) ↦ (q ∘' f) in s' :=
 begin
   induction H,
   case leads_to.trivial p
   { apply leads_to.trivial },
   case leads_to.basis' p q b t u P₀ P₁
-  { apply leads_to.basis' (b '∘ f),
-    { specialize Tf t, simp at Tf, simp [Tf], },
+  { apply leads_to.basis' (b ∘' ↑f),
+    { specialize Tf t, simp at Tf, apply Tf, },
     { apply Uf u },
     { simp at P₁, simp [P₁], }, },
   case leads_to.trans p q r Pa₀ Pa₁ Pb₀ Pb₁
@@ -120,10 +119,11 @@ begin
   { simp, apply leads_to.disj t (λ x, p x '∘ f),
     intro, apply Pb, },
 end
+open predicate
 
 lemma often_imp_often.subst {p q}
   (H : p >~> q in s)
-: (p '∘ f) >~> (q '∘ f) in s' :=
+: (p ∘' f) >~> (q ∘' f) in s' :=
 begin
   induction H,
   case often_imp_often.transient p q T
@@ -131,8 +131,8 @@ begin
     apply often_imp_often.transient Tf },
   case often_imp_often.trans p q r _ _ Pb₀ Pb₁
   { apply often_imp_often.trans _ Pb₀ Pb₁ },
-  case often_imp_often.induct t V lt wf p q P S
-  { apply often_imp_often.induct t (V ∘ f) lt wf,
+  case often_imp_often.induct t V _inst_3 p q P S
+  { apply often_imp_often.induct t (V ∘' ↑f),
     { intro v, have := leads_to.subst f s s' @Tf @Uf (P v),
       simp at this, apply this },
     { intro v, specialize Uf (S v),
@@ -255,21 +255,15 @@ theorem leads_to.cancellation'
 : p ↦ r ⋁ b in s :=
 unitb.cancellation' _ q P₀ P₁
 
-theorem leads_to.induction' {β : Type u} {lt' : β → β → Prop}
-  (wf : well_founded lt')
-  (V : state α → β)
+theorem leads_to.induction' {β : Type u}
+  [has_well_founded β]
+  (V : var (state α) β)
   {p q : pred' (state α)}
-  (P : ∀ v, p ⋀ (eq v ∘ V)  ↦  p ⋀ (flip lt' v ∘ V) ⋁ q  in  s)
+  (P : ∀ v : β, p ⋀ V ≃ v  ↦  p ⋀ V ≺≺ v ⋁ q  in  s)
 : p ↦ q in s :=
-unitb.induction _ wf V P
+unitb.induction _ V P
 
 def rel : Type u := state α → state α → Prop
-
-theorem leads_to.induction {lt' : rel} (wf : well_founded lt')
-  {p q : pred' (state α)}
-  (P : ∀ v : state α, p ⋀ (eq v : pred' $ state α)  ↦  p ⋀ (flip lt' v : pred' $ state α) ⋁ q  in  s)
-: p ↦ q in s :=
-leads_to.induction' wf _ P
 
 theorem leads_to.PSP {p q r b : pred' (state α)}
   (P : p ↦ q in s)
@@ -418,17 +412,16 @@ lemma often_imp_often.basis {p q}
   (h : p ↦ q in s)
 : p >~> q in s :=
 begin
-  let f := (λ _ : state α, ()),
-  have H : ∀ (v : unit), ↑(flip empty_relation v ∘ f : state α → Prop) = @False (state α),
-  { intros, refl },
-  have H' : ∀ (v : unit), ↑(eq v ∘ f : state α → Prop) = @True (state α),
-  { intros, funext x,
-    apply iff_true_intro (unit_eq v (f x)), },
-  apply often_imp_often.induct _ f _ empty_wf
-  ; intro,
-  { simp [H,H',h], },
-  { rw [H'],
-    apply True_unless }
+  let V : var (state α) unit := ↑(),
+  have H : ∀ (v : unit), V ≺≺ ↑v = @False (state α),
+  { intros, lifted_pred [V], rw unit_eq_unit v,
+    intro h, cases nat.lt_irrefl _ h, },
+  have H' : ∀ (v : unit), V ≃ v = @True (state α),
+  { intros, lifted_pred [V],
+    rw [unit_eq_unit v], },
+  apply often_imp_often.induct _ V _
+  ; intro
+  ; simp [H,H',h],
 end
 
 @[refl]
@@ -561,8 +554,8 @@ begin [temporal]
   case often_imp_often.trans p q r P₀ P₁ Lpq Lqr
   { intro Hp,
     apply Lqr (Lpq Hp) },
-  case often_imp_often.induct  t V lt wf p q P₀ S₀
-  { apply inf_often_induction' V p q wf,
+  case often_imp_often.induct  t V wf p q P₀ S₀
+  { apply inf_often_induction' (V : var (state α) t) p q,
     { intros v h,
       apply unless_sem_str _ (S₀ v) h,
       apply system_sem.safety s Γ sem, },

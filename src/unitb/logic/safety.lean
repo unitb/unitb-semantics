@@ -181,6 +181,7 @@ by prove_safety
 lemma unless_antirefl (p : pred' (state α)) : unless s p (-p) :=
 by prove_safety
 
+@[simp]
 lemma True_unless (p : pred' (state α)) : unless s True p :=
 by prove_safety
 

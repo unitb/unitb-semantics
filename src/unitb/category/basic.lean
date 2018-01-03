@@ -224,40 +224,38 @@ begin
 end
 
 theorem induction [disjunctive cat]
-  {β : Type u} {lt' : β → β → Prop}
-  (wf : well_founded lt')
-  (V : σ → β)
+  {β : Type u}
+  [has_well_founded β]
+  (V : var σ β)
   {p q : pred}
-  (P : ∀ v, p ⋀ (eq v ∘ V)  ⤇  p ⋀ (flip lt' v ∘ V) ⋁ q)
+  (P : ∀ v : β, p ⋀ V ≃ v  ⤇  p ⋀ V ≺≺ v ⋁ q)
 : p ⤇ q :=
 begin
-  let lt := flip lt',
-  have P' : (∃∃ v, p ⋀ eq v ∘ V)  ⤇ q,
+  have P' : (∃∃ v : β, p ⋀ V ≃ v)  ⤇ q,
   { apply disjunctive.disj', intro i,
-    let PP := λ i, p ⋀ eq i ∘ V  ⤇  q,
+    let PP := λ v : β, p ⋀ V ≃ v  ⤇  q,
     change PP i,
-    apply @well_founded.recursion _ lt' wf PP,
+    apply @well_founded.recursion _ _ (has_well_founded.wf _) PP,
     intros j IH,
     change _ ⤇ _,
     apply lifted_pred.mono_right cat (q ⋁ q),
     { simp [p_or_self] },
-    apply cancellation' _ (p ⋀ lt j ∘ V) (P _),
-    have h' : (p ⋀ lt j ∘ V) = (∃∃v, lt j v ⋀ (p ⋀ ↑(eq v) '∘ V)),
+    apply cancellation' _ (p ⋀ V ≺≺ j) (P _),
+    have h' : (p ⋀ V ≺≺ j) = (∃∃v : β, ↑(v << j) ⋀ (p ⋀ V ≃ v)),
     { funext x, split,
       { intros H₀, cases H₀ with H₀ H₁,
-        existsi V x, TL_simp,
-        split, assumption,
-        split, assumption,
-        exact rfl },
+        existsi V.apply x, TL_simp,
+        simp at H₁,
+        split ; assumption, },
       { intro h, apply exists.elim h,
         intros s h', cases h' with h₀ h₁, cases h₁,
-        TL_simp [function.comp] at right, subst s,
+        TL_simp [function.comp] at right h₀ ⊢, subst s,
         split ; assumption,  }, },
-    rw h', clear h',
+    simp [h'], clear h',
     -- apply @disj_rng _ _ β _ _  (lt j) ,
     apply disj_rng,
     apply IH, },
-  { have h : (∃∃ (v : β), p ⋀ eq v ∘ V) = p,
+  { have h : (∃∃ (v : β), p ⋀ V ≃ v) = p,
     { funext x, TL_simp [function.comp] },
     rw h at P',
     apply P' }

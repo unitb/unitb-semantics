@@ -100,13 +100,9 @@ lemma leads_to_step
 : p ↦ q in program.mk init step :=
 begin
   apply leads_to.basis,
-  { lifted_pred,
-    intros,
-    simp [p_not_p_and,p_not_p_not_iff_self],
-    cases p, cases q,
-    simp [next,temporal.init,stream.tail,action,is_step] at *,
-    specialize h _ a_1 a_2,
-    left, simp [a,h], },
+  { lifted_pred [is_step,temporal.init,not_not_iff_self],
+    intros, specialize h _ a_1 a_2,
+    simp [a,h], },
   { apply unless_step,
     intros σ hp hnq,
     right, apply h _ hp hnq, }
@@ -159,9 +155,8 @@ begin [temporal]
   lifted_pred,
   show _ ,
   { intros,
-    unfold_coes at a_1,
-    simp [temporal.init] at a_1 ⊢,
-    rw ← a_1,
+    simp [temporal.init] at a ⊢,
+    rw ← a,
     assumption },
 end
 
