@@ -13,7 +13,7 @@ local attribute [-simp] or.comm or.left_comm or.assoc and.comm and.left_comm and
 
 namespace scheduling.finite
 
-open nat simple function predicate temporal set
+open nat simple function predicate temporal set scheduling
 @[reducible]
 def rrobin (lbl : Type) [pos_finite lbl] : Type :=
 bijection (fin $ succ $ pos_finite.pred_count lbl) lbl
@@ -236,9 +236,8 @@ lemma INV
 by { assume σ, simp [current,req], apply σ.inv, }
 
 lemma PROG (l : lbl)
-: often_imp_often scheduler
-      (↑l ∊ req)
-      (current ≃ l) :=
+:     ↑l ∊ req  >~>  current ≃ l
+  in scheduler :=
 begin
   apply often_imp_often.induct ℕ _ _ ,
   apply stable_queue_ranking _ l,
@@ -267,8 +266,6 @@ noncomputable def scheduler_spec
 
 noncomputable instance : unitb.system_sem ((scheduler_spec r).s) :=
 (scheduler_spec r).sem
-
-open scheduling
 
 lemma sched' {lbl : Type} [s : finite lbl] [nonempty lbl]
   (r : target_mch lbl)

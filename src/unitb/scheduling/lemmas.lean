@@ -45,7 +45,7 @@ by apply classical.some_spec (sched.sched_str t)
 
 lemma fair_sched_succ (i : ℕ) {τ : stream t.σ}
   (H : fair t τ)
-: ∃ l (P : l ∈ t.req (τ i)), τ (succ i) = t.next l (τ i) P :=
+: ∃ l (P : l ∈ t.req.apply (τ i)), τ (succ i) = t.next l (τ i) P :=
 begin
   apply exists_imp_exists _ (H.valid i),
   intros l h,
@@ -55,8 +55,8 @@ end
 
 lemma fair_sched_of_is_fair
   (l : lbl)
-  (h : (◻◇•mem l ∘ t.req) $ fair_sched_of t)
-: (◻◇(•mem l ∘ t.req ⋀ ⟦ t.action l ⟧)) $ fair_sched_of t :=
+  (h : fair_sched_of t ⊨ (◻◇•(↑l ∊ t.req)) )
+: fair_sched_of t ⊨ (◻◇(•(↑l ∊ t.req) ⋀ ⟦ t.action l ⟧)) :=
 (fair_sched_of_spec t).fair l h
 
 instance {lbl} [i : nonempty lbl] : nonempty (stream lbl) :=
