@@ -13,6 +13,8 @@ import temporal_logic
 
 universe variables u v
 
+local notation `♯` x := cast (by simp) x
+
 namespace unitb
 
 local attribute [instance] classical.prop_decidable
@@ -96,21 +98,22 @@ parameter [system α]
 parameter [system α']
 parameter (f : state α' → state α)
 parameters (s : α) (s' : α')
-parameter (Tf : ∀ {p q}, transient' s p q → transient' s' (p ∘' f) (q ∘' f))
-parameter (Uf : ∀ {p q}, unless s p q → unless s' (p ∘' f) (q ∘' f))
+parameter (Tf : ∀ {p q}, transient' s p q → transient' s' (p ;; f) (q ;; f))
+parameter (Uf : ∀ {p q}, unless s p q → unless s' (p ;; f) (q ;; f))
 
 include Tf Uf
 
 lemma leads_to.subst {p q}
   (H : p ↦ q in s)
-: (p ∘' f) ↦ (q ∘' f) in s' :=
+: (p ;; f) ↦ (q ;; f) in s' :=
 begin
   induction H,
   case leads_to.trivial p
   { apply leads_to.trivial },
   case leads_to.basis' p q b t u P₀ P₁
-  { apply leads_to.basis' (b ∘' ↑f),
-    { specialize Tf t, simp at Tf, apply Tf, },
+  { apply leads_to.basis' (b ;; ↑f),
+    { specialize Tf t, simp at Tf ⊢,
+      apply Tf, },
     { apply Uf u },
     { simp at P₁, simp [P₁], }, },
   case leads_to.trans p q r Pa₀ Pa₁ Pb₀ Pb₁
@@ -123,7 +126,7 @@ open predicate
 
 lemma often_imp_often.subst {p q}
   (H : p >~> q in s)
-: (p ∘' f) >~> (q ∘' f) in s' :=
+: (p ;; f) >~> (q ;; f) in s' :=
 begin
   induction H,
   case often_imp_often.transient p q T
@@ -132,13 +135,13 @@ begin
   case often_imp_often.trans p q r _ _ Pb₀ Pb₁
   { apply often_imp_often.trans _ Pb₀ Pb₁ },
   case often_imp_often.induct t V _inst_3 p q P S
-  { apply often_imp_often.induct t (V ∘' ↑f),
-    { intro v, have := leads_to.subst f s s' @Tf @Uf (P v),
-      simp at this, apply this },
+  { apply often_imp_often.induct t (V ;; ↑f),
+    { intro v,
+      exact ♯ leads_to.subst f s s' @Tf @Uf (P v), },
     { intro v, specialize Uf (S v),
       simp at Uf, apply Uf } },
   case often_imp_often.disj p q r P₀ P₁
-  { have := often_imp_often.disj ih_1 ih_2, simp [this] }
+  { exact ♯ often_imp_often.disj ih_1 ih_2, }
 end
 
 end conversion
@@ -464,17 +467,17 @@ end rules
 open predicate temporal
 
 class system_sem (α : Type u) extends system α :=
-  (ex : α → cpred _)
-  (safety : ∀ s, ex s ⟹ saf_ex s)
-  (inhabited : ∀s, ∃τ, τ ⊨ ex s)
-  (init_sem : ∀ {s : α} {Γ p : pred' _},
-         Γ ⊢ ex s →
+  (ex : α → tvar (state α) → cpred)
+  (safety : ∀ s v, ex s v ⟹ saf_ex s v)
+  (inhabited : ∀s, ∃v, ⊩ ex s v)
+  (init_sem : ∀ {s : α} {Γ p : pred' _} {v : tvar _},
+         Γ ⊢ ex s v →
          init s p →
-         Γ ⊢ •p)
-  (transient_sem : ∀ {s : α} {Γ p q : pred' _},
-         Γ ⊢ ex s →
+         Γ ⊢ p;;v)
+  (transient_sem : ∀ {s : α} {Γ p q : pred' _} {v : tvar _},
+         Γ ⊢ ex s v →
          transient' s p q →
-         Γ ⊢ ◻◇•p ⟶ ◻◇-•q)
+         Γ ⊢ ◻◇(p;;v) ⟶ ◻◇(-q;;v))
 
 namespace system_sem
 
@@ -486,37 +489,37 @@ section
 
 variable [system_sem α]
 
-lemma leads_to_sem {s : α} {p q : pred' (state α)}
-    {Γ : cpred _}
+lemma leads_to_sem {s : α} {p q : pred' (state α)} {v : tvar (state α)}
+    {Γ : cpred}
     (P : p ↦ q in s)
-    (sem : Γ ⊢ ex s)
-: Γ ⊢ •p ~> •q :=
+    (sem : Γ ⊢ ex s v)
+: Γ ⊢ (p ;; v) ~> (q ;; v) :=
 begin [temporal]
-  have saf : saf_ex s := system_sem.safety s Γ sem,
+  have saf : saf_ex s v := system_sem.safety s v Γ sem,
   induction P ,
   case leads_to.trivial
   { apply temporal.leads_to_of_inf_often, simp, },
   case leads_to.basis' p q b T S B Bsem
-  { have := transient_sem sem T,
+  { have Tsem := transient_sem sem T, simp at Tsem,
     clear sem,
     henceforth,
     intros hp,
-    have saf' : _ ⋁ _ := unless_sem saf S hp,
+    have saf' : _ ⋁ _ := unless_sem _ saf S hp,
     cases saf' with saf' saf',
-    { have T' : ◻◇-•(p ⋀ -q),
-      { rw [← p_or_self (◻◇-•(p ⋀ -q))],
-        focus_left with h, simp [p_not_p_not_iff_self] at h,
-        suffices : ◻◇-•(p ⋀ -q) ⋁ ◻◇•q,
+    { have T' : ◻◇(-(p ⋀ -q);;v),
+      { assume_negation with h,
+        simp [p_not_p_not_iff_self] at h,
+        suffices : ◻◇(-(p;;v ⋀ -q;;v)) ⋁ ◻◇(q;;v),
         { cases this with this this ; revert this
           ; persistent ; monotonicity
           ; lifted_pred,
           show _, { intros, auto } },
         focusing_left
-        { apply this _,  clear this },
-        rw ← inf_often_p_or,
-        simp at Bsem,
-        replace h : (◻◇(•p ⋀ -•q)) := inf_often_of_stable (•p ⋀ -•q) Γ h,
-        apply inf_often_of_leads_to Bsem h, },
+        { simp,
+          apply Tsem _ },
+        replace h := inf_often_of_stable (p ;; v ⋀ -(q ;; v)) Γ h,
+        replace h := inf_often_of_leads_to Bsem (♯ h),
+        simp [inf_often_p_or] at h, apply h, },
       have T'' := (coincidence' saf' T'),
       henceforth at T'', revert T'', persistent,
       monotonicity, lifted_pred,
@@ -527,7 +530,7 @@ begin [temporal]
   case leads_to.disj X p' q' P₀ H₀ x y z
   { clear sem,
     henceforth,
-    rw [init_exists,p_exists_p_imp ],
+    simp [p_exists_p_imp ],
     intros x hp,
     apply H₀ x hp, }
 end
@@ -540,30 +543,32 @@ variable [system_sem α]
 
 lemma often_imp_often_sem'
     {s : α}
-    {Γ : cpred _}
+    {Γ : cpred }
+    {σ : tvar _}
   {p q : pred' (state α)}
   (P : p >~> q in s)
-  (sem : Γ ⊢ ex s)
-: Γ ⊢ ◻◇•p ⟶ ◻◇•q :=
+  (sem : Γ ⊢ ex s σ)
+: Γ ⊢ ◻◇(p ;; σ) ⟶ ◻◇(q ;; σ) :=
 begin [temporal]
   induction P,
   case often_imp_often.transient p q T
-  { have Tsem : ◻◇•p ⟶ ◻◇-•-q
+  { have Tsem : ◻◇(p ;; σ) ⟶ ◻◇(- -q;;σ)
               := system_sem.transient_sem sem T,
-    rw [not_init,p_not_p_not_iff_self] at Tsem },
+    rw [p_not_p_not_iff_self] at Tsem },
   case often_imp_often.trans p q r P₀ P₁ Lpq Lqr
   { intro Hp,
     apply Lqr (Lpq Hp) },
   case often_imp_often.induct  t V wf p q P₀ S₀
-  { apply inf_often_induction' (V : var (state α) t) p q,
+  { apply inf_often_induction' (V;;σ) (p;;σ) (q;;σ),
     { intros v h,
-      apply unless_sem_str _ (S₀ v) h,
-      apply system_sem.safety s Γ sem, },
+      refine ♯( unless_sem_str σ _ (S₀ v) _),
+      apply system_sem.safety s σ Γ sem,
+      simp, exact h, },
     { intro v,
-      apply leads_to_sem (P₀ v) sem, } },
+      exact ♯ leads_to_sem (P₀ v) sem, } },
   case often_imp_often.disj p q r P₀ P₁
   { intros H,
-    rw [init_p_or,inf_often_p_or] at H,
+    simp [inf_often_p_or] at H,
     cases H with H H,
     { apply ih_1 H },
     { apply ih_2 H } }

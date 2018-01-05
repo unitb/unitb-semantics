@@ -7,6 +7,8 @@ import util.logic
 import util.predicate
 import util.data.fin
 
+local notation `♯` x := cast (by simp) x
+
 namespace unitb
 
 universe variable u
@@ -276,8 +278,8 @@ begin [temporal]
     apply induct (p ;; v) _ _,
     henceforth at sem ⊢,
     intros hp,
-    have hq  : -q ;; v, apply H',
-    have hq' : ⊙(-q ;; v), apply H',
+    have hq  : -q ;; v, simp, apply H',
+    have hq' : ⊙(-q ;; v), simp, apply  H',
     have := unless_action H v Γ _ sem,
     { revert this hq hq',
       clear H,
@@ -341,10 +343,10 @@ begin [temporal]
   simp [p_not_p_or] at H₁,
   have Hnq : -q;;v,
   { strengthen_to ◻_, persistent,
-    henceforth at H₁ ⊢, apply H₁.left, },
+    henceforth at H₁ ⊢, simp, apply H₁.left, },
   have Hnnq : ⊙(-q;;v),
   { strengthen_to ◻(_;;_), persistent,
-    henceforth at H₁ ⊢, apply H₁.left, },
+    henceforth at H₁ ⊢, simp, apply H₁.left, },
   have Hevt : -⟦ v <> evt ⟧,
   { strengthen_to ◻_, persistent,
     henceforth at H₁ ⊢, apply H₁.right, },
