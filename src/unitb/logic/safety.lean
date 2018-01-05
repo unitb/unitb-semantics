@@ -12,7 +12,7 @@ namespace unitb
 universe variable u
 
 open predicate
-open temporal (hiding action)
+open temporal
 
 @[reducible]
 def pred (σ : Sort u) := pred' σ
@@ -52,8 +52,8 @@ begin
   simp,
 end
 
-def saf_ex {α} [has_safety α] (s : α) : cpred (state α) :=
- (◻ ⟦ step s ⟧)
+def saf_ex {α : Sort u} [has_safety α] (s : α) (σ : tvar (state α)) : cpred :=
+◻ ⟦ σ <> step s ⟧
 
 section properties
 
@@ -67,7 +67,8 @@ variables {s}
 
 lemma unless_action' {α} [has_safety α] {s : α} {p q : pred' (state α)} {e : act $ state α}
   (h : unless' s p q e)
-: ⟦ λ σ σ', (σ ⊨ p ∧ ¬ σ ⊨ q) ⟧ ⟹ ( ⟦ step s ⟧ ⟶ -⟦ e ⟧ ⟶ ⟦ λ _ σ', σ' ⊨ p ∨ σ' ⊨ q ⟧ ) :=
+  (σ : tvar (state α))
+: ⟦ σ <> λ σ σ', (σ ⊨ p ∧ ¬ σ ⊨ q) ⟧ ⟹  (⟦ σ <> step s ⟧ ⟶ -⟦ σ <> e ⟧ ⟶ ⟦ σ <> λ _ σ', σ' ⊨ p ∨ σ' ⊨ q ⟧ ) :=
 begin [temporal]
   action with σ σ'
   { intros, apply h ; assumption, },
@@ -75,12 +76,11 @@ end
 
 lemma unless_action {α} [has_safety α] {s : α} {p q : pred' (state α)}
   (h : unless s p q)
-: ⟦ λ σ σ', (σ ⊨ p ∧ ¬ σ ⊨ q) ⟧ ⟹ ( ⟦ step s ⟧ ⟶  ⟦ λ _ σ', σ' ⊨ p ∨ σ' ⊨ q ⟧ ) :=
-begin
-  rw ← action_imp,
-  refine action_entails_action _ _ _ ,
-  intros s s' hpnq act,
-  apply h _ _ act hpnq
+  (σ : tvar (state α))
+: ⟦ σ <> λ σ σ', (σ ⊨ p ∧ ¬ σ ⊨ q) ⟧ ⟹ ( ⟦ σ <> step s ⟧ ⟶  ⟦ σ <> λ _ σ', σ' ⊨ p ∨ σ' ⊨ q ⟧ ) :=
+begin [temporal]
+  action with h₀ h₁
+  { apply h _ _ h₁ h₀, }
 end
 
 section
@@ -247,7 +247,6 @@ begin
     apply unless_weak_rhs _ Hconj, clear Hconj,
     { propositional } },
 end
-
 lemma forall_unless {n} {p : fin n → pred' (state α)} {b : pred' (state α)}
   (h : ∀ i, unless s (p i) b)
 : unless s (∀∀ i, p i) b :=
@@ -258,27 +257,28 @@ begin
 end
 
 open nat temporal stream
+variable v : tvar (state α)
 
-instance persistent_saf_ex : persistent (saf_ex s) :=
+instance persistent_saf_ex : persistent (saf_ex s v) :=
 by { unfold saf_ex, apply_instance }
 
-variables {Γ : cpred σ}
+variables {Γ : cpred}
 
 lemma unless_sem {p q : pred' σ}
-    (sem : Γ ⊢ saf_ex s)
+    (sem : Γ ⊢ saf_ex s v)
     (H : unless s p q)
-    (h : Γ ⊢ •p)
-:  Γ ⊢ ◻•p ⋁ ◇•q :=
+    (h : Γ ⊢ p ;; v)
+:  Γ ⊢ ◻(p;; v) ⋁ ◇(q ;; v) :=
 begin [temporal]
   focus_left with H',
   { simp [p_not_eq_not,not_eventually] at H' ,
     revert h,
-    apply induct (•p) _ _,
+    apply induct (p ;; v) _ _,
     henceforth at sem ⊢,
     intros hp,
-    have hq  : -•q, apply H',
-    have hq' : ⊙-•q, apply H',
-    have := unless_action H Γ _ sem,
+    have hq  : -q ;; v, apply H',
+    have hq' : ⊙(-q ;; v), apply H',
+    have := unless_action H v Γ _ sem,
     { revert this hq hq',
       clear H,
       action with σ σ'
@@ -294,9 +294,9 @@ begin [temporal]
 end
 
 lemma co_sem' {A : act σ}
-    (sem : Γ ⊢ saf_ex s)
+    (sem : Γ ⊢ saf_ex s v)
     (H : co' s A)
-: Γ ⊢ ◻⟦ A ⟧ :=
+: Γ ⊢ ◻⟦ v <> A ⟧ :=
 begin [temporal]
   henceforth at *,
   revert sem,
@@ -305,10 +305,10 @@ begin [temporal]
 end
 
 lemma unless_sem_str {p q : pred' σ}
-    (sem : Γ ⊢ saf_ex s)
+    (sem : Γ ⊢ saf_ex s v)
     (H₀ : unless s p q)
-    (H₁ : Γ ⊢ ◻◇•p)
-: Γ ⊢ ◇◻•p ⋁ ◻◇•q :=
+    (H₁ : Γ ⊢ ◻◇(p;;v))
+: Γ ⊢ ◇◻(p;;v) ⋁ ◻◇(q;;v) :=
 begin [temporal]
   rw [← p_not_p_imp,not_eventually],
   intro H₂,
@@ -316,13 +316,13 @@ begin [temporal]
   eventually H₁,
   henceforth at H₂,
   revert H₂, rw p_not_p_imp,
-  apply unless_sem sem H₀ H₁,
+  apply unless_sem _ sem H₀ H₁,
 end
 
-lemma unless_sem_exists' {t} {p : t → pred' σ} {q : pred' σ} {evt : act σ}
-    (sem : Γ ⊢ saf_ex s)
+lemma unless_sem_exists' {t} {p : t → pred' σ} {q : pred' σ} {evt : act σ} {v}
+    (sem : Γ ⊢ saf_ex s v)
     (H : ∀ x, unless' s (p x) q evt)
-: Γ ⊢ ◻◇(∃∃ x, •p x) ⟶ (∃∃ x, ◇◻•p x) ⋁ ◻◇(•q ⋁ ⟦ evt ⟧) :=
+: Γ ⊢ ◻◇(∃∃ x, p x;;v) ⟶ (∃∃ x, ◇◻(p x;;v)) ⋁ ◻◇(q;;v ⋁ ⟦ v <> evt ⟧) :=
 begin [temporal]
   intro H₀,
   rw [p_or_comm,← p_not_p_imp],
@@ -339,32 +339,32 @@ begin [temporal]
   henceforth at sem ⊢,
   intro hp,
   simp [p_not_p_or] at H₁,
-  have Hnq : -•q,
+  have Hnq : -q;;v,
   { strengthen_to ◻_, persistent,
     henceforth at H₁ ⊢, apply H₁.left, },
-  have Hnnq : ⊙-•q,
-  { strengthen_to ◻-_, persistent,
+  have Hnnq : ⊙(-q;;v),
+  { strengthen_to ◻(_;;_), persistent,
     henceforth at H₁ ⊢, apply H₁.left, },
-  have Hevt : -⟦ evt ⟧,
+  have Hevt : -⟦ v <> evt ⟧,
   { strengthen_to ◻_, persistent,
     henceforth at H₁ ⊢, apply H₁.right, },
   clear H₁,
-  have := unless_action' (H x) Γ,
+  have := unless_action' (H x) v Γ,
   revert sem hp Hnq Hnnq Hevt this,
   clear H,
   action with h₀ h₁ h₂ h₃ h₄ h₅
   { specialize h₀ ⟨h₄,h₃⟩ h₅ h₁,
-    begin [smt] break_asms, destruct h₂ a, end },
+    begin [smt] break_asms, exact a, destruct h₂ a, end },
 end
 
-lemma unless_sem_exists {t} {p : t → pred' σ} {q : pred' σ}
-    (sem : Γ ⊢ saf_ex s)
+lemma unless_sem_exists {t} {p : t → pred' σ} {q : pred' σ} {v}
+    (sem : Γ ⊢ saf_ex s v)
     (H : ∀ x, unless s (p x) q)
-: Γ ⊢ ◻◇(∃∃ x, •p x) ⟶ (∃∃ x, ◇◻•p x) ⋁ ◻◇•q  :=
+: Γ ⊢ ◻◇(∃∃ x, p x;;v) ⟶ (∃∃ x, ◇◻(p x;;v)) ⋁ ◻◇(q;;v)  :=
 begin [temporal]
   intros H',
   simp [unless_eq_unless_except] at H,
-  have := @unless_sem_exists' _ _ _ _ t p q _ sem H H',
+  have := @unless_sem_exists' _ _ _ _ t p q _ v sem H H',
   revert this,
   monotonicity,
   simp [@action_false (state α)],
