@@ -55,7 +55,7 @@ begin
 end
 
 def saf_ex {α : Sort u} [has_safety α] (s : α) (σ : tvar (state α)) : cpred :=
-◻ ⟦ σ <> step s ⟧
+◻ ⟦ σ | step s ⟧
 
 section properties
 
@@ -70,7 +70,7 @@ variables {s}
 lemma unless_action' {α} [has_safety α] {s : α} {p q : pred' (state α)} {e : act $ state α}
   (h : unless' s p q e)
   (σ : tvar (state α))
-: ⟦ σ <> λ σ σ', (σ ⊨ p ∧ ¬ σ ⊨ q) ⟧ ⟹  (⟦ σ <> step s ⟧ ⟶ -⟦ σ <> e ⟧ ⟶ ⟦ σ <> λ _ σ', σ' ⊨ p ∨ σ' ⊨ q ⟧ ) :=
+: ⟦ σ | λ σ σ', (σ ⊨ p ∧ ¬ σ ⊨ q) ⟧ ⟹  (⟦ σ | step s ⟧ ⟶ -⟦ σ | e ⟧ ⟶ ⟦ σ | λ _ σ', σ' ⊨ p ∨ σ' ⊨ q ⟧ ) :=
 begin [temporal]
   action with σ σ'
   { intros, apply h ; assumption, },
@@ -79,7 +79,7 @@ end
 lemma unless_action {α} [has_safety α] {s : α} {p q : pred' (state α)}
   (h : unless s p q)
   (σ : tvar (state α))
-: ⟦ σ <> λ σ σ', (σ ⊨ p ∧ ¬ σ ⊨ q) ⟧ ⟹ ( ⟦ σ <> step s ⟧ ⟶  ⟦ σ <> λ _ σ', σ' ⊨ p ∨ σ' ⊨ q ⟧ ) :=
+: ⟦ σ | λ σ σ', (σ ⊨ p ∧ ¬ σ ⊨ q) ⟧ ⟹ ( ⟦ σ | step s ⟧ ⟶  ⟦ σ | λ _ σ', σ' ⊨ p ∨ σ' ⊨ q ⟧ ) :=
 begin [temporal]
   action with h₀ h₁
   { apply h _ _ h₁ h₀, }
@@ -269,17 +269,17 @@ variables {Γ : cpred}
 lemma unless_sem {p q : pred' σ}
     (sem : Γ ⊢ saf_ex s v)
     (H : unless s p q)
-    (h : Γ ⊢ p ;; v)
-:  Γ ⊢ ◻(p;; v) ⋁ ◇(q ;; v) :=
+    (h : Γ ⊢ p ! v)
+:  Γ ⊢ ◻(p! v) ⋁ ◇(q ! v) :=
 begin [temporal]
   focus_left with H',
   { simp [p_not_eq_not,not_eventually] at H' ,
     revert h,
-    apply induct (p ;; v) _ _,
+    apply induct (p ! v) _ _,
     henceforth at sem ⊢,
     intros hp,
-    have hq  : -q ;; v, simp, apply H',
-    have hq' : ⊙(-q ;; v), simp, apply  H',
+    have hq  : -q ! v, simp, apply H',
+    have hq' : ⊙(-q ! v), simp, apply  H',
     have := unless_action H v Γ _ sem,
     { revert this hq hq',
       clear H,
@@ -298,7 +298,7 @@ end
 lemma co_sem' {A : act σ}
     (sem : Γ ⊢ saf_ex s v)
     (H : co' s A)
-: Γ ⊢ ◻⟦ v <> A ⟧ :=
+: Γ ⊢ ◻⟦ v | A ⟧ :=
 begin [temporal]
   henceforth at *,
   revert sem,
@@ -309,8 +309,8 @@ end
 lemma unless_sem_str {p q : pred' σ}
     (sem : Γ ⊢ saf_ex s v)
     (H₀ : unless s p q)
-    (H₁ : Γ ⊢ ◻◇(p;;v))
-: Γ ⊢ ◇◻(p;;v) ⋁ ◻◇(q;;v) :=
+    (H₁ : Γ ⊢ ◻◇(p!v))
+: Γ ⊢ ◇◻(p!v) ⋁ ◻◇(q!v) :=
 begin [temporal]
   rw [← p_not_p_imp,not_eventually],
   intro H₂,
@@ -324,7 +324,7 @@ end
 lemma unless_sem_exists' {t} {p : t → pred' σ} {q : pred' σ} {evt : act σ} {v}
     (sem : Γ ⊢ saf_ex s v)
     (H : ∀ x, unless' s (p x) q evt)
-: Γ ⊢ ◻◇(∃∃ x, p x;;v) ⟶ (∃∃ x, ◇◻(p x;;v)) ⋁ ◻◇(q;;v ⋁ ⟦ v <> evt ⟧) :=
+: Γ ⊢ ◻◇(∃∃ x, p x!v) ⟶ (∃∃ x, ◇◻(p x!v)) ⋁ ◻◇(q!v ⋁ ⟦ v | evt ⟧) :=
 begin [temporal]
   intro H₀,
   rw [p_or_comm,← p_not_p_imp],
@@ -341,13 +341,13 @@ begin [temporal]
   henceforth at sem ⊢,
   intro hp,
   simp [p_not_p_or] at H₁,
-  have Hnq : -q;;v,
+  have Hnq : -q!v,
   { strengthen_to ◻_, persistent,
     henceforth at H₁ ⊢, simp, apply H₁.left, },
-  have Hnnq : ⊙(-q;;v),
-  { strengthen_to ◻(_;;_), persistent,
+  have Hnnq : ⊙(-q!v),
+  { strengthen_to ◻(_!_), persistent,
     henceforth at H₁ ⊢, simp, apply H₁.left, },
-  have Hevt : -⟦ v <> evt ⟧,
+  have Hevt : -⟦ v | evt ⟧,
   { strengthen_to ◻_, persistent,
     henceforth at H₁ ⊢, apply H₁.right, },
   clear H₁,
@@ -362,7 +362,7 @@ end
 lemma unless_sem_exists {t} {p : t → pred' σ} {q : pred' σ} {v}
     (sem : Γ ⊢ saf_ex s v)
     (H : ∀ x, unless s (p x) q)
-: Γ ⊢ ◻◇(∃∃ x, p x;;v) ⟶ (∃∃ x, ◇◻(p x;;v)) ⋁ ◻◇(q;;v)  :=
+: Γ ⊢ ◻◇(∃∃ x, p x!v) ⟶ (∃∃ x, ◇◻(p x!v)) ⋁ ◻◇(q!v)  :=
 begin [temporal]
   intros H',
   simp [unless_eq_unless_except] at H,

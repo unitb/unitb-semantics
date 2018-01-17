@@ -48,10 +48,10 @@ parameters {lbl lbl₀ lbl₁ : Type}
 
 open has_mem scheduling.unitb temporal
 
-structure fair (t : target_mch lbl) (τ : stream t.σ) : Prop :=
-  (init : τ 0 = t.s₀)
-  (valid : τ ⊨ ◻ (∃∃ l, •(↑l ∊ t.req) ⋀ ⟦ t.action l ⟧))
-  (fair : ∀ l, τ ⊨ ◻◇•(↑l ∊ t.req) ⟶ ◻◇(•(↑l ∊ t.req) ⋀ ⟦ t.action l ⟧))
+structure fair (t : target_mch lbl) (Γ : cpred) (τ : tvar t.σ) : Prop :=
+  (init : Γ ⊢ τ ≃ t.s₀)
+  (valid : Γ ⊢ ◻ (∃∃ l, (↑l ∊ t.req ! τ) ⋀ ⟦ τ | t.action l ⟧))
+  (fair : Γ ⊢ ∀∀ l, ◻◇(↑l ∊ t.req ! τ) ⟶ ◻◇((↑l ∊ t.req ! τ) ⋀ ⟦ τ | t.action l ⟧))
   -- (evts : stream lbl)
   -- (run_evts_eq_τ : run t evts = τ)
 
@@ -408,18 +408,19 @@ parameters next : ∀ l s, r.apply s l → α
 parameters {F : s}
 parameters ch : var (unitb.state s) lbl
 parameters object : var (unitb.state s) α
-def req : var _ _  := r ∘' object
+def req : var _ _  := r ! object
 parameters P : ∀ l : lbl, (↑l ∊ req)  >~>  (ch ≃ l)  in  F
 parameters INIT : system.init F (object ≃ s₀)
 parameters STEP : unitb.co' F (λ σ σ', ∃ P, object.apply σ' = next (ch.apply σ) (object.apply σ) P)
 parameters INV : ∀ σ, σ ⊨ ch ∊ req
-
+parameter Γ : cpred
 def t := target_mch.mk _ s₀ r r_nemp next
 open unitb.system_sem  unitb.system target_mch
 include ch F INIT STEP INV P
 lemma scheduling'
-: ∃ τ : stream α, fair t τ :=
+: ∃ τ, fair t Γ τ :=
 begin
+  have := system_sem.inhabited F, revert this,
   apply exists_imp_exists' (map object.apply) _ (system_sem.inhabited F),
   intros τ sem,
   apply fair.mk,
@@ -485,8 +486,8 @@ structure scheduler :=
  (object : var (unitb.state s) t.σ)
  (INIT : system.init F (object ≃ t.s₀))
  (STEP : unitb.co' F (λ σ σ', ∃ P, object.apply σ' = t.next (ch.apply σ) (object.apply σ) P))
- (INV  : ∀ σ, σ ⊨ ch ∊ t.req ∘' object)
- (PROG : ∀ l : lbl, ↑l ∊ t_req t ∘' object  >~>  ch ≃ l in F)
+ (INV  : ∀ σ, σ ⊨ ch ∊ t.req ! object)
+ (PROG : ∀ l : lbl, ↑l ∊ t_req t ! object  >~>  ch ≃ l in F)
 
 instance (s : scheduler t) : system_sem (s.s) := s.sem
 

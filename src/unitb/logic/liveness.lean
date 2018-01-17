@@ -98,20 +98,20 @@ parameter [system α]
 parameter [system α']
 parameter (f : state α' → state α)
 parameters (s : α) (s' : α')
-parameter (Tf : ∀ {p q}, transient' s p q → transient' s' (p ;; f) (q ;; f))
-parameter (Uf : ∀ {p q}, unless s p q → unless s' (p ;; f) (q ;; f))
+parameter (Tf : ∀ {p q}, transient' s p q → transient' s' (p ! ⟨f⟩) (q ! ⟨f⟩))
+parameter (Uf : ∀ {p q}, unless s p q → unless s' (p ! ⟨f⟩) (q ! ⟨f⟩))
 
 include Tf Uf
 
 lemma leads_to.subst {p q}
   (H : p ↦ q in s)
-: (p ;; f) ↦ (q ;; f) in s' :=
+: (p ! ⟨f⟩) ↦ (q ! ⟨f⟩) in s' :=
 begin
   induction H,
   case leads_to.trivial p
   { apply leads_to.trivial },
   case leads_to.basis' p q b t u P₀ P₁
-  { apply leads_to.basis' (b ;; ↑f),
+  { apply leads_to.basis' (b ! ⟨f⟩),
     { specialize Tf t, simp at Tf ⊢,
       apply Tf, },
     { apply Uf u },
@@ -126,7 +126,7 @@ open predicate
 
 lemma often_imp_often.subst {p q}
   (H : p >~> q in s)
-: (p ;; f) >~> (q ;; f) in s' :=
+: (p ! ⟨f⟩) >~> (q ! ⟨f⟩) in s' :=
 begin
   induction H,
   case often_imp_often.transient p q T
@@ -135,7 +135,7 @@ begin
   case often_imp_often.trans p q r _ _ Pb₀ Pb₁
   { apply often_imp_often.trans _ Pb₀ Pb₁ },
   case often_imp_often.induct t V _inst_3 p q P S
-  { apply often_imp_often.induct t (V ;; ↑f),
+  { apply often_imp_often.induct t (V ! ⟨f⟩),
     { intro v,
       exact ♯ leads_to.subst f s s' @Tf @Uf (P v), },
     { intro v, specialize Uf (S v),
@@ -469,15 +469,15 @@ open predicate temporal
 class system_sem (α : Type u) extends system α :=
   (ex : α → tvar (state α) → cpred)
   (safety : ∀ s v, ex s v ⟹ saf_ex s v)
-  (inhabited : ∀s, ∃v, ⊩ ex s v)
+  (inhabited : ∀s, ⊩ ∃∃v, ex s v)
   (init_sem : ∀ {s : α} {Γ p : pred' _} {v : tvar _},
          Γ ⊢ ex s v →
          init s p →
-         Γ ⊢ p;;v)
+         Γ ⊢ p!v)
   (transient_sem : ∀ {s : α} {Γ p q : pred' _} {v : tvar _},
          Γ ⊢ ex s v →
          transient' s p q →
-         Γ ⊢ ◻◇(p;;v) ⟶ ◻◇(-q;;v))
+         Γ ⊢ ◻◇(p!v) ⟶ ◻◇-(q!v))
 
 namespace system_sem
 
@@ -493,7 +493,7 @@ lemma leads_to_sem {s : α} {p q : pred' (state α)} {v : tvar (state α)}
     {Γ : cpred}
     (P : p ↦ q in s)
     (sem : Γ ⊢ ex s v)
-: Γ ⊢ (p ;; v) ~> (q ;; v) :=
+: Γ ⊢ (p ! v) ~> (q ! v) :=
 begin [temporal]
   have saf : saf_ex s v := system_sem.safety s v Γ sem,
   induction P ,
@@ -506,18 +506,20 @@ begin [temporal]
     intros hp,
     have saf' : _ ⋁ _ := unless_sem _ saf S hp,
     cases saf' with saf' saf',
-    { have T' : ◻◇(-(p ⋀ -q);;v),
+    { have T' : ◻◇(-(p ⋀ -q)!v),
       { assume_negation with h,
         simp [p_not_p_not_iff_self] at h,
-        suffices : ◻◇(-(p;;v ⋀ -q;;v)) ⋁ ◻◇(q;;v),
-        { cases this with this this ; revert this
-          ; persistent ; monotonicity
-          ; lifted_pred,
-          show _, { intros, auto } },
+        suffices : ◻◇(-(p!v ⋀ -q!v) ⋁ q!v),
+        { simp [p_not_p_and] at this ⊢ ,
+          revert this ,
+          persistent, monotonicity,
+          lifted_pred,
+          show _, begin [smt] intros, break_asms, end },
+        rw inf_often_p_or,
         focusing_left
         { simp,
-          apply Tsem _ },
-        replace h := inf_often_of_stable (p ;; v ⋀ -(q ;; v)) Γ h,
+          apply Tsem _, },
+        replace h := inf_often_of_stable (p ! v ⋀ -(q ! v)) Γ h,
         replace h := inf_often_of_leads_to Bsem (♯ h),
         simp [inf_often_p_or] at h, apply h, },
       have T'' := (coincidence' saf' T'),
@@ -548,18 +550,18 @@ lemma often_imp_often_sem'
   {p q : pred' (state α)}
   (P : p >~> q in s)
   (sem : Γ ⊢ ex s σ)
-: Γ ⊢ ◻◇(p ;; σ) ⟶ ◻◇(q ;; σ) :=
+: Γ ⊢ ◻◇(p ! σ) ⟶ ◻◇(q ! σ) :=
 begin [temporal]
   induction P,
   case often_imp_often.transient p q T
-  { have Tsem : ◻◇(p ;; σ) ⟶ ◻◇(- -q;;σ)
+  { have Tsem : ◻◇(p ! σ) ⟶ ◻◇-( -q!σ)
               := system_sem.transient_sem sem T,
-    rw [p_not_p_not_iff_self] at Tsem },
+    simp [p_not_p_not_iff_self] at Tsem, apply Tsem },
   case often_imp_often.trans p q r P₀ P₁ Lpq Lqr
   { intro Hp,
     apply Lqr (Lpq Hp) },
   case often_imp_often.induct  t V wf p q P₀ S₀
-  { apply inf_often_induction' (V;;σ) (p;;σ) (q;;σ),
+  { apply inf_often_induction' (V!σ) (p!σ) (q!σ),
     { intros v h,
       refine ♯( unless_sem_str σ _ (S₀ v) _),
       apply system_sem.safety s σ Γ sem,
