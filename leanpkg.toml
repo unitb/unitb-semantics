@@ -5,6 +5,6 @@ lean_version = "master"
 path = "src"
 
 [dependencies]
-mathlib = {git = "https://github.com/leanprover/mathlib", rev = "2c84af163dbc83c6eb6a94a03d5c25f25b6b8623"}
-lean-lib = {git = "https://github.com/unitb/lean-lib", rev = "06e15154a1a2cbb0a7f379720ed1b59b7d4691c1"}
-temporal-logic = {git = "https://github.com/unitb/temporal-logic", rev = "57fa1b3b6ac661cfe3984c4c4e01d30850221344"}
+mathlib = {git = "https://github.com/leanprover/mathlib", rev = "0ac694c04ab68428e65671f20cf0696280689b56"}
+lean-lib = {git = "https://github.com/unitb/lean-lib", rev = "60143a36526235e4bbc21dbcddb39be602867e6e"}
+temporal-logic = {git = "https://github.com/unitb/temporal-logic", rev = "b3a852012f9b156e3bf114ab4b630fa8e1b667df"}

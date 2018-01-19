@@ -108,17 +108,17 @@ lemma leads_to.subst {p q}
 : (p ! ⟨f⟩) ↦ (q ! ⟨f⟩) in s' :=
 begin
   induction H,
-  case leads_to.trivial p
+  case leads_to.trivial : p
   { apply leads_to.trivial },
-  case leads_to.basis' p q b t u P₀ P₁
+  case leads_to.basis' : p q b t u P₀ P₁
   { apply leads_to.basis' (b ! ⟨f⟩),
     { specialize Tf t, simp at Tf ⊢,
       apply Tf, },
     { apply Uf u },
     { simp at P₁, simp [P₁], }, },
-  case leads_to.trans p q r Pa₀ Pa₁ Pb₀ Pb₁
+  case leads_to.trans : p q r Pa₀ Pa₁ Pb₀ Pb₁
   { apply leads_to.trans (q '∘ f) Pb₀ Pb₁, },
-  case leads_to.disj t p q Pa Pb
+  case leads_to.disj : t p q Pa Pb
   { simp, apply leads_to.disj t (λ x, p x '∘ f),
     intro, apply Pb, },
 end
@@ -129,19 +129,16 @@ lemma often_imp_often.subst {p q}
 : (p ! ⟨f⟩) >~> (q ! ⟨f⟩) in s' :=
 begin
   induction H,
-  case often_imp_often.transient p q T
-  { specialize Tf T, simp at Tf,
-    apply often_imp_often.transient Tf },
-  case often_imp_often.trans p q r _ _ Pb₀ Pb₁
+  case often_imp_often.transient : p q T
+  { apply often_imp_often.transient (♯Tf T) },
+  case often_imp_often.trans : p q r _ _ Pb₀ Pb₁
   { apply often_imp_often.trans _ Pb₀ Pb₁ },
-  case often_imp_often.induct t V _inst_3 p q P S
+  case often_imp_often.induct : t V _inst_3 p q P S
   { apply often_imp_often.induct t (V ! ⟨f⟩),
-    { intro v,
-      exact ♯ leads_to.subst f s s' @Tf @Uf (P v), },
-    { intro v, specialize Uf (S v),
-      simp at Uf, apply Uf } },
-  case often_imp_often.disj p q r P₀ P₁
-  { exact ♯ often_imp_often.disj ih_1 ih_2, }
+    { intro v, exact ♯ leads_to.subst f s s' @Tf @Uf (P v), },
+    { intro v, exact ♯ Uf (S v), } },
+  case often_imp_often.disj : p q r P₀ P₁
+  { exact ♯ often_imp_often.disj H_ih_a H_ih_a_1, }
 end
 
 end conversion
@@ -293,13 +290,13 @@ begin
     { apply leads_to.monotonicity _ _ PSP₀,
       { lifted_pred, begin [smt] intros, end },
       { lifted_pred, begin [smt] intros, break_asms end }, } },
-  { have H := leads_to.cancellation _ ih_1 ih_2,
+  { have H := leads_to.cancellation _ P_ih_a P_ih_a_1,
     apply H },
-  { apply leads_to.antimono_left (∃∃i, p_1 i ⋀ r),
+  { apply leads_to.antimono_left (∃∃i, P_p i ⋀ r),
     { lifted_pred only [p_and_over_p_exists_right],
       exact id, },
     apply leads_to.disj, intro i,
-    apply ih_1 i, },
+    apply P_ih i, },
 end
 
 lemma leads_to.trading {p q r : pred' (state α)}
@@ -329,11 +326,11 @@ begin
   revert p' q' b,
   induction P₀
   ; intros p' q' b P₁ S₀ S₁,
-  case leads_to.trivial p₀
+  case leads_to.trivial : p₀
   { apply leads_to.monotonicity _ _ P₁,
     { propositional, },
     { propositional, }, },
-  case leads_to.basis' p₀ q₀ b₀ T S₂ P₂
+  case leads_to.basis' : p₀ q₀ b₀ T S₂ P₂
   { -- have P₃ : p₀ ⋀ p' ↦ _ in s,
     apply leads_to.basis' (b₀ ⋀ q'),
     { apply system.transient_antimono _ _ T,
@@ -346,28 +343,28 @@ begin
         { admit }, } },
     { admit },
     { admit }, },
-  case leads_to.trans pp qq rr P₂ P₃
+  case leads_to.trans : pp qq rr P₂ P₃
   { rw [← p_or_self b,p_or_assoc],
     have H' : pp ⋀ p'  ↦  rr ⋀ q' ⋁ b ⋁ b in s,
     { apply leads_to.cancellation' (qq ⋀ q'),
       { have h : qq ⋀ q' ⋁ b = qq ⋀ q' ⋁ (qq ⋀ q' ⋁ b),
         { admit },
         rw h,
-        apply ih_1,
+        apply P₀_ih_a,
         { apply P₁ },
         { apply unless_imp, admit, },
         { apply unless_weak_rhs _ S₁,
           propositional, }, },
-      { apply ih_2,
+      { apply P₀_ih_a_1,
         { refl },
         { apply S₀ },
         { apply S₁ }, } },
     apply leads_to.mono_right _ _ H',
     propositional, },
-  case leads_to.disj t pp qq P₂
+  case leads_to.disj : t pp qq P₂
   { rw p_and_over_p_exists_right,
     apply leads_to.disj,
-    intro i, apply ih_1 _ P₁ S₀ S₁, }
+    intro i, apply P₀_ih _ P₁ S₀ S₁, }
 end
 
 lemma leads_to.completion_b {p p' q q' : pred' (state α)} {b : pred' (state α)}
@@ -499,7 +496,7 @@ begin [temporal]
   induction P ,
   case leads_to.trivial
   { apply temporal.leads_to_of_inf_often, simp, },
-  case leads_to.basis' p q b T S B Bsem
+  case leads_to.basis' : p q b T S B Bsem
   { have Tsem := transient_sem sem T, simp at Tsem,
     clear sem,
     henceforth,
@@ -512,7 +509,7 @@ begin [temporal]
         suffices : ◻◇(-(p!v ⋀ -q!v) ⋁ q!v),
         { simp [p_not_p_and] at this ⊢ ,
           revert this ,
-          persistent, monotonicity,
+          monotonicity only,
           lifted_pred,
           show _, begin [smt] intros, break_asms, end },
         rw inf_often_p_or,
@@ -527,9 +524,9 @@ begin [temporal]
       monotonicity, lifted_pred,
       show _, { intros, auto } },
     { assumption, } },
-  case leads_to.trans p q r P₀ P₁ H₀ H₁
+  case leads_to.trans : p q r P₀ P₁ H₀ H₁
   { apply leads_to_trans H₀ H₁ },
-  case leads_to.disj X p' q' P₀ H₀ x y z
+  case leads_to.disj : X p' q' P₀ H₀ x y z
   { clear sem,
     henceforth,
     simp [p_exists_p_imp ],
@@ -553,14 +550,14 @@ lemma often_imp_often_sem'
 : Γ ⊢ ◻◇(p ! σ) ⟶ ◻◇(q ! σ) :=
 begin [temporal]
   induction P,
-  case often_imp_often.transient p q T
+  case often_imp_often.transient : p q T
   { have Tsem : ◻◇(p ! σ) ⟶ ◻◇-( -q!σ)
               := system_sem.transient_sem sem T,
     simp [p_not_p_not_iff_self] at Tsem, apply Tsem },
-  case often_imp_often.trans p q r P₀ P₁ Lpq Lqr
+  case often_imp_often.trans : p q r P₀ P₁ Lpq Lqr
   { intro Hp,
     apply Lqr (Lpq Hp) },
-  case often_imp_often.induct  t V wf p q P₀ S₀
+  case often_imp_often.induct : t V wf p q P₀ S₀
   { apply inf_often_induction' (V!σ) (p!σ) (q!σ),
     { intros v h,
       refine ♯( unless_sem_str σ _ (S₀ v) _),
@@ -568,12 +565,12 @@ begin [temporal]
       simp, exact h, },
     { intro v,
       exact ♯ leads_to_sem (P₀ v) sem, } },
-  case often_imp_often.disj p q r P₀ P₁
+  case often_imp_often.disj : p q r P₀ P₁
   { intros H,
     simp [inf_often_p_or] at H,
     cases H with H H,
-    { apply ih_1 H },
-    { apply ih_2 H } }
+    { apply P_ih_a H },
+    { apply P_ih_a_1 H } }
 end
 
 end

@@ -94,7 +94,7 @@ meta def classical_rules : list simp_arg_type :=
 ,simp_arg_type.expr ``(not_not_iff_self)]
 
 meta def tactic.classical_simp (rules : parse simp_arg_list) : tactic unit :=
-tactic.interactive.simp ff (classical_rules ++ rules) [`predicate] loc.wildcard
+tactic.interactive.simp none ff (classical_rules ++ rules) [`predicate] loc.wildcard
 
 meta def tactic.safety_intro (rules : list simp_arg_type) (with_contra : bool := ff) : tactic unit :=
 do `(unless _ _ _) ← target,
@@ -130,9 +130,8 @@ end
 lemma unless_imp {p q : pred' σ} (h : p ⟹ q) : unless s p q :=
 begin
   intros σ σ' h₀ h₁,
-  cases h₁ with h₁ h₂,
-  exfalso,
-  apply h₂, apply entails_to_pointwise h _ h₁,
+  replace h := entails_to_pointwise h σ,
+  cases_matching _ ∧ _, auto,
 end
 
 lemma unless_weak_rhs {p q r : pred' σ}
@@ -284,15 +283,12 @@ begin [temporal]
     { revert this hq hq',
       clear H,
       action with σ σ'
-      { begin [smt] intros, break_asms,
-                    exact a_1, destruct σ_1 a_1 , end } },
+      { intros,
+        cases_matching _ ∨ _ ; auto } },
     revert hp hq hq',
     action with σ σ'
-    { intros,
-      by_contradiction, classical_simp,
-      begin [smt] break_asms,
-                  apply σ'_1 a_2,
-                  apply a_2 a, end }, }
+    { intros, clear H,
+      split ; auto, } }
 end
 
 lemma co_sem' {A : act σ}
@@ -356,7 +352,7 @@ begin [temporal]
   clear H,
   action with h₀ h₁ h₂ h₃ h₄ h₅
   { specialize h₀ ⟨h₄,h₃⟩ h₅ h₁,
-    begin [smt] break_asms, exact a, destruct h₂ a, end },
+    cases_matching _ ∨ _ ; auto },
 end
 
 lemma unless_sem_exists {t} {p : t → pred' σ} {q : pred' σ} {v}

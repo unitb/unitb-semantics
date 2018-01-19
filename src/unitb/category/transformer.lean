@@ -94,7 +94,6 @@ instance except_finite_disjunctive (e : pred' σ)
    begin
      introv,
      simp [function.comp,has_comp.comp,except.run,cancellation],
-     apply congr_arg,
      rw [disj_imp_imp,imp_comp_imp_eq_imp_trans],
    end
  , imp_self_eq_ident := by { introv, refl }
@@ -178,7 +177,6 @@ instance inv_fin_disj (inv : pred' σ) {cat : pred' σ → pred' σ → Sort u}
  , disj_imp_imp :=
    begin
      introv, simp [lifted_pred.imp,disj_imp_imp,eq.mpr],
-     apply congr_arg,
      apply eq_of_heq,
      transitivity,
      apply cast_heq,
