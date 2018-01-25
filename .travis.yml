@@ -52,6 +52,7 @@ matrix:
   allow_failures:
   - env: CMAKE_CXX_COMPILER=g++-6 CMAKE_BUILD_TYPE=Release LATEST=true
 before_install:
+- LEAN_COMMIT=`cat lean_version`
 - mkdir -p $HOME/lean
 - pushd $HOME/lean
 - ls .git || (git init && git remote add origin https://github.com/leanprover/lean.git)
@@ -59,9 +60,10 @@ before_install:
 - |
    if [[ $LATEST == true ]]
    then
-     git pull origin master
+     curl https://leanprover.github.io/lean-nightly/build/lean-nightly-linux.tar.gz | tar xz -C ..
+     export PATH=../lean-nightly-linux/bin:$PATH
    else
-     git checkout 368f17d0b1392a5a72c9eb974f15b14462cc1475
+     git checkout $LEAN_COMMIT
    fi
 - mkdir -p build
 - cd build
@@ -77,11 +79,11 @@ before_install:
 script:
 - lean -v || echo "success"
 - lean --path
-# - export LEAN_PATH=`pwd`/src:`pwd`/util:$HOME/lean/bin/../lib/lean/library:$HOME/lean/bin/../library
 - unset LEAN_PATH
 - echo $LEAN_PATH
 - leanpkg configure
 - leanpkg build
+- leanpkg test
 notifications:
   slack:
     rooms:
